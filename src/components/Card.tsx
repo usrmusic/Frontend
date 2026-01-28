@@ -14,7 +14,7 @@ const Card = ({ children, variant, className = "" }: CardProps) => {
   return (
     <div
       className={`rounded-3xl bg-white p-5 ${className}`}
-      style={{ background: bgColor }}
+      style={{ background: bgColor, boxShadow: "0px 1px 3px 0px #0000001A" }}
     >
       {children}
     </div>
