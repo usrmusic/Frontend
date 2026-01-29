@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { poppins, raleway } from "../lib/fonts";
+import ClientProviders from "../config/ClientProviders";
 
 export const metadata: Metadata = {
   title: "USR Music",
@@ -15,7 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${raleway.variable} ${poppins.variable} antialiased`}>
-        {children}
+        <ClientProviders>{children}</ClientProviders>
       </body>
     </html>
   );

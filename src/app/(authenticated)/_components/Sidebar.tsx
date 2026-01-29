@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Calendar,
   Contacts,
@@ -10,15 +12,18 @@ import {
 } from "@/src/components/Icons";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const Sidebar = () => {
+  const pathname = usePathname();
+
   const links = [
     {
       href: "/dashboard",
       icon: <Dashboard />,
     },
     {
-      href: "#",
+      href: "/enquiry",
       icon: <Enquiry />,
     },
     {
@@ -50,16 +55,21 @@ const Sidebar = () => {
   return (
     <div className="fixed top-12.5 bottom-12.5 left-12 bg-secondary-50 w-19.5 rounded-full flex flex-col items-center gap-10 py-5">
       <div className="flex flex-col gap-3 h-full [&_#sidebar-link-5]:mt-auto">
-        {links.map((item, index) => (
-          <Link
-            id={`sidebar-link-${index}`}
-            key={index}
-            href={item.href}
-            className="size-10 flex items-center justify-center rounded-full hover:bg-black hover:text-white transition-all duration-300"
-          >
-            {item.icon}
-          </Link>
-        ))}
+        {links.map((item, index) => {
+          const isActive = pathname === item.href;
+          return (
+            <Link
+              id={`sidebar-link-${index}`}
+              key={index}
+              href={item.href}
+              className={`size-10 flex items-center justify-center rounded-full hover:bg-black! hover:text-white transition-all duration-300 ${
+                isActive ? "bg-black text-white" : ""
+              }`}
+            >
+              {item.icon}
+            </Link>
+          );
+        })}
         <div>
           <Image
             src={"/images/avatar.png"}
