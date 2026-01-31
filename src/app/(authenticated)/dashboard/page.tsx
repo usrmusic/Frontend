@@ -1,3 +1,4 @@
+import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import Image from "next/image";
 
@@ -68,7 +69,7 @@ const DashboardPage = () => {
               <input
                 type="text"
                 placeholder="Search event"
-                className="w-full rounded-lg border border-black px-4 h-7.5 text-xs"
+                className="w-full rounded-lg border border-black px-4 h-7.5 text-xs bg-transparent!"
               />
             </div>
             <h3 className="text-sm">Upcoming Events</h3>
@@ -238,23 +239,32 @@ const DashboardPage = () => {
           className="col-span-12 lg:col-span-6 shadow-sm p-4"
         >
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm font-semibold text-gray-900">
+            <p className="text-base font-semibold text-gray-900">
               Open Enquiry (35)
             </p>
           </div>
-          <ul className="space-y-2 text-xs">
+          <ul className="text-xs">
             {enquiries.map((enq) => (
               <li
                 key={enq.name}
-                className="flex items-center justify-between rounded-2xl bg-secondary-50/60 px-3 py-3"
+                className="flex items-center border-b border-[#636363] last:border-0 justify-between px-3 py-3"
               >
-                <div>
-                  <p className="text-gray-900">{enq.name}</p>
-                  <p className="text-[11px] text-gray-400">{enq.subtitle}</p>
+                <div className="flex gap-3">
+                  <Image
+                    src={"/images/avatar.png"}
+                    alt="avatar"
+                    width={30}
+                    height={30}
+                    className="rounded-lg"
+                  />
+                  <div>
+                    <p className="text-gray-900">{enq.name}</p>
+                    <p className="text-[11px] text-gray-400">{enq.subtitle}</p>
+                  </div>
                 </div>
-                <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-medium text-emerald-600">
+                <div className="rounded-sm bg-primary w-12 text-center py-1 text-[10px] font-medium text-white">
                   {enq.tag}
-                </span>
+                </div>
               </li>
             ))}
           </ul>
@@ -313,7 +323,7 @@ const DashboardPage = () => {
         {/* Events activity */}
         <Card
           variant="white"
-          className="col-span-12 lg:col-span-3 shadow-sm p-4"
+          className="col-span-12 lg:col-span-3 flex flex-col"
         >
           <div className="mb-3 flex items-center justify-between">
             <div>
@@ -325,14 +335,12 @@ const DashboardPage = () => {
           <ul className="mb-4 space-y-2 text-xs">
             {activities.map((activity) => (
               <li key={activity} className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                <span className="h-2 w-2 rounded-full bg-primary" />
                 <span className="text-gray-700">{activity}</span>
               </li>
             ))}
           </ul>
-          <button className="mt-auto inline-flex w-full items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors">
-            View All Activities
-          </button>
+         <Button type="primary" className="h-10! mt-auto w-full">View All Activities</Button>
         </Card>
       </div>
     </div>

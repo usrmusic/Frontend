@@ -2,11 +2,11 @@ import React, { PropsWithChildren } from "react";
 import { twMerge } from "tailwind-merge";
 
 interface CardProps extends PropsWithChildren {
-  variant: "white" | "green";
+  variant?: "white" | "green";
   className?: string;
 }
 
-const Card = ({ children, variant, className = "" }: CardProps) => {
+const Card = ({ children, variant = "white", className = "" }: CardProps) => {
   const bgVariant = {
     white: "#fff",
     green: "linear-gradient(140.63deg, #89A495 0.74%, #507160 103.5%)",

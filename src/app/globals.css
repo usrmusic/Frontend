@@ -28,6 +28,7 @@ body {
   color: var(--foreground);
   font-family: var(--font-poppins);
   font-weight: 400;
+  overflow-x: hidden;
 }
 
 button {
@@ -41,11 +42,28 @@ button {
 a:hover,
 button:hover {
   background-color: #719984;
-  opacity: 0.8;
-  transition: 0.5s ease-in-out;
+  opacity: 0.9;
+  transition: 0.3s ease-in-out;
 }
 
 input,
 textarea {
   background-color: #F1F1F3 !important;
+}
+
+.themeH1 {
+  @apply font-semibold text-2xl leading-none tracking-normal;
+} 
+
+/* .themeDefaultButton  {
+  @apply rounded-full! w-[127.76px] h-[33.6px] leading-[12px]! shadow-none!
+} */
+
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE & Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;             /* Chrome, Safari */
 }

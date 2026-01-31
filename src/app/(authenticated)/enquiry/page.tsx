@@ -1,5 +1,6 @@
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
+import Input from "@/src/components/Input";
 import { BackButton, CancelButton } from "@/src/components/Icons";
 import { PlusIcon, Printer, Save, Send, SquareCheckBig } from "lucide-react";
 import Link from "next/link";
@@ -49,45 +50,24 @@ const NewEnquiryPage = () => {
             <div className="space-y-6 px-6 py-5">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-4 pr-4 border-r border-[#CCCCCC]">
-                  <div className="">
-                    <label className="text-xs text-gray-500">Name</label>
-                    <div className="flex gap-3">
-                      <input
-                        className="h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none"
-                        placeholder="Enter name"
-                      />
-                      <Button
-                        type="primary"
-                        className="h-auto! w-[90px]! text-xs!"
-                        icon={<PlusIcon size={14} />}
-                      >
-                        Add New
-                      </Button>
-                    </div>
+                  <div className="flex gap-3 items-end">
+                    <Input label="Name" placeholder="Enter name" />
+                    <Button
+                      type="primary"
+                      className="w-[90px]! h-10! text-xs!"
+                      icon={<PlusIcon size={14} />}
+                    >
+                      Add New
+                    </Button>
                   </div>
+                  <Input label="Address" placeholder="Enter address" />
+                  <Input
+                    label="Email Address"
+                    type="email"
+                    placeholder="Enter email"
+                  />
                   <div className="space-y-1">
-                    <label className="text-xs text-gray-500">Address</label>
-                    <input
-                      className="h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none"
-                      placeholder="Enter address"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-gray-500">
-                      Email Address
-                    </label>
-                    <input
-                      type="email"
-                      className="h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none"
-                      placeholder="Enter email"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-gray-500">Number</label>
-                    <input
-                      className="h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none"
-                      placeholder="Enter contact number"
-                    />
+                    <Input label="Number" placeholder="Enter contact number" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs text-gray-500">
@@ -102,15 +82,11 @@ const NewEnquiryPage = () => {
 
                 <div className="space-y-4">
                   <div className="space-y-1">
-                    <label className="text-xs text-gray-500">Venue</label>
-                    <div className="flex gap-2">
-                      <input
-                        className="h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none"
-                        placeholder="Select venue"
-                      />
+                    <div className="flex gap-2 items-end">
+                      <Input label="Venue" placeholder="Select venue" />
                       <Button
                         type="primary"
-                        className="h-auto! w-[100px]! text-xs!"
+                        className="h-10! w-[100px]! text-xs!"
                         icon={<PlusIcon size={14} />}
                       >
                         Add Venue
@@ -119,57 +95,31 @@ const NewEnquiryPage = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="text-xs text-gray-500">
-                        Event Date
-                      </label>
-                      <input
-                        type="date"
-                        className="h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none"
-                      />
+                      <Input label="Event Date" type="date" />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs text-gray-500">End Time</label>
-                      <input
-                        type="time"
-                        className="h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none"
-                      />
+                      <Input label="End Time" type="time" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="text-xs text-gray-500">
-                        Start Time
-                      </label>
-                      <input
-                        type="time"
-                        className="h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none"
-                      />
+                      <Input label="Start Time" type="time" />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs text-gray-500">Select DJ</label>
-                      <input
-                        className="h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none"
-                        placeholder="Choose DJ"
-                      />
+                      <Input label="Select DJ" placeholder="Choose DJ" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="text-xs text-gray-500">
-                        Deposit Amount
-                      </label>
-                      <input
+                      <Input
+                        label="Deposit Amount"
                         type="number"
-                        className="h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none"
                         placeholder="0"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs text-gray-500">
-                        Notes / Internal
-                      </label>
-                      <input
-                        className="h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none"
+                      <Input
+                        label="Notes / Internal"
                         placeholder="Internal notes"
                       />
                     </div>
