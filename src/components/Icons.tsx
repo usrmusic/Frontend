@@ -307,3 +307,59 @@ export const Plus = ({ w = 22, h = 22 }: { w?: number; h?: number }) => (
     />
   </svg>
 );
+
+export const BackButton = ({ w = 24, h = 24 }: { w?: number; h?: number }) => (
+  <svg
+    width={w}
+    height={h}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M9 17.5L3 12L9 6.5"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M5 12H21"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+export const CancelButton = ({
+  w = 16,
+  h = 16,
+}: {
+  w?: number;
+  h?: number;
+}) => (
+  <svg
+    width={w}
+    height={h}
+    viewBox="0 0 16 16"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M12 4L4 12"
+      stroke="currentColor"
+      strokeWidth="1.33333"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M4 4L12 12"
+      stroke="currentColor"
+      strokeWidth="1.33333"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);

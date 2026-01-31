@@ -13,7 +13,7 @@ const Header = () => {
       </div>
       <div className="flex gap-4">
         <div className="w-70 bg-white pl-5 pr-2 rounded-full h-12 flex items-center">
-          <input type="text" placeholder="Search..." className="w-full" />
+          <input type="text" placeholder="Search..." className="w-full bg-white!" />
           <button className="shrink-0 bg-black size-10 flex items-center justify-center text-white rounded-full hover:bg-gray-800 transition-all duration-300">
             <MagnifyingGlass />
           </button>
