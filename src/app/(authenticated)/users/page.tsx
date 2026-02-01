@@ -1,3 +1,4 @@
+"use client"
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
@@ -109,7 +110,12 @@ const page = () => {
         </div>
       </Card>
       {/* Data Table  */}
-      <DataTable columns={columns} dataSource={data} pagination={false} />
+      <DataTable
+        columns={columns}
+        dataSource={data}
+        pagination={false}
+        rowKey={(data) => data.email}
+      />
     </div>
   );
 };
