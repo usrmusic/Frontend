@@ -2,12 +2,22 @@
 import Button from "@/src/components/Button";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
-import { TableColumnProps } from "antd";
+import { TableColumnsType, TableProps } from "antd";
 import { MoreVertical } from "lucide-react";
 import Link from "next/link";
 
 const page = () => {
-  const columns: TableColumnProps[] = [
+  const rowSelection: TableProps["rowSelection"] = {
+    onChange: (selectedRowKeys: React.Key[], selectedRows) => {
+      console.log(
+        `selectedRowKeys: ${selectedRowKeys}`,
+        "selectedRows: ",
+        selectedRows,
+      );
+    },
+  };
+
+  const columns: TableColumnsType = [
     {
       key: "name",
       dataIndex: "name",
@@ -58,7 +68,7 @@ const page = () => {
     },
     {
       name: "Sangeeta Kaushik",
-      email: "sangeeta@test.com",
+      email: "johndeo@test.com",
       mobile: "07922629123",
       venue: "Atheneus Haves",
       date: "27/04/2024",
@@ -66,7 +76,7 @@ const page = () => {
     },
     {
       name: "Sangeeta Kaushik",
-      email: "sangeeta@test.com",
+      email: "jonny@test.com",
       mobile: "07922629123",
       venue: "Atheneus Haves",
       date: "27/04/2024",
@@ -74,7 +84,7 @@ const page = () => {
     },
     {
       name: "Sangeeta Kaushik",
-      email: "sangeeta@test.com",
+      email: "biggy@test.com",
       mobile: "07922629123",
       venue: "Atheneus Haves",
       date: "27/04/2024",
@@ -97,7 +107,7 @@ const page = () => {
             <Button type="primary">Send Invoice</Button>
             <Button type="default">Download Invoice</Button>
             <Button type="default">Export Data</Button>
-            <button className=" size-9 flex items-center justify-center rounded-lg bg-secondary-100 hover:bg-secondary-200 transition-colors">
+            <button className=" size-9 flex items-center justify-center rounded-lg bg-white hover:bg-secondary-200 transition-colors">
               <MoreVertical size={18} />
             </button>
           </div>
@@ -122,6 +132,7 @@ const page = () => {
           </div>
         </div>
         <DataTable
+          rowSelection={rowSelection}
           columns={columns}
           rowKey={(data) => data.email}
           dataSource={data}

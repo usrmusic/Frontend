@@ -39,7 +39,7 @@ const Sidebar = () => {
       icon: <Calendar />,
     },
     {
-      href: "#",
+      href: "/users",
       icon: <Contacts />,
     },
     {
