@@ -2,8 +2,17 @@
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 
 import { useState, useEffect } from "react";
+
+// react-apexcharts renders only on client — use dynamic import
+const ReactApexChart = dynamic(() => import("react-apexcharts"), {
+  ssr: false,
+});
+// ensure a loose-typed reference for JSX usage
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const ApexChart: any = ReactApexChart;
 
 const events = [
   { date: "02/01/26", venue: "Ramside Hotel & Spa", dj: "Gurps Jandu" },
@@ -45,6 +54,96 @@ const activities = [
   "Aaim created an event",
 ];
 
+// Chart series + options for Event Overview
+const chartSeries = [
+  {
+    name: "This month",
+    data: [140, 160, 150, 180, 220, 200, 230, 250, 240, 260, 240, 270],
+  },
+  {
+    name: "Last month",
+    data: [160, 170, 165, 190, 240, 220, 210, 230, 220, 240, 230, 250],
+  },
+];
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const chartOptions = {
+  chart: {
+    id: "events-overview",
+    toolbar: { show: false },
+    zoom: { enabled: false },
+    sparkline: { enabled: false },
+  },
+  colors: ["#16A34A", "#CBD5E1"],
+  stroke: { curve: "smooth", width: [3, 3] },
+  fill: {
+    type: "gradient",
+    gradient: {
+      shade: "light",
+      inverseColors: false,
+      gradientToColors: ["#16A34A"],
+      opacityFrom: 0.28,
+      opacityTo: 0.02,
+      stops: [0, 90, 100],
+    },
+  },
+  grid: { borderColor: "#f1f1f1" },
+  xaxis: {
+    categories: Array.from({ length: 12 }, (_, i) => i + 1),
+    labels: { show: true, style: { colors: "#9CA3AF", fontSize: "10px" } },
+    axisTicks: { show: false },
+    axisBorder: { show: false },
+    crosshairs: {
+      show: true,
+      stroke: { color: "#D1D5DB", width: 1, dashArray: 4 },
+    },
+  },
+  yaxis: {
+    show: true,
+    labels: {
+      style: { colors: "#D1D5DB", fontSize: "10px" },
+      formatter: (val: number) => `${val}`,
+    },
+  },
+  markers: {
+    size: 6,
+    colors: ["#16A34A"],
+    strokeColors: "#fff",
+    strokeWidth: 3,
+    hover: { size: 8 },
+  },
+  dataLabels: {
+    enabled: true,
+    enabledOnSeries: [0],
+    offsetY: -10,
+    style: { fontSize: "11px", colors: ["#ffffff"] },
+  },
+  tooltip: {
+    enabled: true,
+    followCursor: true,
+    theme: "dark",
+    custom: function ({ series, seriesIndex, dataPointIndex, w }: any) {
+      const value = series[seriesIndex][dataPointIndex];
+      const category =
+        (w &&
+          w.globals &&
+          w.globals.labels &&
+          w.globals.labels[dataPointIndex]) ||
+        dataPointIndex + 1;
+      return `
+        <div style="position:relative;display:flex;align-items:center;justify-content:center;">
+          <div style="background:#16A34A;color:white;padding:10px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.12);font-size:12px;min-width:120px;text-align:center;">
+            <div style="font-weight:700;font-size:14px;line-height:1">${Number(value).toLocaleString()}</div>
+            <div style="opacity:0.95;font-size:11px;margin-top:4px">${category}</div>
+          </div>
+          <div style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:8px solid #16A34A;position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);"></div>
+        </div>
+      `;
+    },
+  },
+} as any;
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 const DashboardPage = () => {
   const [search, setSearch] = useState("");
   const [filteredEvents, setFilteredEvents] = useState(events);
@@ -61,8 +160,8 @@ const DashboardPage = () => {
           (e) =>
             e.date.toLowerCase().includes(lower) ||
             e.venue.toLowerCase().includes(lower) ||
-            e.dj.toLowerCase().includes(lower)
-        )
+            e.dj.toLowerCase().includes(lower),
+        ),
       );
     }, 250); // debounce
     return () => clearTimeout(handler);
@@ -70,6 +169,89 @@ const DashboardPage = () => {
 
   return (
     <div className="mt-8 space-y-6">
+      <div className="flex gap-6">
+        {/* <div className="grid grid-cols-4 gap-4"> */}
+        {/* Events total */}
+        <Card
+          variant="white"
+          className="col-span-1 shadow-sm p-6 flex-1 flex gap-6 items-center"
+        >
+          <div className="mt-4 flex-1">
+            <p className="text-base text-primary">Events</p>
+            <p className="text-2xl font-semibold">2230</p>
+          </div>
+          <Image
+            src={"/svgs/stat-icon.svg"}
+            alt="Events"
+            width={28}
+            height={28}
+            className="flex-1"
+          />
+        </Card>
+        {/* Remaining */}
+        <Card variant="white" className="col-span-1 shadow-sm p-6 flex-1 flex gap-6 items-center">
+          <Image
+            src={"/svgs/list-icon.svg"}
+            alt="Remaining"
+            width={28}
+            height={28}
+            className="flex-1"
+
+          />
+          <div className="mt-4 flex-1">
+            <p className="text-base text-primary">Remaining</p>
+            <p className="text-2xl font-semibold">321</p>
+          </div>
+                    <Image
+            src={"/svgs/red-chart.svg"}
+            alt="Remaining"
+            width={28}
+            height={28}
+            className="flex-1"
+
+          />
+        </Card>
+        {/* open enquiry */}
+        <Card variant="white" className="col-span-1 shadow-sm p-6 flex-1 flex gap-6 items-center">
+          <Image
+            src={"/svgs/Icon.svg"}
+            alt="Remaining"
+            width={28}
+            height={28}
+            className="flex-1"
+
+          />
+          <div className="mt-4 flex-1">
+            <p className="text-base text-primary">Open Enquiry</p>
+            <p className="text-2xl font-semibold">22550</p>
+          </div>
+          <Image
+            src={"/svgs/red-chart.svg"}
+            alt="Remaining"
+            width={28}
+            height={28}
+            className="flex-1"
+          />
+        </Card>
+        {/* Profit */}
+        <Card
+          variant="green"
+          className="col-span-1 shadow-sm p-6 flex-1 flex gap-6 items-center"
+        >
+          <div>
+            <p className="text-base text-white/80 mb-2">Profit</p>
+            <p className="text-2xl font-semibold text-white">£697,238</p>
+          </div>
+          <Image
+            src={"/svgs/Line-chart.svg"}
+            alt="line chart"
+            width={74}
+            height={55}
+            className="flex-1"
+          />
+        </Card>
+        {/* </div> */}
+      </div>
       {/* Top grid: Event Overview + right side stats */}
       <div className="grid grid-cols-12 gap-6">
         {/* Event Overview */}
@@ -77,152 +259,117 @@ const DashboardPage = () => {
           className="col-span-12 xl:col-span-6 p-0! overflow-hidden rounded-3xl bg-white"
           style={{ boxShadow: "0px 1px 3px 0px #0000001A" }}
         >
-          <div className="flex items-center justify-between bg-primary p-4 text-white">
-            <h4 className="font-poppins font-medium">Event Overview</h4>
-            <select className="text-sm font-medium text-white">
-              <option value="monthly" className="text-black">
-                Monthly
-              </option>
-              <option value="yearly" className="text-black">
-                Yearly
-              </option>
-            </select>
+          <div className="flex items-center justify-between  p-4 text-white rounded-t-3xl">
+            <div className="flex items-center gap-3">
+              <h4 className="font-poppins font-medium text-black">
+                Event Overview
+              </h4>
+              <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                Active
+              </span>
+            </div>
+            <div>
+              <select className="text-sm font-medium bg-transparent text-gray-400 pr-6">
+                <option value="monthly" className="text-black">
+                  Monthly
+                </option>
+                <option value="yearly" className="text-black">
+                  Yearly
+                </option>
+              </select>
+            </div>
           </div>
 
           <div className="p-4">
-            <div className="relative mb-4">
+            {/* <div className="relative mb-4">
               <input
                 type="text"
                 placeholder="Search event"
-                className="w-full rounded-lg border border-black px-4 h-7.5 text-xs bg-transparent!"
+                className="w-full rounded-full border border-gray-300 px-4 h-10 text-sm bg-white"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
-            </div>
-            <h3 className="text-sm">Upcoming Events</h3>
-            <div className="overflow-hidden rounded-2xl border border-gray-50">
-              <div className="py-3 text-xs font-medium uppercase border-b border-black/50 flex">
-                <div className="w-2/12">Date</div>
-                <div className="w-6/12">Venue</div>
-                <div className="w-4/12">DJ Name</div>
+              <span className="sr-only">{filteredEvents.length} results</span>
+            </div> */}
+            {/* <h3 className="text-sm">Event Overview</h3> */}
+            <div className="overflow-hidden rounded-2xl border border-gray-50 p-3">
+              <div className="grid grid-cols-12 items-center gap-4">
+                <div className="col-span-12">
+                  <div className="flex flex-row gap-3">
+                    <div className="rounded-xl bg-white p-4 shadow-sm flex-1">
+                      <p className="text-xs text-gray-400">Total Events</p>
+                      <p className="text-lg font-semibold">
+                        230{" "}
+                        <span className="ml-2 text-sm text-emerald-600">
+                          +15.3%
+                        </span>
+                      </p>
+                    </div>
+                    <div className="rounded-xl bg-white p-4 shadow-sm flex-1">
+                      <p className="text-xs text-gray-400">Completed</p>
+                      <p className="text-lg font-semibold">
+                        154{" "}
+                        <span className="ml-2 text-sm text-emerald-600">
+                          +8.2%
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="col-span-12">
+                  <ApexChart
+                    options={chartOptions}
+                    series={chartSeries}
+                    type="area"
+                    height={180}
+                  />
+                </div>
               </div>
-              <ul className="divide-y divide-gray-50 text-sm">
-                {filteredEvents.map((event) => (
-                  <li
-                    key={`${event.date}-${event.venue}-${event.dj}`}
-                    className="flex items-center py-2 text-xs border-b border-black/50 hover:bg-secondary-50/60 transition-colors"
-                  >
-                    <div className="w-2/12">{event.date}</div>
-                    <div className="w-6/12">{event.venue}</div>
-                    <div className="w-4/12">{event.dj}</div>
-                  </li>
-                ))}
-              </ul>
             </div>
           </div>
         </div>
 
         {/* Right column stats */}
         <section className="col-span-12 xl:col-span-6 flex flex-col gap-4">
-          <div className="grid grid-cols-4 gap-4">
-            {/* Events total */}
-            <Card variant="white" className="col-span-1 shadow-sm p-3">
-              <Image
-                src={"/svgs/stat-icon.svg"}
-                alt="Events"
-                width={28}
-                height={28}
-              />
-              <div className="mt-4">
-                <p className="text-xs text-primary">Events</p>
-                <p className="text-base font-semibold">2230</p>
-              </div>
-            </Card>
-            {/* Remaining */}
-            <Card variant="white" className="col-span-1 shadow-sm p-3">
-              <Image
-                src={"/svgs/list-icon.svg"}
-                alt="Remaining"
-                width={28}
-                height={28}
-              />
-              <div className="mt-4">
-                <p className="text-xs text-primary">Remaining</p>
-                <p className="text-base font-semibold">321</p>
-              </div>
-            </Card>
-            {/* Profit */}
-            <Card
-              variant="green"
-              className="col-span-2 flex gap-5 items-center text-white"
-            >
-              <div>
-                <p className="text-xs text-white/80 mb-2">Profit</p>
-                <p className="text-xl font-semibold">£697,238</p>
-              </div>
-              <Image
-                src={"/svgs/Line-chart.svg"}
-                alt="line chart"
-                width={74}
-                height={55}
-              />
-            </Card>
-          </div>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 ">
             {/* DJ Analytics */}
             <Card variant="white" className="shadow-sm p-4 flex-1">
-              <div className="mb-5">
-                <p className="text-base font-medium">DJ Analytics</p>
-                <p className="text-sm text-gray-100">67% Events Completed</p>
+              <div className="mb-2">
+                <p className="text-xs font-semibold text-gray-800">Sales Analytics</p>
+                <p className="text-xs text-gray-400">Events Progress</p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-lg font-bold text-gray-900">154</span>
+                  <span className="text-xs text-gray-400">/230</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">67% Events Completed</p>
               </div>
-              <div className="flex">
-                <ul className="space-y-4 text-xs w-1/2">
-                  <li className="">
-                    <span className="flex gap-2">
-                      <div className="size-2 rounded-full bg-emerald-500" />
-                      <div>
-                        <p className="text-gray-500">DJ Nikku</p>
-                        <p className="text-gray-500">36%</p>
-                      </div>
-                    </span>
-                  </li>
-                  <li className="">
-                    <span className="flex gap-2">
-                      <div className="size-2 rounded-full bg-gray-300" />
-                      <div>
-                        <p className="text-gray-500">DJ Nikku</p>
-                        <p className="text-gray-500">36%</p>
-                      </div>
-                    </span>
-                  </li>
-                  <li className="">
-                    <span className="flex gap-2">
-                      <div className="size-2 rounded-full bg-red-400" />
-                      <div>
-                        <p className="text-gray-500">DJ Nikku</p>
-                        <p className="text-gray-500">36%</p>
-                      </div>
-                    </span>
-                  </li>
-                  <li className="">
-                    <span className="flex gap-2">
-                      <div className="size-2 rounded-full bg-blue-400" />
-                      <div>
-                        <p className="text-gray-500">DJ Nikku</p>
-                        <p className="text-gray-500">36%</p>
-                      </div>
-                    </span>
-                  </li>
-                </ul>
-                <div className="flex items-center justify-center w-1/2">
-                  <div className="relative h-28 w-28 rounded-full bg-secondary-50 flex items-center justify-center">
-                    <div className="absolute inset-1 rounded-full border-8 border-primary border-t-transparent border-l-transparent rotate-[-40deg]" />
-                    <div className="relative flex h-18 w-18 items-center justify-center rounded-full bg-white">
-                      <span className="text-xl font-semibold text-gray-900">
-                        80%
-                      </span>
-                    </div>
-                  </div>
+              <div className="flex items-center gap-2 mt-2">
+                <div className="flex-1">
+                  <ul className="text-xs space-y-1">
+                    <li className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-red-400 block" />
+                      <span className="text-gray-700">DJ Nikku</span>
+                      <span className="ml-auto text-gray-500">26%</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-blue-400 block" />
+                      <span className="text-gray-700">DJ Johnson</span>
+                      <span className="ml-auto text-gray-500">26%</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 block" />
+                      <span className="text-gray-700">Gurps Jandu</span>
+                      <span className="ml-auto text-gray-500">25%</span>
+                    </li>
+                  </ul>
+                </div>
+                <div className="flex-shrink-0 w-24 h-24 flex items-center justify-center">
+                  <svg viewBox="0 0 36 36" className="w-24 h-24">
+                    <circle cx="18" cy="18" r="16" fill="none" stroke="#EEF2E9" strokeWidth="4" />
+                    <circle cx="18" cy="18" r="16" fill="none" stroke="#7A9683" strokeWidth="4" strokeDasharray="60 100" strokeLinecap="round" transform="rotate(-90 18 18)" />
+                    <circle cx="18" cy="18" r="16" fill="none" stroke="#B6E2C6" strokeWidth="4" strokeDasharray="20 100" strokeLinecap="round" transform="rotate(-90 18 18)" />
+                    <text x="18" y="22" textAnchor="middle" fontSize="8" fill="#222" fontWeight="bold">80%</text>
+                  </svg>
                 </div>
               </div>
             </Card>
@@ -367,7 +514,9 @@ const DashboardPage = () => {
               </li>
             ))}
           </ul>
-         <Button type="primary" className="h-10! mt-auto w-full">View All Activities</Button>
+          <Button type="primary" className="h-10! mt-auto w-full">
+            View All Activities
+          </Button>
         </Card>
       </div>
     </div>
