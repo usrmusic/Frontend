@@ -1,6 +1,9 @@
+"use client";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import Image from "next/image";
+
+import { useState, useEffect } from "react";
 
 const events = [
   { date: "02/01/26", venue: "Ramside Hotel & Spa", dj: "Gurps Jandu" },
@@ -9,7 +12,7 @@ const events = [
   { date: "02/01/26", venue: "Sports Connexions", dj: "Gurps Jandu" },
   { date: "02/01/26", venue: "Ditton Manor, Langley", dj: "Rav & Huddy" },
   { date: "02/01/26", venue: "Hilton T5", dj: "Gurps Jandu" },
-  { date: "02/01/26", venue: "Bedford Mercure Hotel", dj: "Arun Sandhar" },
+  { date: "02/01/25", venue: "Bedford Mercure Hotel", dj: "Arun Sandhar" },
 ];
 
 const enquiries = [
@@ -43,6 +46,28 @@ const activities = [
 ];
 
 const DashboardPage = () => {
+  const [search, setSearch] = useState("");
+  const [filteredEvents, setFilteredEvents] = useState(events);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (!search) {
+        setFilteredEvents(events);
+        return;
+      }
+      const lower = search.toLowerCase();
+      setFilteredEvents(
+        events.filter(
+          (e) =>
+            e.date.toLowerCase().includes(lower) ||
+            e.venue.toLowerCase().includes(lower) ||
+            e.dj.toLowerCase().includes(lower)
+        )
+      );
+    }, 250); // debounce
+    return () => clearTimeout(handler);
+  }, [search]);
+
   return (
     <div className="mt-8 space-y-6">
       {/* Top grid: Event Overview + right side stats */}
@@ -70,6 +95,8 @@ const DashboardPage = () => {
                 type="text"
                 placeholder="Search event"
                 className="w-full rounded-lg border border-black px-4 h-7.5 text-xs bg-transparent!"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
               />
             </div>
             <h3 className="text-sm">Upcoming Events</h3>
@@ -80,7 +107,7 @@ const DashboardPage = () => {
                 <div className="w-4/12">DJ Name</div>
               </div>
               <ul className="divide-y divide-gray-50 text-sm">
-                {events.map((event) => (
+                {filteredEvents.map((event) => (
                   <li
                     key={`${event.date}-${event.venue}-${event.dj}`}
                     className="flex items-center py-2 text-xs border-b border-black/50 hover:bg-secondary-50/60 transition-colors"
