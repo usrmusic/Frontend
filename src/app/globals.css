@@ -103,8 +103,8 @@ textarea {
   bottom: 5px !important;
 }
 .rdp-month_grid{
-  display: block;
-  max-width: 100%;
+  display: block !important;
+  max-width: 100% !important;
 }
 
 thead, tbody{
