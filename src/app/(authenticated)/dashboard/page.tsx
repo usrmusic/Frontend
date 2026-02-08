@@ -619,7 +619,7 @@ const DashboardPage = () => {
         {/* Calendar */}
         <Card
           variant="white"
-          className="col-span-12 lg:col-span-4 shadow-sm p-0 rounded-2xl bg-[#F6F5F0]"
+          className="dashboard-calendar col-span-12 lg:col-span-4 shadow-sm p-0 rounded-2xl bg-[#F6F5F0]"
         >
           <CalendarWithSidebar />
         </Card>

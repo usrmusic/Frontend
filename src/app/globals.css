@@ -82,10 +82,10 @@ textarea {
 }
 
 .rdp-root{
-  max-width: 100%;
+  max-width: 100% !important;
 }
 .rdp-day_button{
-  max-width: 32px;
+  max-width: 32px !important;
   border-radius: 12px !important;
 }
 .rdp-selected .rdp-day_button{
@@ -107,7 +107,7 @@ textarea {
   max-width: 100% !important;
 }
 
-thead, tbody{
+.dashboard-calendar thead, .dashboard-calendar tbody{
   display: block;
   max-width: 100%;
 }
