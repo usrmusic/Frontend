@@ -67,3 +67,47 @@ textarea {
 .no-scrollbar::-webkit-scrollbar {
   display: none;             /* Chrome, Safari */
 }
+
+.rdp-weekdays{
+  display: flex;
+  justify-content: space-between;
+}
+.rdp-week{
+  display: flex;
+  justify-content: space-between;
+}
+.rdp-weeks, .rdp-months, .rdp-month{
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+.rdp-root{
+  max-width: 100% !important;
+}
+.rdp-day_button{
+  max-width: 32px !important;
+  border-radius: 12px !important;
+}
+.rdp-selected .rdp-day_button{
+  background: linear-gradient(to bottom left, #89A495 , #507160);
+  color: #ffffff;
+  border: none !important;
+  font-weight: 400;
+  font-size: 13px;
+
+}
+.rdp-day_button:hover{
+  background-color: #E5E5E5;
+}
+.rdp-day_button:after{
+  bottom: 5px !important;
+}
+.rdp-month_grid{
+  display: block !important;
+  max-width: 100% !important;
+}
+
+.dashboard-calendar thead, .dashboard-calendar tbody{
+  display: block;
+  max-width: 100%;
+}
