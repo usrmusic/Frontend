@@ -1,6 +1,10 @@
 import { ConfigProvider } from "antd";
 import { ReactNode } from "react";
 
+// Add your primary gradient here for global use
+export const colorPrimaryGradient =
+  "linear-gradient(90deg, #7A9683 0%, #B6E2C6 100%)";
+
 const ThemeConfig = ({ children }: { children: ReactNode }) => {
   return (
     <ConfigProvider
