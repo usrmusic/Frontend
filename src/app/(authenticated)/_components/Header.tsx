@@ -1,3 +1,4 @@
+"use client";
 import { MagnifyingGlass, Plus } from "@/src/components/Icons";
 import { auth0 } from "@/src/lib/auth0";
 
@@ -5,6 +6,10 @@ const Header = async () => {
   const session = await auth0.getSession();
   const userName = session?.user?.name || session?.user?.nickname || "User";
 
+import { useRouter } from "next/navigation";
+
+const Header = () => {
+  const router = useRouter();
   return (
     <div className="flex items-center justify-between">
       <div>
@@ -31,7 +36,10 @@ const Header = async () => {
           <option value="2024">2024</option>
           <option value="2023">2023</option>
         </select>
-        <button className="size-12 flex items-center justify-center bg-white rounded-full">
+        <button
+          className="size-12 flex items-center justify-center bg-white rounded-full"
+          onClick={() => router.push("/enquiry")}
+        >
           <Plus />
         </button>
         <a
