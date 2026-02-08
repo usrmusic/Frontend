@@ -53,7 +53,7 @@ function CalendarWithSidebar() {
   const [sidebarIdx, setSidebarIdx] = useState(0);
 
   // Dots for 5, 6, 7 April
-  const dotDays = [5, 6, 7].map((d) => new Date(2024, 3, d));
+  const dotDays = [5, 6, 12].map((d) => new Date(2024, 3, d));
 
   // Sidebar click handler
   const handleSidebar = (idx: number) => {
@@ -63,9 +63,13 @@ function CalendarWithSidebar() {
     setSelected(start);
   };
 
-  // event dots are rendered via modifiers + modifiersClassNames
-
-  // We'll render a small caption above the DayPicker using the `month` state
+  // Custom calendar header (prev, title, next)
+  const handlePrev = () => setMonth((prev) => subMonths(prev, 1));
+  const handleNext = () => setMonth((prev) => addMonths(prev, 1));
+  const monthTitle = month.toLocaleString("default", { month: "long", year: "numeric" });
+  // suppress DayPicker caption by providing a typed-any components object
+  // (using `any` avoids TypeScript complaining about unknown component keys)
+  const dayPickerComponents: any = { Caption: () => null };
 
   return (
     <div className="flex">
@@ -76,9 +80,10 @@ function CalendarWithSidebar() {
             key={opt.label}
             className={`text-left px-3 py-2 rounded-md mb-1 text-[13px] font-medium transition-all ${
               idx === sidebarIdx
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-500 hover:bg-white/70"
+                ? "text-white shadow-sm"
+                : "text-gray-500 hover:bg-[#e5e5e5]"
             }`}
+            style={idx === sidebarIdx ? { background: colorPrimaryGradient } : undefined}
             onClick={() => handleSidebar(idx)}
           >
             {opt.label}
@@ -89,6 +94,26 @@ function CalendarWithSidebar() {
       <div className="w-px bg-gray-200 my-6 mx-2" />
       {/* Calendar */}
       <div className="flex-1 py-6 pr-6 pl-2 max-w-[70%]">
+        {/* Custom header */}
+        <div className="flex items-center justify-between mb-2">
+          <button
+            aria-label="Previous month"
+            onClick={handlePrev}
+            className="w-8 h-8 flex items-center justify-center rounded-md transition-all hover:bg-[#e5e5e5]"
+            style={{ border: "none" }}
+          >
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke="#222" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+          <div className="flex-1 text-center font-semibold text-[15px] select-none">{monthTitle}</div>
+          <button
+            aria-label="Next month"
+            onClick={handleNext}
+            className="w-8 h-8 flex items-center justify-center rounded-md transition-all hover:bg-[#e5e5e5]"
+            style={{ border: "none" }}
+          >
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke="#222" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+        </div>
         {/* @ts-expect-error: ignore strict DayPicker prop overload types here */}
         <DayPicker
           mode="single"
@@ -116,7 +141,7 @@ function CalendarWithSidebar() {
           }}
           modifiers={{ dot: dotDays }}
           modifiersClassNames={{ dot: "relative after:absolute after:left-1/2 after:-bottom-0 after:-translate-x-1/2 after:-translate-y-1/2 after:w-1.5 after:h-1.5 after:rounded-full after:bg-blue-600" }}
-          
+          components={dayPickerComponents}
         />
       </div>
     </div>
@@ -245,11 +270,11 @@ const chartOptions = {
         dataPointIndex + 1;
       return `
         <div style="position:relative;display:flex;align-items:center;justify-content:center;">
-          <div style="background:#16A34A;color:white;padding:10px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.12);font-size:12px;min-width:120px;text-align:center;">
+          <div style="background:${colorPrimaryGradient};color:white;padding:10px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.12);font-size:12px;min-width:120px;text-align:center;">
             <div style="font-weight:700;font-size:14px;line-height:1">${Number(value).toLocaleString()}</div>
             <div style="opacity:0.95;font-size:11px;margin-top:4px">${category}</div>
           </div>
-          <div style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:8px solid #16A34A;position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);"></div>
+          <div style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:8px solid ${colorPrimaryGradient};position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);"></div>
         </div>
       `;
     },
@@ -298,8 +323,8 @@ const DashboardPage = () => {
           <Image
             src={"/svgs/stat-icon.svg"}
             alt="Events"
-            width={28}
-            height={28}
+            width={20}
+            height={20}
             className="flex-1"
           />
         </Card>
