@@ -7,7 +7,7 @@ import Input from "@/src/components/Input";
 import { Modal, TableColumnsType } from "antd";
 import { useState } from "react";
 
-const UsersPage = () => {
+const ClientsPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
 
   const handleCancel = () => {
@@ -25,49 +25,60 @@ const UsersPage = () => {
       key: "email",
     },
     {
-      title: "Contact Number",
-      dataIndex: "contactNumber",
-      key: "contactNumber",
-    },
-    {
       title: "Password",
       dataIndex: "password",
       key: "password",
     },
     {
-      title: "Reset Password",
-      dataIndex: "resetPassword",
-      key: "resetPassword",
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+      render: (value: string) => (
+        <span
+          className={
+            value.toLowerCase() === "active"
+              ? "px-2 py-1 rounded-full text-green-700 bg-green-100"
+              : "px-2 py-1 rounded-full text-gray-600 bg-yellow-100"
+          }
+        >
+          {value}
+        </span>
+      ),
+    },
+    {
+      title: "Event Date",
+      dataIndex: "eventDate",
+      key: "eventDate",
+    },
+    {
+      title: "Contact Number",
+      dataIndex: "contactNumber",
+      key: "contactNumber",
     },
     {
       title: "Address",
       dataIndex: "address",
       key: "address",
     },
-    {
-      title: "Role",
-      dataIndex: "role",
-      key: "role",
-    },
   ];
   const data = [
     {
       name: "John Doe",
       email: "john.doe@example.com",
+      password: "secret123",
+      status: "Active",
+      eventDate: "2024-08-01",
       contactNumber: "1234567890",
-      password: "1234567890",
-      resetPassword: "1234567890",
-      address: "1234567890",
-      role: "Admin",
+      address: "123 Main St, Springfield",
     },
     {
       name: "Jane Doe",
       email: "jane.doe@example.com",
-      contactNumber: "1234567890",
-      password: "1234567890",
-      resetPassword: "1234567890",
-      address: "1234567890",
-      role: "Admin",
+      password: "secret456",
+      status: "Inactive",
+      eventDate: "2024-09-15",
+      contactNumber: "9876543210",
+      address: "456 Oak Ave, Metropolis",
     },
   ];
   return (
@@ -102,6 +113,7 @@ const UsersPage = () => {
         <div className="grid grid-cols-2 gap-4">
           <Input label="Name" />
           <Input label="Email" />
+          <Input label="Event Date" type="date" />
           <Input label="Contact Number" />
           <Input label="Address" />
         </div>
@@ -110,4 +122,4 @@ const UsersPage = () => {
   );
 };
 
-export default UsersPage;
+export default ClientsPage;

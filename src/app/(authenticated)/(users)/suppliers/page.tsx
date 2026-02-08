@@ -7,7 +7,7 @@ import Input from "@/src/components/Input";
 import { Modal, TableColumnsType } from "antd";
 import { useState } from "react";
 
-const UsersPage = () => {
+const SuppliersPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
 
   const handleCancel = () => {
@@ -20,54 +20,55 @@ const UsersPage = () => {
       key: "name",
     },
     {
+      title: "Company Name",
+      dataIndex: "companyName",
+      key: "companyName",
+    },
+    {
+      title: "Mobile",
+      dataIndex: "mobile",
+      key: "mobile",
+    },
+    {
       title: "Email",
       dataIndex: "email",
       key: "email",
     },
     {
-      title: "Contact Number",
-      dataIndex: "contactNumber",
-      key: "contactNumber",
+      title: "Industry",
+      dataIndex: "industry",
+      key: "industry",
     },
     {
-      title: "Password",
-      dataIndex: "password",
-      key: "password",
-    },
-    {
-      title: "Reset Password",
-      dataIndex: "resetPassword",
-      key: "resetPassword",
-    },
-    {
-      title: "Address",
-      dataIndex: "address",
-      key: "address",
-    },
-    {
-      title: "Role",
-      dataIndex: "role",
-      key: "role",
+      title: "Notes",
+      dataIndex: "notes",
+      key: "notes",
     },
   ];
   const data = [
     {
-      name: "John Doe",
-      email: "john.doe@example.com",
-      contactNumber: "1234567890",
-      password: "1234567890",
-      resetPassword: "1234567890",
-      address: "1234567890",
-      role: "Admin",
+      name: "Michael Smith",
+      companyName: "Grand Supplies Inc.",
+      mobile: "555-1234",
+      email: "michael@grandsupplies.com",
+      industry: "Event Supplies",
+      notes: "Reliable premium supplier for large events.",
     },
     {
-      name: "Jane Doe",
-      email: "jane.doe@example.com",
-      contactNumber: "1234567890",
-      password: "1234567890",
-      resetPassword: "1234567890",
-      address: "1234567890",
-      role: "Admin",
+      name: "Linda Johnson",
+      companyName: "Skyline Rentals",
+      mobile: "555-5678",
+      email: "linda@skylinerentals.com",
+      industry: "Venue Equipment",
+      notes: "Offers special rates for returning clients.",
+    },
+    {
+      name: "James Lee",
+      companyName: "Studio Props LLC",
+      mobile: "555-9012",
+      email: "james@studioprops.com",
+      industry: "Stage Props",
+      notes: "Known for quick deliveries and custom props.",
     },
   ];
   return (
@@ -101,13 +102,15 @@ const UsersPage = () => {
       <Modal open={modalOpen} onCancel={handleCancel} title="Add" okText="Add">
         <div className="grid grid-cols-2 gap-4">
           <Input label="Name" />
+          <Input label="Company Name" />
           <Input label="Email" />
-          <Input label="Contact Number" />
-          <Input label="Address" />
+          <Input label="Mobile" />
+          <Input label="Industry" />
+          <Input label="Notes" />
         </div>
       </Modal>
     </div>
   );
 };
 
-export default UsersPage;
+export default SuppliersPage;

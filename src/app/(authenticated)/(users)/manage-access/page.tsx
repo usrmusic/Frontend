@@ -1,0 +1,72 @@
+"use client";
+import Button from "@/src/components/Button";
+import Card from "@/src/components/Card";
+import DataTable from "@/src/components/DataTable";
+import { MagnifyingGlass } from "@/src/components/Icons";
+import Input from "@/src/components/Input";
+import { Modal, TableColumnsType } from "antd";
+import { useState } from "react";
+
+const ManageAccessPage = () => {
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const handleCancel = () => {
+    setModalOpen(false);
+  };
+  const columns: TableColumnsType = [
+    {
+      title: "Role",
+      dataIndex: "role",
+      key: "role",
+    },
+  ];
+  const data = [
+    {
+      key: "1",
+      role: "Admin",
+    },
+    {
+      key: "2",
+      role: "Editor",
+    },
+    {
+      key: "3",
+      role: "Viewer",
+    },
+    {
+      key: "4",
+      role: "Client",
+    },
+    {
+      key: "5",
+      role: "Worker",
+    },
+  ];
+  return (
+    <div className="space-y-4 mt-4">
+      {/* Filters Card */}
+      <Card variant="green">
+        <div className="flex items-center justify-between">
+          <div className="flex max-w-96.25 items-center gap-2 rounded-lg bg-white px-4 h-10">
+            <MagnifyingGlass w={18} h={18} />
+            <input
+              type="text"
+              placeholder="Search"
+              className="w-full bg-transparent! text-sm placeholder:text-gray-500"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={() => setModalOpen(true)}>Add</Button>
+          </div>
+        </div>
+      </Card>
+      {/* Data Table  */}
+      <DataTable columns={columns} dataSource={data} pagination={false} />
+      <Modal open={modalOpen} onCancel={handleCancel} title="Add" okText="Add">
+        <Input label="Role Name" />
+      </Modal>
+    </div>
+  );
+};
+
+export default ManageAccessPage;
