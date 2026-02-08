@@ -39,12 +39,12 @@ button {
   outline: none;
 }
 
-a:hover,
+/* a:hover,
 button:hover {
   background-color: #719984;
   opacity: 0.9;
   transition: 0.3s ease-in-out;
-}
+} */
 
 input,
 textarea {

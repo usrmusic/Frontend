@@ -1,13 +1,18 @@
-"use client"
+"use client";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
-import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
-import { TableColumnsType } from "antd";
-import { MoreVertical } from "lucide-react";
-import Link from "next/link";
+import { MagnifyingGlass } from "@/src/components/Icons";
+import Input from "@/src/components/Input";
+import { Modal, TableColumnsType } from "antd";
+import { useState } from "react";
 
-const page = () => {
+const UsersPage = () => {
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const handleCancel = () => {
+    setModalOpen(false);
+  };
   const columns: TableColumnsType = [
     {
       title: "Name",
@@ -67,33 +72,10 @@ const page = () => {
   ];
   return (
     <div className="space-y-4 mt-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard" className="">
-            <BackButton />
-          </Link>
-          <h2 className="themeH1">Users</h2>
-        </div>
-        <div className="flex gap-2">
-          <Button type="primary" className="w-[94px]">
-            Users
-          </Button>
-          <Button className="w-[94px]">Clients</Button>
-          <Button className="w-[94px]">Venues</Button>
-          <Button className="w-[94px]">Suppliers</Button>
-          <Button className="w-[94px]">Packages</Button>
-          <Button className="w-[94px]">Company</Button>
-          <Button className="w-[135px]">Manange Access</Button>
-          <Button className="w-[94px]">Email</Button>
-          <button className="w-[30px] flex items-center justify-center rounded-lg bg-white hover:bg-secondary-200 transition-colors">
-            <MoreVertical size={18} />
-          </button>
-        </div>
-      </div>
       {/* Filters Card */}
       <Card variant="green">
         <div className="flex items-center justify-between">
-          <div className="flex max-w-[385px] items-center gap-2 rounded-lg bg-white px-4 h-10">
+          <div className="flex max-w-96.25 items-center gap-2 rounded-lg bg-white px-4 h-10">
             <MagnifyingGlass w={18} h={18} />
             <input
               type="text"
@@ -102,7 +84,7 @@ const page = () => {
             />
           </div>
           <div className="flex gap-2">
-            <Button>Add</Button>
+            <Button onClick={() => setModalOpen(true)}>Add</Button>
             <Button>Remove</Button>
             <Button>Deleted Users</Button>
             <Button>Export Data</Button>
@@ -116,8 +98,16 @@ const page = () => {
         pagination={false}
         rowKey={(data) => data.email}
       />
+      <Modal open={modalOpen} onCancel={handleCancel} title="Add" okText="Add">
+        <div className="grid grid-cols-2 gap-4">
+          <Input label="Name" />
+          <Input label="Email" />
+          <Input label="Contact Number" />
+          <Input label="Address" />
+        </div>
+      </Modal>
     </div>
   );
 };
 
-export default page;
+export default UsersPage;
