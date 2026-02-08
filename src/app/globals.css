@@ -69,12 +69,12 @@ textarea {
 }
 
 .rdp-weekdays{
-  display: flex;
-  justify-content: space-between;
+  display: flex !important;
+  justify-content: space-between !important;
 }
 .rdp-week{
-  display: flex;
-  justify-content: space-between;
+  display: flex !important;
+  justify-content: space-between !important;
 }
 .rdp-weeks, .rdp-months, .rdp-month{
   max-width: 100% !important;
@@ -89,15 +89,15 @@ textarea {
   border-radius: 12px !important;
 }
 .rdp-selected .rdp-day_button{
-  background: linear-gradient(to bottom left, #89A495 , #507160);
-  color: #ffffff;
+  background: linear-gradient(to bottom left, #89A495 , #507160) !important;
+  color: #ffffff !important;
   border: none !important;
-  font-weight: 400;
-  font-size: 13px;
+  font-weight: 400 !important;
+  font-size: 13px !important;
 
 }
 .rdp-day_button:hover{
-  background-color: #E5E5E5;
+  background-color: #E5E5E5 !important;
 }
 .rdp-day_button:after{
   bottom: 5px !important;
@@ -108,6 +108,6 @@ textarea {
 }
 
 .dashboard-calendar thead, .dashboard-calendar tbody{
-  display: block;
-  max-width: 100%;
+  display: block !important;
+  max-width: 100% !important;
 }
