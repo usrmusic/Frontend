@@ -53,7 +53,6 @@ const Sidebar = () => {
       icon: <TbReportAnalytics />
     },
     {
-      href: "/users",
       href: "/users?title=Users",
       icon: <Contacts />,
     },

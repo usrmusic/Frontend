@@ -155,7 +155,7 @@ const page = () => {
           <Button icon={<MoreVertical size={18} />}></Button>
         </div>
       </div>
-      <div>
+      <div className="flex flex-col gap-3">
         <div className="bg-primary rounded-xl overflow-hidden p-4">
           <div className="flex items-center gap-2 rounded-lg bg-white px-4 py-3">
             <MagnifyingGlass w={18} h={18} />
