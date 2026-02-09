@@ -1,15 +1,11 @@
-"use client";
 import { MagnifyingGlass, Plus } from "@/src/components/Icons";
 import { auth0 } from "@/src/lib/auth0";
+import Link from "next/link";
 
 const Header = async () => {
   const session = await auth0.getSession();
   const userName = session?.user?.name || session?.user?.nickname || "User";
 
-import { useRouter } from "next/navigation";
-
-const Header = () => {
-  const router = useRouter();
   return (
     <div className="flex items-center justify-between">
       <div>
@@ -22,7 +18,11 @@ const Header = () => {
       </div>
       <div className="flex gap-4 items-center">
         <div className="w-70 bg-white pl-5 pr-2 rounded-full h-12 flex items-center">
-          <input type="text" placeholder="Search..." className="w-full bg-white!" />
+          <input
+            type="text"
+            placeholder="Search..."
+            className="w-full bg-white!"
+          />
           <button className="shrink-0 bg-black size-10 flex items-center justify-center text-white rounded-full hover:bg-gray-800 transition-all duration-300">
             <MagnifyingGlass />
           </button>
@@ -36,12 +36,11 @@ const Header = () => {
           <option value="2024">2024</option>
           <option value="2023">2023</option>
         </select>
-        <button
-          className="size-12 flex items-center justify-center bg-white rounded-full"
-          onClick={() => router.push("/enquiry")}
-        >
-          <Plus />
-        </button>
+        <Link href={"/enquiry"}>
+          <button className="size-12 flex items-center justify-center bg-white rounded-full">
+            <Plus />
+          </button>
+        </Link>
         <a
           href="/auth/logout"
           className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"

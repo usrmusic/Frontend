@@ -3,10 +3,17 @@ import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
-import { TableColumnsType } from "antd";
+import Input from "@/src/components/Input";
+import { Modal, TableColumnsType } from "antd";
 import { Eye, User } from "lucide-react";
+import { useState } from "react";
 
-const page = () => {
+const PackagesPage = () => {
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const handleCancel = () => {
+    setModalOpen(false);
+  };
   const columns: TableColumnsType = [
     {
       title: "Name",
@@ -87,7 +94,7 @@ const page = () => {
             />
           </div>
           <div className="flex gap-2">
-            <Button>Add</Button>
+            <Button onClick={() => setModalOpen(true)}>Add</Button>
             <Button>Remove</Button>
             <Button>Deleted Users</Button>
             <Button>Export Data</Button>
@@ -101,8 +108,26 @@ const page = () => {
         pagination={false}
         rowKey={(data) => data.email}
       />
+      <Modal open={modalOpen} onCancel={handleCancel} title="Add" okText="Add">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Staff</label>
+            <select className="w-full h-10 rounded-xl px-3 text-sm bg-secondary-100">
+              <option value="">Select Staff</option>
+              <option value="staff1">Staff 1</option>
+              <option value="staff2">Staff 2</option>
+              <option value="staff3">Staff 3</option>
+            </select>
+          </div>
+          <Input label="Package Name" />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Cost Price" type="number" />
+            <Input label="Sell Price" type="number" />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
 
-export default page;
+export default PackagesPage;
