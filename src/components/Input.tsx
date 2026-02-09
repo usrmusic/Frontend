@@ -1,4 +1,4 @@
-import React, { Ref } from "react";
+import React, { Ref, ReactNode } from "react";
 import { twMerge } from "tailwind-merge";
 
 export interface InputProps extends Omit<
@@ -7,6 +7,7 @@ export interface InputProps extends Omit<
 > {
   ref?: Ref<HTMLInputElement>;
   label?: string;
+  labelIcon?: ReactNode; // Added labelIcon prop with ReactNode type
   error?: string;
   containerClassName?: string;
   type?: string;
@@ -16,6 +17,7 @@ const Input = ({
   ref,
   type = "text",
   label,
+  labelIcon,
   error,
   className,
   containerClassName,
@@ -24,7 +26,12 @@ const Input = ({
 }: InputProps) => {
   return (
     <div className={twMerge("w-full", containerClassName)}>
-      {label && <label className="mb-1 block text-xs">{label}</label>}
+      {label && (
+        <label className="mb-1 text-xs flex items-center gap-1">
+          {labelIcon && <span className="mr-1">{labelIcon}</span>}
+          {label}
+        </label>
+      )}
 
       <input
         ref={ref}
