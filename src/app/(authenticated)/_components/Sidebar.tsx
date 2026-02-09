@@ -73,7 +73,7 @@ const Sidebar = () => {
       icon: <Settings />,
     },
     {
-      href: "#",
+      href: "/auth/logout",
       icon: <Logout />,
     },
   ];
