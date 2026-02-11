@@ -83,7 +83,7 @@ const Sidebar = () => {
   {/* apply mt-auto to only the third-last direct child */}
   <div className="flex flex-col gap-3 h-full [&>*:nth-last-child(3)]:mt-auto">
         {links.map((item, index) => {
-          const isActive = pathname.startsWith(item.href);
+          const isActive = pathname.startsWith(item.href.split('?')[0]);
           return (
             <Link
               id={`sidebar-link-${index}`}

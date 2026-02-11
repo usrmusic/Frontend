@@ -1,10 +1,15 @@
 import { MagnifyingGlass, Plus } from "@/src/components/Icons";
-import { auth0 } from "@/src/lib/auth0";
 import Link from "next/link";
 
-const Header = async () => {
-  const session = await auth0.getSession();
-  const userName = session?.user?.name || session?.user?.nickname || "User";
+interface Session {
+  user?: {
+    name?: string;
+    nickname?: string;
+  };
+}
+
+const Header = async ({ session }: { session: Session | null }) => {
+  const userName = session?.user?.nickname || "User";
 
   return (
     <div className="flex items-center justify-between">
@@ -41,12 +46,6 @@ const Header = async () => {
             <Plus />
           </button>
         </Link>
-        <a
-          href="/auth/logout"
-          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-        >
-          Logout
-        </a>
       </div>
     </div>
   );
