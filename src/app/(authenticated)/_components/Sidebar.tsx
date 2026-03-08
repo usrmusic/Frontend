@@ -10,11 +10,18 @@ import {
   Reports,
   Settings,
 } from "@/src/components/Icons";
-import { TbReportSearch, TbReportMedical, TbReportAnalytics,TbFileDownload, TbFileUpload  } from "react-icons/tb";
+import {
+  TbReportSearch,
+  TbReportMedical,
+  TbReportAnalytics,
+  TbFileDownload,
+  TbFileUpload,
+} from "react-icons/tb";
 import { RiFileListLine } from "react-icons/ri";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { deleteCookie } from "cookies-next";
 
 const Sidebar = () => {
   const pathname = usePathname();
@@ -38,7 +45,7 @@ const Sidebar = () => {
     },
     {
       href: "/completed-events",
-      icon: <TbReportSearch />
+      icon: <TbReportSearch />,
     },
     {
       href: "/calendar",
@@ -46,11 +53,11 @@ const Sidebar = () => {
     },
     {
       href: "/suppliers-report",
-      icon: <TbReportMedical />
+      icon: <TbReportMedical />,
     },
     {
       href: "/admin-report",
-      icon: <TbReportAnalytics />
+      icon: <TbReportAnalytics />,
     },
     {
       href: "/users?title=Users",
@@ -73,22 +80,26 @@ const Sidebar = () => {
       icon: <Settings />,
     },
     {
-      href: "/auth/logout",
+      href: "/login",
       icon: <Logout />,
+      onClick: () => {
+        deleteCookie("token");
+      },
     },
   ];
 
   return (
     <div className="fixed overflow-auto no-scrollbar top-12.5 bottom-12.5 left-12 bg-secondary-50 w-19.5 rounded-full flex flex-col items-center gap-10 py-5">
-  {/* apply mt-auto to only the third-last direct child */}
-  <div className="flex flex-col gap-3 h-full [&>*:nth-last-child(3)]:mt-auto">
+      {/* apply mt-auto to only the third-last direct child */}
+      <div className="flex flex-col gap-3 h-full [&>*:nth-last-child(3)]:mt-auto">
         {links.map((item, index) => {
-          const isActive = pathname.startsWith(item.href.split('?')[0]);
+          const isActive = pathname.startsWith(item.href.split("?")[0]);
           return (
             <Link
               id={`sidebar-link-${index}`}
               key={index}
               href={item.href}
+              onClick={item.onClick ? item.onClick : undefined}
               className={`size-10 flex shrink-0 items-center justify-center rounded-full hover:bg-black! hover:text-white transition-all duration-300 ${
                 isActive ? "bg-black text-white" : ""
               }`}

@@ -8,15 +8,11 @@ interface Session {
   };
 }
 
-const Header = async ({ session }: { session: Session | null }) => {
-  const userName = session?.user?.nickname || "User";
-
+const Header = async () => {
   return (
     <div className="flex items-center justify-between">
       <div>
-        <h3 className="text-2xl font-raleway font-medium mb-1">
-          Hello, {userName}!
-        </h3>
+        <h3 className="text-2xl font-raleway font-medium mb-1">Hello</h3>
         <p className="text-gray-100">
           Explore information and activity about your events
         </p>
