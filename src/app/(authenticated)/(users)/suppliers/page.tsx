@@ -1,13 +1,29 @@
 "use client";
+import { useSuppliers } from "@/src/api/usersApi";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
 import Input from "@/src/components/Input";
+import { useDebounce } from "@/src/hooks/useDebounce";
 import { Modal, TableColumnsType } from "antd";
 import { useState } from "react";
 
+const initialParams = {
+  page: 1,
+  perPage: 10,
+  search: "",
+};
+
 const SuppliersPage = () => {
+  const [params, setParams] = useState(initialParams);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 1000);
+
+  const { data: suppliersData, isLoading } = useSuppliers({
+    ...params,
+    search: debouncedSearch,
+  });
   const [modalOpen, setModalOpen] = useState(false);
 
   const handleCancel = () => {
@@ -21,13 +37,13 @@ const SuppliersPage = () => {
     },
     {
       title: "Company Name",
-      dataIndex: "companyName",
-      key: "companyName",
+      dataIndex: "company_name",
+      key: "company_name",
     },
     {
       title: "Mobile",
-      dataIndex: "mobile",
-      key: "mobile",
+      dataIndex: "contact_number",
+      key: "contact_number",
     },
     {
       title: "Email",
@@ -45,32 +61,7 @@ const SuppliersPage = () => {
       key: "notes",
     },
   ];
-  const data = [
-    {
-      name: "Michael Smith",
-      companyName: "Grand Supplies Inc.",
-      mobile: "555-1234",
-      email: "michael@grandsupplies.com",
-      industry: "Event Supplies",
-      notes: "Reliable premium supplier for large events.",
-    },
-    {
-      name: "Linda Johnson",
-      companyName: "Skyline Rentals",
-      mobile: "555-5678",
-      email: "linda@skylinerentals.com",
-      industry: "Venue Equipment",
-      notes: "Offers special rates for returning clients.",
-    },
-    {
-      name: "James Lee",
-      companyName: "Studio Props LLC",
-      mobile: "555-9012",
-      email: "james@studioprops.com",
-      industry: "Stage Props",
-      notes: "Known for quick deliveries and custom props.",
-    },
-  ];
+
   return (
     <div className="space-y-4 mt-4">
       {/* Filters Card */}
@@ -82,6 +73,8 @@ const SuppliersPage = () => {
               type="text"
               placeholder="Search"
               className="w-full bg-transparent! text-sm placeholder:text-gray-500"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <div className="flex gap-2">
@@ -95,9 +88,16 @@ const SuppliersPage = () => {
       {/* Data Table  */}
       <DataTable
         columns={columns}
-        dataSource={data}
-        pagination={false}
-        rowKey={(data) => data.email}
+        loading={isLoading}
+        dataSource={suppliersData?.data}
+        pagination={{
+          pageSize: params.perPage,
+          current: params.page,
+          total: suppliersData?.meta.total,
+          onChange: (page, pageSize) =>
+            setParams({ ...params, page, perPage: pageSize }),
+        }}
+        rowKey={(data) => data.id}
       />
       <Modal open={modalOpen} onCancel={handleCancel} title="Add" okText="Add">
         <div className="grid grid-cols-2 gap-4">

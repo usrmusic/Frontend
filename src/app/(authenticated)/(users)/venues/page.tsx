@@ -35,11 +35,11 @@ const VenuesPage = () => {
       dataIndex: "venue",
       key: "venue",
     },
-    {
-      title: "Address",
-      dataIndex: "address",
-      key: "address",
-    },
+    // {
+    //   title: "Address",
+    //   dataIndex: "address",
+    //   key: "address",
+    // },
     {
       title: "Stage",
       dataIndex: "stage",
@@ -55,16 +55,16 @@ const VenuesPage = () => {
       dataIndex: "access",
       key: "access",
     },
-    {
-      title: "Smoke Note",
-      dataIndex: "smokeNote",
-      key: "smokeNote",
-    },
-    {
-      title: "Rigging Point",
-      dataIndex: "riggingPoint",
-      key: "riggingPoint",
-    },
+    // {
+    //   title: "Smoke Note",
+    //   dataIndex: "smokeNote",
+    //   key: "smokeNote",
+    // },
+    // {
+    //   title: "Rigging Point",
+    //   dataIndex: "riggingPoint",
+    //   key: "riggingPoint",
+    // },
     {
       title: "Notes",
       dataIndex: "notes",

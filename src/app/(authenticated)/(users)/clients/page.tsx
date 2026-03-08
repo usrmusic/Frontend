@@ -14,6 +14,7 @@ const initialParams = {
   perPage: 10,
   name: "",
 };
+
 const ClientsPage = () => {
   const [params, setParams] = useState(initialParams);
   const [search, setSearch] = useState("");

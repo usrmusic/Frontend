@@ -1,14 +1,30 @@
 "use client";
+import { usePackages } from "@/src/api/usersApi";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
 import Input from "@/src/components/Input";
+import { useDebounce } from "@/src/hooks/useDebounce";
 import { Modal, TableColumnsType } from "antd";
 import { Eye, User } from "lucide-react";
 import { useState } from "react";
 
+const initialParams = {
+  page: 1,
+  perPage: 10,
+  search: "",
+};
+
 const PackagesPage = () => {
+  const [params, setParams] = useState(initialParams);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 1000);
+
+  const { data: packagesData, isLoading } = usePackages({
+    ...params,
+    search: debouncedSearch,
+  });
   const [modalOpen, setModalOpen] = useState(false);
 
   const handleCancel = () => {
@@ -17,27 +33,27 @@ const PackagesPage = () => {
   const columns: TableColumnsType = [
     {
       title: "Name",
-      dataIndex: "name",
       key: "name",
+      render: (data) => <>{data.users.name}</>,
     },
     {
       title: "Package Name",
-      dataIndex: "packageName",
-      key: "packageName",
+      dataIndex: "package_name",
+      key: "package_name",
     },
     {
       title: "Email",
-      dataIndex: "email",
       key: "email",
+      render: (data) => <>{data.users.email}</>,
     },
     {
       title: "Cost Price",
-      dataIndex: "costPrice",
+      dataIndex: "cost_price",
       key: "costPrice",
     },
     {
       title: "Sell Price",
-      dataIndex: "sellPrice",
+      dataIndex: "sell_price",
       key: "sellPrice",
     },
     {
@@ -57,29 +73,7 @@ const PackagesPage = () => {
       ),
     },
   ];
-  const data = [
-    {
-      name: "Michael Smith",
-      packageName: "Premium Package",
-      email: "michael@grandsupplies.com",
-      costPrice: 1500,
-      sellPrice: 2100,
-    },
-    {
-      name: "Linda Johnson",
-      packageName: "Event Master",
-      email: "linda@skylinerentals.com",
-      costPrice: 1200,
-      sellPrice: 1800,
-    },
-    {
-      name: "James Lee",
-      packageName: "Stage Deluxe",
-      email: "james@studioprops.com",
-      costPrice: 900,
-      sellPrice: 1350,
-    },
-  ];
+
   return (
     <div className="space-y-4 mt-4">
       {/* Filters Card */}
@@ -91,6 +85,8 @@ const PackagesPage = () => {
               type="text"
               placeholder="Search"
               className="w-full bg-transparent! text-sm placeholder:text-gray-500"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <div className="flex gap-2">
@@ -104,9 +100,16 @@ const PackagesPage = () => {
       {/* Data Table  */}
       <DataTable
         columns={columns}
-        dataSource={data}
-        pagination={false}
-        rowKey={(data) => data.email}
+        dataSource={packagesData?.data}
+        loading={isLoading}
+        pagination={{
+          pageSize: params.perPage,
+          current: params.page,
+          total: packagesData?.meta.total,
+          onChange: (page, pageSize) =>
+            setParams({ ...params, page, perPage: pageSize }),
+        }}
+        rowKey={(data) => data.id}
       />
       <Modal open={modalOpen} onCancel={handleCancel} title="Add" okText="Add">
         <div className="space-y-4">

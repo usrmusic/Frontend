@@ -15,6 +15,11 @@ type Meta = {
   totalPages: number;
 };
 
+type ApiResponse<T> = {
+  data: T[];
+  meta: Meta;
+};
+
 type Venue = {
   id: number;
   venue: string;
@@ -28,6 +33,7 @@ type Venue = {
 };
 
 type Client = {
+  id: number;
   name: string;
   email: string;
   password: string;
@@ -35,13 +41,32 @@ type Client = {
   address: string;
 };
 
-type ApiResponse<T> = {
-  data: T[];
-  meta: Meta;
+type Suppliers = {
+  id: number;
+  name: string;
+  company_name: string;
+  email: string;
+  contact_number: string;
+  industry: string;
+  notes: string;
+};
+
+type Packages = {
+  id: number;
+  user_id: number;
+  package_name: string;
+  cost_price: number;
+  sell_price: number;
+  users: {
+    name: string;
+    email: string;
+  };
 };
 
 type ClientsParams = Pick<QueryParams, "page" | "perPage" | "name">;
 type VenuesParams = Pick<QueryParams, "page" | "perPage" | "search">;
+type SuppliersParams = Pick<QueryParams, "page" | "perPage" | "search">;
+type PackagesParams = Pick<QueryParams, "page" | "perPage" | "search">;
 
 export const useClients = (params: ClientsParams) => {
   return useQuery<ApiResponse<Client>>({
@@ -61,6 +86,36 @@ export const useVenues = (params: VenuesParams) => {
       const response = await AxiosInstance.get<ApiResponse<Venue>>("/venue", {
         params,
       });
+      return response.data;
+    },
+    enabled: !!params,
+  });
+};
+export const useSuppliers = (params: SuppliersParams) => {
+  return useQuery<ApiResponse<Suppliers>>({
+    queryKey: ["suppliers", params],
+    queryFn: async (): Promise<ApiResponse<Suppliers>> => {
+      const response = await AxiosInstance.get<ApiResponse<Suppliers>>(
+        "/supplier",
+        {
+          params,
+        },
+      );
+      return response.data;
+    },
+    enabled: !!params,
+  });
+};
+export const usePackages = (params: PackagesParams) => {
+  return useQuery<ApiResponse<Packages>>({
+    queryKey: ["packages", params],
+    queryFn: async (): Promise<ApiResponse<Packages>> => {
+      const response = await AxiosInstance.get<ApiResponse<Packages>>(
+        "/package",
+        {
+          params,
+        },
+      );
       return response.data;
     },
     enabled: !!params,
