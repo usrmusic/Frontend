@@ -1,13 +1,29 @@
 "use client";
+import { useUsers } from "@/src/api/usersApi";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
 import Input from "@/src/components/Input";
+import { useDebounce } from "@/src/hooks/useDebounce";
 import { Modal, TableColumnsType } from "antd";
 import { useState } from "react";
 
+const initialParams = {
+  page: 1,
+  perPage: 10,
+  search: "",
+};
+
 const UsersPage = () => {
+  const [params, setParams] = useState(initialParams);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 1000);
+
+  const { data: usersData, isLoading } = useUsers({
+    ...params,
+    search: debouncedSearch,
+  });
   const [modalOpen, setModalOpen] = useState(false);
 
   const handleCancel = () => {
@@ -26,8 +42,8 @@ const UsersPage = () => {
     },
     {
       title: "Contact Number",
-      dataIndex: "contactNumber",
-      key: "contactNumber",
+      dataIndex: "contact_number",
+      key: "contact_number",
     },
     {
       title: "Password",
@@ -50,26 +66,7 @@ const UsersPage = () => {
       key: "role",
     },
   ];
-  const data = [
-    {
-      name: "John Doe",
-      email: "john.doe@example.com",
-      contactNumber: "1234567890",
-      password: "1234567890",
-      resetPassword: "1234567890",
-      address: "1234567890",
-      role: "Admin",
-    },
-    {
-      name: "Jane Doe",
-      email: "jane.doe@example.com",
-      contactNumber: "1234567890",
-      password: "1234567890",
-      resetPassword: "1234567890",
-      address: "1234567890",
-      role: "Admin",
-    },
-  ];
+  
   return (
     <div className="space-y-4 mt-4">
       {/* Filters Card */}
@@ -81,6 +78,8 @@ const UsersPage = () => {
               type="text"
               placeholder="Search"
               className="w-full bg-transparent! text-sm placeholder:text-gray-500"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <div className="flex gap-2">
@@ -94,8 +93,15 @@ const UsersPage = () => {
       {/* Data Table  */}
       <DataTable
         columns={columns}
-        dataSource={data}
-        pagination={false}
+        dataSource={usersData?.data}
+        pagination={{
+          pageSize: params.perPage,
+          current: params.page,
+          total: usersData?.meta.total,
+          onChange: (page, pageSize) =>
+            setParams({ ...params, page, perPage: pageSize }),
+        }}
+        loading={isLoading}
         rowKey={(data) => data.email}
       />
       <Modal open={modalOpen} onCancel={handleCancel} title="Add" okText="Add">

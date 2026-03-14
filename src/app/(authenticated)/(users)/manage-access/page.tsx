@@ -1,4 +1,5 @@
 "use client";
+import { useManageAccess } from "@/src/api/usersApi";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
@@ -8,6 +9,7 @@ import { Modal, TableColumnsType } from "antd";
 import { useState } from "react";
 
 const ManageAccessPage = () => {
+  const { data: manageAccessData, isLoading } = useManageAccess();
   const [modalOpen, setModalOpen] = useState(false);
 
   const handleCancel = () => {
@@ -16,32 +18,11 @@ const ManageAccessPage = () => {
   const columns: TableColumnsType = [
     {
       title: "Role",
-      dataIndex: "role",
-      key: "role",
+      dataIndex: "name",
+      key: "name",
     },
   ];
-  const data = [
-    {
-      key: "1",
-      role: "Admin",
-    },
-    {
-      key: "2",
-      role: "Editor",
-    },
-    {
-      key: "3",
-      role: "Viewer",
-    },
-    {
-      key: "4",
-      role: "Client",
-    },
-    {
-      key: "5",
-      role: "Worker",
-    },
-  ];
+
   return (
     <div className="space-y-4 mt-4">
       {/* Filters Card */}
@@ -61,7 +42,12 @@ const ManageAccessPage = () => {
         </div>
       </Card>
       {/* Data Table  */}
-      <DataTable columns={columns} dataSource={data} pagination={false} />
+      <DataTable
+        columns={columns}
+        loading={isLoading}
+        dataSource={manageAccessData?.roles}
+        pagination={false}
+      />
       <Modal open={modalOpen} onCancel={handleCancel} title="Add" okText="Add">
         <Input label="Role Name" />
       </Modal>

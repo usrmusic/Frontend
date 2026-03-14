@@ -2,7 +2,7 @@ import { Table, TableProps } from "antd";
 
 const DataTable = ({ columns, dataSource, ...props }: TableProps) => {
   return (
-    <div className="overflow-hidden rounded-xl whitespace-nowrap">
+    <div className="overflow-hidden rounded-xl">
       <Table
         columns={columns}
         dataSource={dataSource}

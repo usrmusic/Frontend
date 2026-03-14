@@ -4,31 +4,35 @@ import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
-import Input from "@/src/components/Input";
 import { useDebounce } from "@/src/hooks/useDebounce";
-import { Modal, TableColumnsType } from "antd";
-import { useState } from "react";
+import { TableColumnsType } from "antd";
+import { useState, Suspense } from "react";
+import ClientModal from "./ClientModal";
+import { Pencil } from "lucide-react";
 
 const initialParams = {
   page: 1,
   perPage: 10,
-  name: "",
+  search: "",
 };
 
-const ClientsPage = () => {
+const ClientsPageContent = () => {
   const [params, setParams] = useState(initialParams);
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const [clientData, setClientData] = useState(null);
 
   const debouncedSearch = useDebounce(search, 1000);
   const { data: apiData, isLoading } = useClients({
     ...params,
-    name: debouncedSearch,
+    search: debouncedSearch,
   });
 
   const handleCancel = () => {
+    setClientData(null);
     setModalOpen(false);
   };
+
   const columns: TableColumnsType = [
     {
       title: "Name",
@@ -51,11 +55,11 @@ const ClientsPage = () => {
       key: "status",
       render: (value: string) => (
         <span
-          className={
+          className={`whitespace-nowrap ${
             value?.toLowerCase() === "active"
               ? "px-2 py-1 rounded-full text-green-700 bg-green-100"
               : "px-2 py-1 rounded-full text-gray-600 bg-yellow-100"
-          }
+          }`}
         >
           {value ?? "No Status"}
         </span>
@@ -75,6 +79,19 @@ const ClientsPage = () => {
       title: "Address",
       dataIndex: "address",
       key: "address",
+    },
+    {
+      title: "Action",
+      render: (data) => (
+        <button
+          onClick={() => {
+            setModalOpen(true);
+            setClientData(data);
+          }}
+        >
+          <Pencil size={14} />
+        </button>
+      ),
     },
   ];
 
@@ -115,17 +132,24 @@ const ClientsPage = () => {
         }}
         rowKey={(data) => data.id}
       />
-      <Modal open={modalOpen} onCancel={handleCancel} title="Add" okText="Add">
-        <div className="grid grid-cols-2 gap-4">
-          <Input label="Name" />
-          <Input label="Email" />
-          <Input label="Event Date" type="date" />
-          <Input label="Contact Number" />
-          <Input label="Address" />
-        </div>
-      </Modal>
+      {modalOpen && (
+        <ClientModal
+          modalOpen={modalOpen}
+          onCancel={handleCancel}
+          initialValues={clientData}
+        />
+      )}
     </div>
   );
 };
 
-export default ClientsPage;
+const page = () => {
+  // Wrap the client component in Suspense boundary for Next.js requirements
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ClientsPageContent />
+    </Suspense>
+  );
+};
+
+export default page;
