@@ -78,11 +78,13 @@ const ClientModal = ({
   });
 
   return (
-    <Modal open={modalOpen} onCancel={onCancel} footer={false}>
+    <Modal
+      title={isEditMode ? "Edit Client" : "Add Client"}
+      open={modalOpen}
+      onCancel={onCancel}
+      footer={false}
+    >
       <form onSubmit={formik.handleSubmit}>
-        <h1 className="text-2xl font-semibold mb-3">
-          {isEditMode ? "Edit Client" : "Add Client"}
-        </h1>
         <div className="grid grid-cols-2 gap-4">
           <Input
             required

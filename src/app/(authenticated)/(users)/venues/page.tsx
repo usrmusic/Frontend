@@ -4,10 +4,11 @@ import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
-import Input from "@/src/components/Input";
 import { useDebounce } from "@/src/hooks/useDebounce";
-import { Modal, TableColumnsType } from "antd";
+import { TableColumnsType } from "antd";
 import { useState } from "react";
+import VenueModal from "./VenueModal";
+import { Pencil } from "lucide-react";
 
 const initialParams = {
   page: 1,
@@ -19,6 +20,7 @@ const VenuesPage = () => {
   const [params, setParams] = useState(initialParams);
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const [venueItem, setVenueItem] = useState(null);
 
   const debouncedSearch = useDebounce(search, 1000);
   const { data: venueData, isLoading } = useVenues({
@@ -27,6 +29,7 @@ const VenuesPage = () => {
   });
 
   const handleCancel = () => {
+    setVenueItem(null);
     setModalOpen(false);
   };
   const columns: TableColumnsType = [
@@ -70,6 +73,19 @@ const VenuesPage = () => {
       dataIndex: "notes",
       key: "notes",
     },
+    {
+      title: "Action",
+      render: (data) => (
+        <button
+          onClick={() => {
+            setModalOpen(true);
+            setVenueItem(data);
+          }}
+        >
+          <Pencil size={14} />
+        </button>
+      ),
+    },
   ];
 
   return (
@@ -109,17 +125,11 @@ const VenuesPage = () => {
         }}
         rowKey={(data) => data.id}
       />
-      <Modal open={modalOpen} onCancel={handleCancel} title="Add" okText="Add">
-        <div className="grid grid-cols-2 gap-4">
-          <Input label="Venue" />
-          <Input label="Address" />
-          <Input label="Stage" />
-          <Input label="Power" />
-          <Input label="Access" />
-          <Input label="Rigging Point" />
-          <Input label="Notes" />
-        </div>
-      </Modal>
+      <VenueModal
+        modalOpen={modalOpen}
+        onCancel={handleCancel}
+        initialValues={venueItem}
+      />
     </div>
   );
 };

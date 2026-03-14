@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import AxiosInstance from "../lib/axios";
 import { notification } from "antd";
 import axios from "axios";
@@ -136,9 +136,19 @@ type ClientPayload = {
   event_date: string;
   contact_number: string;
 };
+
+type VenuePayload = {
+  venue: string;
+  venue_address: string;
+  stage: string;
+  power: string;
+  rigging_point: string;
+  notes: string;
+};
+
 export const useClients = (params: QueryParams) => {
   return useQuery<ApiResponse<Client>>({
-    queryKey: ["users", params],
+    queryKey: ["clients", params],
     queryFn: async (): Promise<ApiResponse<Client>> => {
       try {
         const response = await AxiosInstance.get("/client", { params });
@@ -179,6 +189,7 @@ export const useVenues = (params: QueryParams) => {
     enabled: !!params,
   });
 };
+
 export const useSuppliers = (params: QueryParams) => {
   return useQuery<ApiResponse<Suppliers>>({
     queryKey: ["suppliers", params],
@@ -194,6 +205,7 @@ export const useSuppliers = (params: QueryParams) => {
     enabled: !!params,
   });
 };
+
 export const usePackages = (params: QueryParams) => {
   return useQuery<ApiResponse<Packages>>({
     queryKey: ["packages", params],
@@ -209,6 +221,7 @@ export const usePackages = (params: QueryParams) => {
     enabled: !!params,
   });
 };
+
 export const useCompanies = (params: QueryParams) => {
   return useQuery<ApiResponse<Company>>({
     queryKey: ["companies", params],
@@ -224,6 +237,7 @@ export const useCompanies = (params: QueryParams) => {
     enabled: !!params,
   });
 };
+
 export const useUsers = (params: QueryParams) => {
   return useQuery<ApiResponse<User>>({
     queryKey: ["users", params],
@@ -236,6 +250,7 @@ export const useUsers = (params: QueryParams) => {
     enabled: !!params,
   });
 };
+
 export const useEmail = (params: QueryParams) => {
   return useQuery<ApiResponse<EmailContent>>({
     queryKey: ["email-content", params],
@@ -251,6 +266,7 @@ export const useEmail = (params: QueryParams) => {
     enabled: !!params,
   });
 };
+
 export const useManageAccess = () => {
   return useQuery<ManageAccessResponse>({
     queryKey: ["manage-access"],
@@ -264,6 +280,7 @@ export const useManageAccess = () => {
 };
 
 export const useAddClient = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (payload: ClientPayload) => {
       const response = await AxiosInstance.post("/client", payload);
@@ -272,15 +289,57 @@ export const useAddClient = () => {
     onError: (error) => {
       console.error("Login failed:", error.message);
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+    },
   });
 };
+export const useAddVenue = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: VenuePayload) => {
+      const response = await AxiosInstance.post("/venue", payload);
+      return response.data;
+    },
+    onError: (error) => {
+      console.error("Login failed:", error.message);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["venues"] });
+    },
+  });
+};
+
 export const useEditClient = () => {
+  const queryClient = useQueryClient();
+
   return useMutation({
     // Expect payload to contain an id property along with other client properties
     mutationFn: async (payload: ClientPayload & { id: number | string }) => {
       const { id, ...rest } = payload;
       const response = await AxiosInstance.put(`/client/${id}`, rest);
       return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+    },
+    onError: (error) => {
+      console.error("Login failed:", error.message);
+    },
+  });
+};
+export const useEditVenue = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    // Expect payload to contain an id property along with other client properties
+    mutationFn: async (payload: VenuePayload & { id: number | string }) => {
+      const { id, ...rest } = payload;
+      const response = await AxiosInstance.put(`/venue/${id}`, rest);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["venues"] });
     },
     onError: (error) => {
       console.error("Login failed:", error.message);
