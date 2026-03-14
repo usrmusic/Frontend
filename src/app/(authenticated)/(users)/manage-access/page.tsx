@@ -4,9 +4,9 @@ import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
-import Input from "@/src/components/Input";
-import { Modal, TableColumnsType } from "antd";
+import { TableColumnsType } from "antd";
 import { useState } from "react";
+import RoleModal from "./RoleModal";
 
 const ManageAccessPage = () => {
   const { data: manageAccessData, isLoading } = useManageAccess();
@@ -46,11 +46,12 @@ const ManageAccessPage = () => {
         columns={columns}
         loading={isLoading}
         dataSource={manageAccessData?.roles}
+        rowKey={(data) => data.id}
         pagination={false}
       />
-      <Modal open={modalOpen} onCancel={handleCancel} title="Add" okText="Add">
-        <Input label="Role Name" />
-      </Modal>
+      {modalOpen && (
+        <RoleModal handleCancel={handleCancel} modalOpen={modalOpen} />
+      )}
     </div>
   );
 };

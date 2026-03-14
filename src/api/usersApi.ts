@@ -146,6 +146,15 @@ type VenuePayload = {
   notes: string;
 };
 
+type SupplierPayload = {
+  name: string;
+  company_name: string;
+  email: string;
+  contact_number: string;
+  industry: string;
+  notes: string;
+};
+
 export const useClients = (params: QueryParams) => {
   return useQuery<ApiResponse<Client>>({
     queryKey: ["clients", params],
@@ -242,10 +251,24 @@ export const useUsers = (params: QueryParams) => {
   return useQuery<ApiResponse<User>>({
     queryKey: ["users", params],
     queryFn: async (): Promise<ApiResponse<User>> => {
-      const response = await AxiosInstance.get<ApiResponse<User>>("/user", {
-        params,
-      });
-      return response.data;
+      try {
+        const response = await AxiosInstance.get<ApiResponse<User>>("/user", {
+          params,
+        });
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          import("antd").then(({ notification }) => {
+            notification.error({
+              message: "API Error",
+              description: msg?.error,
+              placement: "topRight",
+            });
+          });
+        }
+        throw error;
+      }
     },
     enabled: !!params,
   });
@@ -309,6 +332,21 @@ export const useAddVenue = () => {
     },
   });
 };
+export const useAddSupplier = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: SupplierPayload) => {
+      const response = await AxiosInstance.post("/supplier", payload);
+      return response.data;
+    },
+    onError: (error) => {
+      console.error("Login failed:", error.message);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+    },
+  });
+};
 
 export const useEditClient = () => {
   const queryClient = useQueryClient();
@@ -340,6 +378,44 @@ export const useEditVenue = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["venues"] });
+    },
+    onError: (error) => {
+      console.error("Login failed:", error.message);
+    },
+  });
+};
+export const useEditSupplier = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    // Expect payload to contain an id property along with other client properties
+    mutationFn: async (payload: SupplierPayload & { id: number | string }) => {
+      const { id, ...rest } = payload;
+      const response = await AxiosInstance.put(`/supplier/${id}`, rest);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+    },
+    onError: (error) => {
+      console.error("Login failed:", error.message);
+    },
+  });
+};
+export const useAddRole = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    // Expect payload to contain an id property along with other client properties
+    mutationFn: async (payload: { name: string; guard_name: string }) => {
+      const response = await AxiosInstance.post(
+        "/roles-permissions/roles",
+        payload,
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["manage-access"] });
     },
     onError: (error) => {
       console.error("Login failed:", error.message);

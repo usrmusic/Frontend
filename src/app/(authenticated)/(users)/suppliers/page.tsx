@@ -4,10 +4,11 @@ import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
-import Input from "@/src/components/Input";
 import { useDebounce } from "@/src/hooks/useDebounce";
-import { Modal, TableColumnsType } from "antd";
+import { TableColumnsType } from "antd";
 import { useState } from "react";
+import SupplierModal from "./SupplierModal";
+import { Pencil } from "lucide-react";
 
 const initialParams = {
   page: 1,
@@ -18,6 +19,8 @@ const initialParams = {
 const SuppliersPage = () => {
   const [params, setParams] = useState(initialParams);
   const [search, setSearch] = useState("");
+  const [supplierItemData, setSupplierItemData] = useState(null);
+
   const debouncedSearch = useDebounce(search, 1000);
 
   const { data: suppliersData, isLoading } = useSuppliers({
@@ -27,6 +30,7 @@ const SuppliersPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
 
   const handleCancel = () => {
+    setSupplierItemData(null);
     setModalOpen(false);
   };
   const columns: TableColumnsType = [
@@ -59,6 +63,19 @@ const SuppliersPage = () => {
       title: "Notes",
       dataIndex: "notes",
       key: "notes",
+    },
+    {
+      title: "Action",
+      render: (data) => (
+        <button
+          onClick={() => {
+            setModalOpen(true);
+            setSupplierItemData(data);
+          }}
+        >
+          <Pencil size={14} />
+        </button>
+      ),
     },
   ];
 
@@ -99,16 +116,11 @@ const SuppliersPage = () => {
         }}
         rowKey={(data) => data.id}
       />
-      <Modal open={modalOpen} onCancel={handleCancel} title="Add" okText="Add">
-        <div className="grid grid-cols-2 gap-4">
-          <Input label="Name" />
-          <Input label="Company Name" />
-          <Input label="Email" />
-          <Input label="Mobile" />
-          <Input label="Industry" />
-          <Input label="Notes" />
-        </div>
-      </Modal>
+      <SupplierModal
+        initialValues={supplierItemData}
+        modalOpen={modalOpen}
+        onCancel={handleCancel}
+      />
     </div>
   );
 };
