@@ -4,10 +4,11 @@ import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
-import Input from "@/src/components/Input";
 import { useDebounce } from "@/src/hooks/useDebounce";
-import { Modal, TableColumnsType } from "antd";
+import { TableColumnsType } from "antd";
 import { useState } from "react";
+import UserModal from "./UserModal";
+import { Pencil } from "lucide-react";
 
 const initialParams = {
   page: 1,
@@ -18,6 +19,7 @@ const initialParams = {
 const UsersPage = () => {
   const [params, setParams] = useState(initialParams);
   const [search, setSearch] = useState("");
+  const [userDataItem, setUserDataItem] = useState(null);
   const debouncedSearch = useDebounce(search, 1000);
 
   const { data: usersData, isLoading } = useUsers({
@@ -27,6 +29,7 @@ const UsersPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
 
   const handleCancel = () => {
+    setUserDataItem(null);
     setModalOpen(false);
   };
   const columns: TableColumnsType = [
@@ -65,8 +68,22 @@ const UsersPage = () => {
       dataIndex: "role",
       key: "role",
     },
+    {
+      title: "Action",
+      fixed: "right",
+      render: (data) => (
+        <button
+          onClick={() => {
+            setModalOpen(true);
+            setUserDataItem(data);
+          }}
+        >
+          <Pencil size={14} />
+        </button>
+      ),
+    },
   ];
-  
+
   return (
     <div className="space-y-4 mt-4">
       {/* Filters Card */}
@@ -104,14 +121,13 @@ const UsersPage = () => {
         loading={isLoading}
         rowKey={(data) => data.email}
       />
-      <Modal open={modalOpen} onCancel={handleCancel} title="Add" okText="Add">
-        <div className="grid grid-cols-2 gap-4">
-          <Input label="Name" />
-          <Input label="Email" />
-          <Input label="Contact Number" />
-          <Input label="Address" />
-        </div>
-      </Modal>
+      {modalOpen && (
+        <UserModal
+          handleCancel={handleCancel}
+          initialValues={userDataItem}
+          modalOpen={modalOpen}
+        />
+      )}
     </div>
   );
 };

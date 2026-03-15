@@ -155,6 +155,14 @@ type SupplierPayload = {
   notes: string;
 };
 
+type UserPayload = {
+  name: string;
+  email: string;
+  contact_number: string;
+  role_id: string;
+  sendEmail: boolean;
+};
+
 export const useClients = (params: QueryParams) => {
   return useQuery<ApiResponse<Client>>({
     queryKey: ["clients", params],
@@ -406,7 +414,6 @@ export const useAddRole = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    // Expect payload to contain an id property along with other client properties
     mutationFn: async (payload: { name: string; guard_name: string }) => {
       const response = await AxiosInstance.post(
         "/roles-permissions/roles",
@@ -416,6 +423,22 @@ export const useAddRole = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["manage-access"] });
+    },
+    onError: (error) => {
+      console.error("Login failed:", error.message);
+    },
+  });
+};
+export const useAddUser = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: UserPayload) => {
+      const response = await AxiosInstance.post("/user", payload);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
     },
     onError: (error) => {
       console.error("Login failed:", error.message);
