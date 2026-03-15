@@ -82,6 +82,7 @@ const ClientsPageContent = () => {
     },
     {
       title: "Action",
+      fixed: "right",
       render: (data) => (
         <button
           onClick={() => {

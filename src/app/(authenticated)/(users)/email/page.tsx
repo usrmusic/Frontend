@@ -64,6 +64,7 @@ const EmailPage = () => {
       {/* Data Table  */}
       <DataTable
         columns={columns}
+        rowKey={(data) => data.id}
         dataSource={emailData?.data}
         tableLayout="fixed"
         loading={isLoading}

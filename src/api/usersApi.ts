@@ -318,7 +318,7 @@ export const useAddClient = () => {
       return response.data;
     },
     onError: (error) => {
-      console.error("Login failed:", error.message);
+      console.error("add client failed:", error.message);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clients"] });
@@ -333,7 +333,7 @@ export const useAddVenue = () => {
       return response.data;
     },
     onError: (error) => {
-      console.error("Login failed:", error.message);
+      console.error("add venue failed:", error.message);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["venues"] });
@@ -348,7 +348,7 @@ export const useAddSupplier = () => {
       return response.data;
     },
     onError: (error) => {
-      console.error("Login failed:", error.message);
+      console.error("add supplier failed:", error.message);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
@@ -370,7 +370,7 @@ export const useEditClient = () => {
       queryClient.invalidateQueries({ queryKey: ["clients"] });
     },
     onError: (error) => {
-      console.error("Login failed:", error.message);
+      console.error("edit client failed:", error.message);
     },
   });
 };
@@ -388,7 +388,7 @@ export const useEditVenue = () => {
       queryClient.invalidateQueries({ queryKey: ["venues"] });
     },
     onError: (error) => {
-      console.error("Login failed:", error.message);
+      console.error("edit venue failed:", error.message);
     },
   });
 };
@@ -406,7 +406,39 @@ export const useEditSupplier = () => {
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
     },
     onError: (error) => {
-      console.error("Login failed:", error.message);
+      console.error("edit supplier failed:", error.message);
+    },
+  });
+};
+export const useEditUser = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    // Expect payload to contain an id property along with other client properties
+    mutationFn: async (payload: UserPayload & { id: number | string }) => {
+      try {
+        const { id, ...rest } = payload;
+        const response = await AxiosInstance.put(`/user/${id}`, rest);
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          import("antd").then(({ notification }) => {
+            notification.error({
+              message: "API Error",
+              description: msg?.error,
+              placement: "topRight",
+            });
+          });
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    },
+    onError: (error) => {
+      console.error("edit user failed:", error.message);
     },
   });
 };
@@ -425,7 +457,7 @@ export const useAddRole = () => {
       queryClient.invalidateQueries({ queryKey: ["manage-access"] });
     },
     onError: (error) => {
-      console.error("Login failed:", error.message);
+      console.error("add role failed:", error.message);
     },
   });
 };
@@ -434,14 +466,28 @@ export const useAddUser = () => {
 
   return useMutation({
     mutationFn: async (payload: UserPayload) => {
-      const response = await AxiosInstance.post("/user", payload);
-      return response.data;
+      try {
+        const response = await AxiosInstance.post("/user", payload);
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          import("antd").then(({ notification }) => {
+            notification.error({
+              message: "Error",
+              description: msg?.error,
+              placement: "topRight",
+            });
+          });
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
     },
     onError: (error) => {
-      console.error("Login failed:", error.message);
+      console.error("add user failed:", error.message);
     },
   });
 };

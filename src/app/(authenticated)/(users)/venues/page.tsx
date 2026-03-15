@@ -75,6 +75,7 @@ const VenuesPage = () => {
     },
     {
       title: "Action",
+      fixed: "right",
       render: (data) => (
         <button
           onClick={() => {

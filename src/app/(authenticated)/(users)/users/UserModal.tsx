@@ -1,11 +1,12 @@
 import { useRoleDropdown } from "@/src/api/dropdown";
-import { useAddUser } from "@/src/api/usersApi";
+import { useAddUser, useEditUser } from "@/src/api/usersApi";
 import ModalFooter from "@/src/components/common/ModalFooter";
 import Input from "@/src/components/Input";
 import { Modal, notification, Select } from "antd";
 import { useFormik } from "formik";
 
 interface UserData {
+  id: string | number;
   name: string;
   email: string;
   contact_number: string;
@@ -27,6 +28,9 @@ const UserModal = ({
 }: UserModalProps) => {
   const isEditMode = !!initialValues;
   const addUser = useAddUser();
+  const editUser = useEditUser();
+  const loading = addUser.isPending || editUser.isPending;
+
   const formik = useFormik({
     initialValues: {
       name: initialValues?.name || "",
@@ -41,6 +45,18 @@ const UserModal = ({
       // you may want to pass `values` to parent handler or do something else
       console.log(values);
       if (isEditMode) {
+        editUser.mutate(
+          { ...values, id: initialValues.id },
+          {
+            onSuccess: () => {
+              handleCancel();
+              notification.success({
+                message: "Success",
+                description: "User Successfully updated",
+              });
+            },
+          },
+        );
       } else {
         addUser.mutate(values, {
           onSuccess: () => {
@@ -122,7 +138,7 @@ const UserModal = ({
         </div>
         <div className="mt-4">
           <ModalFooter
-            loading={false}
+            loading={loading}
             mode={isEditMode ? "edit" : "add"}
             onCancel={handleCancel}
           />

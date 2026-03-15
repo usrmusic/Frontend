@@ -14,6 +14,13 @@ const ThemeConfig = ({ children }: { children: ReactNode }) => {
           borderRadius: 8,
           fontFamily: "var(--font-inter)",
         },
+        components: {
+          Select: {
+            selectorBg: "#f5f5f5", // background of select input
+            controlHeight: 40,
+            borderRadius: 12,
+          },
+        },
       }}
     >
       {children}
