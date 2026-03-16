@@ -1,16 +1,35 @@
 "use client";
+import { useVenues } from "@/src/api/usersApi";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
-import Input from "@/src/components/Input";
-import { Modal, TableColumnsType } from "antd";
+import { useDebounce } from "@/src/hooks/useDebounce";
+import { TableColumnsType } from "antd";
 import { useState } from "react";
+import VenueModal from "./VenueModal";
+import { Pencil } from "lucide-react";
+
+const initialParams = {
+  page: 1,
+  perPage: 10,
+  search: "",
+};
 
 const VenuesPage = () => {
+  const [params, setParams] = useState(initialParams);
+  const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const [venueItem, setVenueItem] = useState(null);
+
+  const debouncedSearch = useDebounce(search, 1000);
+  const { data: venueData, isLoading } = useVenues({
+    ...params,
+    search: debouncedSearch,
+  });
 
   const handleCancel = () => {
+    setVenueItem(null);
     setModalOpen(false);
   };
   const columns: TableColumnsType = [
@@ -19,11 +38,11 @@ const VenuesPage = () => {
       dataIndex: "venue",
       key: "venue",
     },
-    {
-      title: "Address",
-      dataIndex: "address",
-      key: "address",
-    },
+    // {
+    //   title: "Address",
+    //   dataIndex: "address",
+    //   key: "address",
+    // },
     {
       title: "Stage",
       dataIndex: "stage",
@@ -39,54 +58,37 @@ const VenuesPage = () => {
       dataIndex: "access",
       key: "access",
     },
-    {
-      title: "Smoke Note",
-      dataIndex: "smokeNote",
-      key: "smokeNote",
-    },
-    {
-      title: "Rigging Point",
-      dataIndex: "riggingPoint",
-      key: "riggingPoint",
-    },
+    // {
+    //   title: "Smoke Note",
+    //   dataIndex: "smokeNote",
+    //   key: "smokeNote",
+    // },
+    // {
+    //   title: "Rigging Point",
+    //   dataIndex: "riggingPoint",
+    //   key: "riggingPoint",
+    // },
     {
       title: "Notes",
       dataIndex: "notes",
       key: "notes",
     },
-  ];
-  const data = [
     {
-      venue: "Grand Ballroom",
-      address: "123 Main St, Springfield",
-      stage: "Main Stage",
-      power: "Available",
-      access: "Front/Back Entrances",
-      smokeNote: "Smoke machines allowed",
-      riggingPoint: "4 rigging points in ceiling",
-      notes: "Ideal for weddings and conferences.",
-    },
-    {
-      venue: "Skyline Rooftop",
-      address: "456 Elm Ave, Metropolis",
-      stage: "Outdoor Stage",
-      power: "Limited",
-      access: "Elevator, Stairs",
-      smokeNote: "No smoke allowed",
-      riggingPoint: "No rigging points",
-      notes: "Beautiful city skyline view.",
-    },
-    {
-      venue: "The Studio",
-      address: "789 Studio Lane, Gotham",
-      stage: "Flexible Setup",
-      power: "Available",
-      access: "Ground floor entrance",
-      smokeNote: "Smoke allowed with approval",
-      riggingPoint: "2 rigging bars",
-      notes: "Perfect for intimate performances.",
+      title: "Action",
+      fixed: "right",
+      render: (data) => (
+        <button
+          onClick={() => {
+            setModalOpen(true);
+            setVenueItem(data);
+          }}
+        >
+          <Pencil size={14} />
+        </button>
+      ),
     },
   ];
+
   return (
     <div className="space-y-4 mt-4">
       {/* Filters Card */}
@@ -98,6 +100,8 @@ const VenuesPage = () => {
               type="text"
               placeholder="Search"
               className="w-full bg-transparent! text-sm placeholder:text-gray-500"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <div className="flex gap-2">
@@ -111,21 +115,22 @@ const VenuesPage = () => {
       {/* Data Table  */}
       <DataTable
         columns={columns}
-        dataSource={data}
-        pagination={false}
-        rowKey={(data) => data.email}
+        dataSource={venueData?.data}
+        loading={isLoading}
+        pagination={{
+          pageSize: params.perPage,
+          current: params.page,
+          total: venueData?.meta.total,
+          onChange: (page, pageSize) =>
+            setParams({ ...params, page, perPage: pageSize }),
+        }}
+        rowKey={(data) => data.id}
       />
-      <Modal open={modalOpen} onCancel={handleCancel} title="Add" okText="Add">
-        <div className="grid grid-cols-2 gap-4">
-          <Input label="Venue" />
-          <Input label="Address" />
-          <Input label="Stage" />
-          <Input label="Power" />
-          <Input label="Access" />
-          <Input label="Rigging Point" />
-          <Input label="Notes" />
-        </div>
-      </Modal>
+      <VenueModal
+        modalOpen={modalOpen}
+        onCancel={handleCancel}
+        initialValues={venueItem}
+      />
     </div>
   );
 };

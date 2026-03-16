@@ -1,9 +1,11 @@
 "use client";
+import { Company, useCompanies } from "@/src/api/usersApi";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
 import Input from "@/src/components/Input";
+import { useDebounce } from "@/src/hooks/useDebounce";
 import { Modal, TableColumnsType } from "antd";
 import {
   Building2,
@@ -22,7 +24,21 @@ import { BsInstagram } from "react-icons/bs";
 import { FaFacebook } from "react-icons/fa";
 import { FaEnvelopesBulk } from "react-icons/fa6";
 
+const initialParams = {
+  page: 1,
+  perPage: 10,
+  search: "",
+};
+
 const CompanyPage = () => {
+  const [params, setParams] = useState(initialParams);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 1000);
+
+  const { data: companiesData, isLoading } = useCompanies({
+    ...params,
+    search: debouncedSearch,
+  });
   const [modalOpen, setModalOpen] = useState(false);
 
   const handleCancel = () => {
@@ -31,23 +47,16 @@ const CompanyPage = () => {
   const columns: TableColumnsType = [
     {
       title: "Company Name",
-      dataIndex: "companyName",
-      key: "companyName",
+      dataIndex: "name",
+      key: "name",
     },
     {
       title: "Logo",
-      dataIndex: "logo",
-      key: "logo",
+      dataIndex: "company_logo",
+      key: "company_logo",
       render: (logo: string) =>
         logo ? (
-          <a
-            href={logo}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 underline"
-          >
-            {logo}
-          </a>
+          <span className="text-blue-600 underline">{logo}</span>
         ) : (
           <span className="">N/A</span>
         ),
@@ -58,22 +67,19 @@ const CompanyPage = () => {
       key: "brochure",
       render: (brochure: string) =>
         brochure ? (
-          <a
-            href={brochure}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 underline"
-          >
-            {brochure}
-          </a>
+          <span className="text-blue-600 underline">{brochure}</span>
         ) : (
           <span className="">N/A</span>
         ),
     },
     {
       title: "Bank Detail",
-      dataIndex: "bankDetail",
       key: "bankDetail",
+      render: (company: Company) => (
+        <>
+          {company.bank_name} {company.sort_code}
+        </>
+      ),
     },
     {
       title: "Actions",
@@ -81,32 +87,7 @@ const CompanyPage = () => {
       render: () => <Eye size={14} />,
     },
   ];
-  const data = [
-    {
-      key: "1",
-      name: "Michael Smith",
-      companyName: "Grand Supplies Inc.",
-      logo: "grand-supplies.png",
-      brochure: "grand-supplies.pdf",
-      bankDetail: "Bank of Springfield, Acc: 123456, IFSC: SPRB0001234",
-    },
-    {
-      key: "2",
-      name: "Linda Johnson",
-      companyName: "Skyline Rentals",
-      logo: "skyline-rentals.png",
-      brochure: "",
-      bankDetail: "Metro Bank, Acc: 678910, IFSC: METB0005678",
-    },
-    {
-      key: "3",
-      name: "James Lee",
-      companyName: "Studio Props LLC",
-      logo: "",
-      brochure: "studio-props.pdf",
-      bankDetail: "Gotham Bank, Acc: 112233, IFSC: GOTH0001122",
-    },
-  ];
+
   return (
     <div className="space-y-4 mt-4">
       {/* Filters Card */}
@@ -118,6 +99,8 @@ const CompanyPage = () => {
               type="text"
               placeholder="Search"
               className="w-full bg-transparent! text-sm placeholder:text-gray-500"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <div className="flex gap-2">
@@ -129,7 +112,19 @@ const CompanyPage = () => {
         </div>
       </Card>
       {/* Data Table  */}
-      <DataTable columns={columns} dataSource={data} pagination={false} />
+      <DataTable
+        columns={columns}
+        loading={isLoading}
+        dataSource={companiesData?.data}
+        pagination={{
+          pageSize: params.perPage,
+          current: params.page,
+          total: companiesData?.meta.total,
+          onChange: (page, pageSize) =>
+            setParams({ ...params, page, perPage: pageSize }),
+        }}
+        rowKey={(data) => data.id}
+      />
       <Modal
         open={modalOpen}
         onCancel={handleCancel}

@@ -7,7 +7,7 @@ const DataTable = ({ columns, dataSource, ...props }: TableProps) => {
         columns={columns}
         dataSource={dataSource}
         {...props}
-        className="[&_.ant-table-cell:before]:hidden"
+        className="[&_.ant-table-cell:before]:hidden [&_.ant-table-content]:overflow-auto"
       />
     </div>
   );
