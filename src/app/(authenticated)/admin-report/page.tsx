@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import { useState } from "react";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
@@ -9,6 +9,8 @@ import { MoreVertical, RefreshCw } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import useColumns from "./useColumns";
+import { useAdminReport } from "@/src/api/reports";
+import SkeletonInput from "antd/es/skeleton/Input";
 
 interface StatItem {
   label: string;
@@ -18,28 +20,49 @@ interface StatItem {
   variant?: "white" | "green";
 }
 
-const stats: StatItem[] = [
-  { label: "Events", value: "2230", image: "/svgs/stat-icon.svg" },
-  { label: "Remaining", value: "321", image: "/svgs/red-chart.svg" },
-  { label: "Total paid", value: "33550", image: "/svgs/red-chart.svg" },
-  { label: "Total cost", value: "$540.50", image: "/svgs/Line-chart.svg", variant: "green" },
-];
+const initialParams = {
+  page: 1,
+  perPage: 10,
+};
 
-type Filters = {
+export type Filters = {
   company?: string;
   client?: string;
   eventDate?: string;
   eventStatus?: string;
   dj?: string;
   venue?: string;
+  page: number;
+  perPage: number;
 };
 
 const Page = () => {
-  const [filters, setFilters] = useState<Filters>({});
-  const { columns, data } = useColumns(filters, setFilters as any);
+  const [filters, setFilters] = useState<Filters>(initialParams);
+  const { data: reportData, isLoading } = useAdminReport(filters);
 
-  // NOTE: dropdowns are present in each header and controlled via `filters` state,
-  // but for now we do NOT filter the table. Keep the selects UI-only.
+  const { columns } = useColumns(filters, setFilters);
+
+  const statsData = reportData?.stats;
+
+  const stats: StatItem[] = [
+    { label: "Events", value: "2230", image: "/svgs/stat-icon.svg" },
+    {
+      label: "Remaining",
+      value: statsData?.remaining,
+      image: "/svgs/red-chart.svg",
+    },
+    {
+      label: "Total paid",
+      value: statsData?.totalPaid,
+      image: "/svgs/red-chart.svg",
+    },
+    {
+      label: "Total cost",
+      value: statsData?.totalCost,
+      image: "/svgs/Line-chart.svg",
+      variant: "green",
+    },
+  ];
 
   return (
     <div className="mt-4 space-y-4">
@@ -69,16 +92,29 @@ const Page = () => {
           >
             <div className="flex items-center gap-3">
               <div>
-                <p className={`text-sm ${item.variant === "green" ? "text-white" : "text-primary"}`}>
+                <p
+                  className={`text-sm ${item.variant === "green" ? "text-white" : "text-primary"}`}
+                >
                   {item.label}
                 </p>
-                <p className={`text-xl font-semibold ${item.variant === "green" ? "text-white" : "text-black"}`}>
-                  {item.value}
-                </p>
+                {isLoading ? (
+                  <SkeletonInput />
+                ) : (
+                  <p
+                    className={`text-xl font-semibold ${item.variant === "green" ? "text-white" : "text-black"}`}
+                  >
+                    {item.value}
+                  </p>
+                )}
               </div>
             </div>
 
-            <Image src={item.image} alt={item.imageAlt || item.label} width={52} height={39} />
+            <Image
+              src={item.image}
+              alt={item.imageAlt || item.label}
+              width={52}
+              height={39}
+            />
           </Card>
         ))}
       </div>
@@ -105,16 +141,28 @@ const Page = () => {
           <DatePicker placeholder="Date (To)" className="[&_input]:bg-white!" />
           <div className="flex gap-2">
             <Button className="flex-1 h-full!">Apply Filters</Button>
-            <Button className="flex-1 h-full!" icon={<RefreshCw size={14} />} onClick={() => setFilters({})}>
+            <Button
+              className="flex-1 h-full!"
+              icon={<RefreshCw size={14} />}
+              onClick={() => setFilters(initialParams)}
+            >
               Reset Filters
             </Button>
           </div>
         </div>
         <DataTable
           columns={columns}
-          rowKey={(data) => data.key}
-          dataSource={data}
-          pagination={false}
+          dataSource={reportData?.result}
+          pagination={{
+            pageSize: filters.perPage,
+            current: filters.page,
+            total: reportData?.total,
+            onChange: (page, pageSize) => {
+              setFilters({ ...filters, page, perPage: pageSize });
+            },
+          }}
+          loading={isLoading}
+          rowKey={(data) => data.id}
         />
       </div>
     </div>

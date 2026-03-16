@@ -8,6 +8,9 @@ import { MoreVertical, RefreshCw } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import useColumns from "./useColumns";
+import { useSuppliersReport } from "@/src/api/reports";
+import SkeletonInput from "antd/es/skeleton/Input";
+import { useState } from "react";
 
 interface StatItem {
   label: string;
@@ -18,40 +21,49 @@ interface StatItem {
   icon?: string;
 }
 
-const stats: StatItem[] = [
-  {
-    label: "Events",
-    value: "2230",
-    image: "/svgs/stat-icon.svg",
-    imageAlt: "stat",
-    variant: "white",
-  },
-  {
-    label: "Remaining",
-    value: "2230",
-    image: "/svgs/red-chart.svg",
-    imageAlt: "stat",
-    variant: "white",
-    icon: "/svgs/list-icon.svg",
-  },
-  {
-    label: "Total Paid",
-    value: "2230",
-    image: "/svgs/red-chart.svg",
-    imageAlt: "stat",
-    variant: "white",
-  },
-  {
-    label: "Total Cost",
-    value: "2230",
-    image: "/svgs/Line-chart.svg",
-    imageAlt: "stat",
-    variant: "green",
-  },
-];
+const initialParams = {
+  page: 1,
+  perPage: 10,
+};
 
 const SuppliersPage = () => {
-  const { columns, data } = useColumns();
+  const [params, setParams] = useState(initialParams);
+  const { data: suppliersReportData, isLoading } = useSuppliersReport(params);
+
+  const { columns } = useColumns();
+
+  const statsData = suppliersReportData?.stats;
+  const stats: StatItem[] = [
+    {
+      label: "Events",
+      value: "2230",
+      image: "/svgs/stat-icon.svg",
+      imageAlt: "stat",
+      variant: "white",
+    },
+    {
+      label: "Remaining",
+      value: statsData?.remaining,
+      image: "/svgs/red-chart.svg",
+      imageAlt: "stat",
+      variant: "white",
+      icon: "/svgs/list-icon.svg",
+    },
+    {
+      label: "Total Paid",
+      value: statsData?.totalPaid,
+      image: "/svgs/red-chart.svg",
+      imageAlt: "stat",
+      variant: "white",
+    },
+    {
+      label: "Total Cost",
+      value: statsData?.totalCost,
+      image: "/svgs/Line-chart.svg",
+      imageAlt: "stat",
+      variant: "green",
+    },
+  ];
   return (
     <div className="mt-4 space-y-4">
       <div className="flex items-center justify-between">
@@ -85,11 +97,15 @@ const SuppliersPage = () => {
                 >
                   {item.label}
                 </p>
-                <p
-                  className={`text-xl font-semibold ${item.variant === "green" ? "text-white" : "text-black"}`}
-                >
-                  {item.value}
-                </p>
+                {isLoading ? (
+                  <SkeletonInput />
+                ) : (
+                  <p
+                    className={`text-xl font-semibold ${item.variant === "green" ? "text-white" : "text-black"}`}
+                  >
+                    {item.value}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -132,9 +148,16 @@ const SuppliersPage = () => {
         </div>
         <DataTable
           columns={columns}
-          rowKey={(data) => data.key}
-          dataSource={data}
-          pagination={false}
+          dataSource={suppliersReportData?.result}
+          pagination={{
+            pageSize: params.perPage,
+            current: params.page,
+            total: suppliersReportData?.total,
+            onChange: (page, pageSize) =>
+              setParams({ ...params, page, perPage: pageSize }),
+          }}
+          rowKey={(data) => data.id}
+          loading={isLoading}
         />
       </div>
     </div>

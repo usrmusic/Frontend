@@ -1,5 +1,5 @@
 import { TableColumnsType } from "antd";
-import React from "react";
+import dayjs from "dayjs";
 
 const useColumns = () => {
   const columns: TableColumnsType = [
@@ -32,10 +32,11 @@ const useColumns = () => {
           </select>
         </div>
       ),
+      render: (date) => <>{dayjs(date).format("MM-DD-YYYY")}</>,
     },
     {
       key: "startTime",
-      dataIndex: "startTime",
+      dataIndex: "start_time",
       title: (
         <div>
           <p className="mb-1">Start Time</p>
@@ -47,10 +48,12 @@ const useColumns = () => {
           </select>
         </div>
       ),
+      render: (date) => <>{dayjs(date).format("MM-DD-YYYY")}</>,
+
     },
     {
       key: "endTime",
-      dataIndex: "endTime",
+      dataIndex: "end_time",
       title: (
         <div>
           <p className="mb-1">End Time</p>
@@ -62,6 +65,7 @@ const useColumns = () => {
           </select>
         </div>
       ),
+      render: (date) => <>{dayjs(date).format("MM-DD-YYYY")}</>,
     },
     {
       key: "venue",
@@ -125,42 +129,8 @@ const useColumns = () => {
       ),
     },
   ];
-  const data = [
-    {
-      key: "1",
-      supplier: "DJ Mike",
-      date: "2024-05-01",
-      startTime: "18:00",
-      endTime: "23:00",
-      venue: "Grand Hall",
-      requirement: "Lighting, Sound System",
-      costs: "£300",
-      quantity: 2,
-    },
-    {
-      key: "2",
-      supplier: "DJ Anna",
-      date: "2024-05-03",
-      startTime: "19:00",
-      endTime: "00:00",
-      venue: "Skyline Venue",
-      requirement: "Sound System",
-      costs: "£250",
-      quantity: 1,
-    },
-    {
-      key: "3",
-      supplier: "DJ Sam",
-      date: "2024-05-05",
-      startTime: "17:00",
-      endTime: "22:00",
-      venue: "Oceanic Lounge",
-      requirement: "Lighting",
-      costs: "£200",
-      quantity: 1,
-    },
-  ];
-  return { columns, data };
+
+  return { columns };
 };
 
 export default useColumns;
