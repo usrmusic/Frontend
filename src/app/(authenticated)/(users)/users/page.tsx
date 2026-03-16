@@ -50,7 +50,7 @@ const UsersPage = () => {
     },
     {
       title: "Password",
-      dataIndex: "password",
+      dataIndex: "password_text",
       key: "password",
     },
     {
@@ -65,7 +65,7 @@ const UsersPage = () => {
     },
     {
       title: "Role",
-      dataIndex: "role",
+      dataIndex: "role.name",
       key: "role",
     },
     {
