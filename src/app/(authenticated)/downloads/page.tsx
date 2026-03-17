@@ -1,24 +1,46 @@
 "use client";
+import { useDeleteFile, useDownloadsList } from "@/src/api/downloads";
 import Button from "@/src/components/Button";
+import AlertModal from "@/src/components/common/AlertModal";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
 import Input from "@/src/components/Input";
+import { useDebounce } from "@/src/hooks/useDebounce";
 import { TableColumnsType } from "antd";
 import { FileUp, Pen, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 
-const page = () => {
+const initialParams = {
+  page: 1,
+  perPage: 10,
+  search: "",
+};
+
+const DownloadsPage = () => {
+  const [params, setParams] = useState(initialParams);
+  const [search, setSearch] = useState("");
+  const [fileId, setFileId] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const debouncedSearch = useDebounce(search, 1000);
+
+  const { data: downloadsData, isLoading } = useDownloadsList({
+    ...params,
+    search: debouncedSearch,
+  });
+
+  const deleteFile = useDeleteFile();
   const columns: TableColumnsType = [
     {
       title: "File Name",
-      dataIndex: "fileName",
+      dataIndex: "display_name",
       key: "fileName",
       width: "70%",
     },
     {
       title: "Type",
-      dataIndex: "type",
-      key: "type",
+      dataIndex: "extension",
+      key: "extension",
     },
     {
       title: "Size",
@@ -27,14 +49,21 @@ const page = () => {
     },
     {
       title: "Actions",
-      dataIndex: "actions",
       key: "actions",
-      render: () => (
+      render: (data) => (
         <div className="flex gap-2">
           <Button size="small" type="text" showShadow={false}>
             <Pen size={14} color="#719984" />
           </Button>
-          <Button size="small" type="text" showShadow={false}>
+          <Button
+            size="small"
+            type="text"
+            showShadow={false}
+            onClick={() => {
+              setModalOpen(true);
+              setFileId(data.id);
+            }}
+          >
             <Trash2 size={14} color="#E74C6C" />
           </Button>
         </div>
@@ -42,68 +71,12 @@ const page = () => {
     },
   ];
 
-  const data = [
-    {
-      key: "1",
-      fileName: "example-document.pdf",
-      type: "PDF",
-      size: "124 KB",
-    },
-    {
-      key: "2",
-      fileName: "presentation.pptx",
-      type: "PPTX",
-      size: "2.1 MB",
-    },
-    {
-      key: "3",
-      fileName: "photo.jpg",
-      type: "JPG",
-      size: "813 KB",
-    },
-    {
-      key: "4",
-      fileName: "report.xlsx",
-      type: "XLSX",
-      size: "567 KB",
-    },
-    {
-      key: "5",
-      fileName: "archive.zip",
-      type: "ZIP",
-      size: "4.2 MB",
-    },
-    {
-      key: "6",
-      fileName: "notes.txt",
-      type: "TXT",
-      size: "5 KB",
-    },
-    {
-      key: "7",
-      fileName: "resume.docx",
-      type: "DOCX",
-      size: "103 KB",
-    },
-    {
-      key: "8",
-      fileName: "budget.csv",
-      type: "CSV",
-      size: "27 KB",
-    },
-    {
-      key: "9",
-      fileName: "music.mp3",
-      type: "MP3",
-      size: "3.9 MB",
-    },
-    {
-      key: "10",
-      fileName: "design.psd",
-      type: "PSD",
-      size: "13.7 MB",
-    },
-  ];
+  const handleDelete = () => {
+    deleteFile.mutate(fileId, {
+      onSuccess: () => setModalOpen(false),
+    });
+  };
+
   return (
     <div className="mt-4 space-y-4">
       <div className="flex items-center gap-3">
@@ -119,6 +92,8 @@ const page = () => {
             <input
               type="text"
               placeholder="Search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               className="w-full bg-transparent! text-sm placeholder:text-gray-500"
             />
           </div>
@@ -134,9 +109,29 @@ const page = () => {
         Define the columns and data for the DataTable.
         Columns: File Name, Type, Size, Actions
       */}
-      <DataTable columns={columns} dataSource={data} pagination={false} />
+      <DataTable
+        columns={columns}
+        dataSource={downloadsData?.data}
+        loading={isLoading}
+        pagination={{
+          pageSize: params.perPage,
+          current: params.page,
+          total: downloadsData?.meta.total,
+          onChange: (page, pageSize) =>
+            setParams({ ...params, page, perPage: pageSize }),
+        }}
+        rowKey={(data) => data.id}
+      />
+      <AlertModal
+        open={modalOpen}
+        text="Are you sure you want to delete this file?"
+        handleCancel={() => setModalOpen(false)}
+        onYes={handleDelete}
+        title="Delete File"
+        loading={deleteFile.isPending}
+      />
     </div>
   );
 };
 
-export default page;
+export default DownloadsPage;

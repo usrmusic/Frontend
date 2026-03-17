@@ -13,7 +13,8 @@ import {
   useDjDropdown,
   useVenueDropdown,
 } from "@/src/api/dropdown";
-import { useSingleClient } from "@/src/api/enquiry";
+import { usePackageData, useSingleClient } from "@/src/api/enquiry";
+import dayjs from "dayjs";
 
 type EnquiryFormValues = {
   name: string;
@@ -25,11 +26,17 @@ type EnquiryFormValues = {
   endTime: string;
   startTime: string;
   guestCount: string | number;
-  dj: string;
+  dj: { id: number; name: string };
   depositAmount: string | number;
   notes: string;
   tellMeMore: string;
 };
+
+interface PackageParams {
+  staff: number | null;
+  package_name: string;
+  event_date: string;
+}
 
 const nameOptions = [
   {
@@ -103,11 +110,18 @@ const NewEnquiryPage = () => {
   const [showNameInput, setShowNameInput] = useState(false);
   const [showVenueInput, setShowVenueInput] = useState(false);
   const [clientId, setClientId] = useState<null | number>(null);
-  const formikRef = useRef<FormikProps<EnquiryFormValues>>(null);
+  const [packageParams, setPackageParams] = useState<PackageParams>({
+    event_date: "",
+    staff: null,
+    package_name: "",
+  });
   const { data: clientDropdownName } = useClientDropdown();
   const { data: venueDropdownName } = useVenueDropdown();
   const { data: djDropdownData } = useDjDropdown();
+  const { data: packageData } = usePackageData(packageParams);
   const { data: clientDetails } = useSingleClient(clientId ?? null);
+  const formikRef = useRef<FormikProps<EnquiryFormValues>>(null);
+  console.log(packageData);
 
   useEffect(() => {
     if (clientDetails && formikRef.current) {
@@ -131,7 +145,7 @@ const NewEnquiryPage = () => {
     endTime: "",
     startTime: "",
     guestCount: "",
-    dj: "",
+    dj: { id: "", name: "" },
     depositAmount: "",
     notes: "",
     tellMeMore: "",
@@ -415,6 +429,19 @@ const NewEnquiryPage = () => {
                                   type="date"
                                   error={touched.eventDate && errors.eventDate}
                                   required
+                                  onChange={(
+                                    e: React.ChangeEvent<HTMLInputElement>,
+                                  ) => {
+                                    const date = dayjs(e.target.value).format(
+                                      "DD-MM-YYYY",
+                                    );
+                                    field.onChange(e);
+                                    setPackageParams({
+                                      ...packageParams,
+                                      event_date: date,
+                                    });
+                                  }}
+                                  value={field.value}
                                 />
                               </div>
                             )}
@@ -472,8 +499,21 @@ const NewEnquiryPage = () => {
                                 </label>
                                 <select
                                   className="h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none"
-                                  value={field.value}
-                                  onChange={field.onChange}
+                                  value={values.dj?.id}
+                                  onChange={(e) => {
+                                    const value = Number(e.target.value);
+                                    const selectedDj = djDropdownData?.find(
+                                      (item) => item.id === value,
+                                    );
+                                    setPackageParams({
+                                      ...packageParams,
+                                      staff: selectedDj?.id ?? null,
+                                      package_name:
+                                        selectedDj?.package_users?.[0]
+                                          ?.package_name ?? "",
+                                    });
+                                    setFieldValue("dj", selectedDj);
+                                  }}
                                   name={field.name}
                                 >
                                   <option value="">Choose DJ</option>
@@ -486,7 +526,7 @@ const NewEnquiryPage = () => {
                                 </select>
                                 {touched.dj && errors.dj && (
                                   <div className="text-red-500 text-xs mt-1">
-                                    {errors.dj}
+                                    {errors.dj.name}
                                   </div>
                                 )}
                               </div>
@@ -538,13 +578,12 @@ const NewEnquiryPage = () => {
                       <span className="w-1/12 text-center">Unit Price</span>
                       <span className="w-1/12 text-center">Qty</span>
                       <span className="w-1/12 text-center">Price</span>
-                      <span className="w-2/12 text-center">Notes</span>
                     </div>
                     <div className="space-y-2">
                       {Array.from({ length: 5 }).map((_, index) => (
                         <div
                           key={index}
-                          className="flex items-center rounded-2xl bg-secondary-50/60 px-3 py-2 text-xs"
+                          className="flex items-center justify-between rounded-2xl bg-secondary-50/60 px-3 py-2 text-xs"
                         >
                           <div className="flex w-7/12 items-center gap-2">
                             <input type="checkbox" className="size-4 rounded" />
@@ -553,44 +592,45 @@ const NewEnquiryPage = () => {
                           <div className="w-1/12 text-center">0</div>
                           <div className="w-1/12 text-center">1</div>
                           <div className="w-1/12 text-center">1</div>
-                          <div className="w-2/12 text-center">
-                            <button className="hover:bg-white!">
-                              <SquareCheckBig size={19} />
-                            </button>
-                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
                 </Card>
 
-                {/* Starting Package - bottom table */}
+                {/* Extras - bottom table */}
                 <Card variant="white" className="p-0 overflow-hidden">
                   <div className="flex items-center justify-between bg-primary px-6 py-4 text-white">
-                    <h3 className="font-medium">Starting Package</h3>
-                    <p className="text-xs text-white/80">Basics</p>
+                    <h3 className="font-medium">Extras</h3>
+                    <p className="text-xs text-white/80">Extras</p>
                   </div>
                   <div className="px-6 py-5">
                     <div className="mb-2 flex items-center justify-between text-[11px] text-gray-500">
-                      <span className="w-7/12">Basics</span>
+                      <span className="w-7/12">Extras</span>
                       <span className="w-1/12 text-center">Unit Price</span>
                       <span className="w-1/12 text-center">Qty</span>
                       <span className="w-1/12 text-center">Price</span>
                       <span className="w-2/12 text-center">Notes</span>
                     </div>
                     <div className="space-y-2">
-                      {Array.from({ length: 5 }).map((_, index) => (
+                      {packageData?.data?.extras?.map((extra) => (
                         <div
-                          key={index}
+                          key={extra.id}
                           className="flex items-center rounded-2xl bg-secondary-50/60 px-3 py-2 text-xs"
                         >
                           <div className="flex w-7/12 items-center gap-2">
                             <input type="checkbox" className="size-4 rounded" />
-                            <span>Professional DJ/Host</span>
+                            <span>{extra.name}</span>
                           </div>
-                          <div className="w-1/12 text-center">0</div>
-                          <div className="w-1/12 text-center">1</div>
-                          <div className="w-1/12 text-center">1</div>
+                          <div className="w-1/12 text-center">
+                            {extra.unitPrice ?? 0}
+                          </div>
+                          <div className="w-1/12 text-center">
+                            {extra.quantity ?? 1}
+                          </div>
+                          <div className="w-1/12 text-center">
+                            {extra.price ?? 1}
+                          </div>
                           <div className="w-2/12 text-center">
                             <button className="hover:bg-white!">
                               <SquareCheckBig size={19} />
@@ -607,7 +647,9 @@ const NewEnquiryPage = () => {
               <div className="col-span-12 xl:col-span-3 space-y-6">
                 {/* Summary card */}
                 <Card variant="white" className="p-3 overflow-hidden">
-                  <h3 className="text-sm font-semibold pb-4">Arun Sandhar</h3>
+                  <h3 className="text-sm font-semibold pb-4">
+                    {values.dj.name}
+                  </h3>
                   <div className="pb-5 pt-1 text-xs text-gray-700 space-y-1">
                     <p>• Professional DJ/Host</p>
                     <p>• Digital Sound System &amp; Technician</p>
