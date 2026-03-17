@@ -46,8 +46,8 @@ const ClientsPageContent = () => {
     },
     {
       title: "Password",
-      dataIndex: "password",
-      key: "password",
+      dataIndex: "password_text",
+      key: "password_text",
     },
     {
       title: "Status",

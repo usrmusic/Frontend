@@ -1,16 +1,11 @@
 import { TableColumnsType } from "antd";
-import React from "react";
+import { Dispatch, SetStateAction } from "react";
+import { Filters } from "./page";
 
-type Filters = {
-  company?: string;
-  client?: string;
-  eventDate?: string;
-  eventStatus?: string;
-  dj?: string;
-  venue?: string;
-};
-
-const useColumns = (filters?: Filters, setFilters?: (f: Filters) => void) => {
+const useColumns = (
+  filters: Filters,
+  setFilters: Dispatch<SetStateAction<Filters>>,
+) => {
   const columns: TableColumnsType = [
     {
       key: "company",
@@ -21,12 +16,16 @@ const useColumns = (filters?: Filters, setFilters?: (f: Filters) => void) => {
           <select
             className="border rounded-lg w-[120px]"
             value={filters?.company || ""}
-            onChange={(e) => setFilters && setFilters({ ...(filters || {}), company: e.target.value })}
+            onChange={(e) =>
+              setFilters({ ...filters, company: e.target.value })
+            }
           >
             <option value=""></option>
             <option value="USI Music Ltd">USI Music Ltd</option>
             <option value="USI Holding Ltd">USI Holding Ltd</option>
-            <option value="Unique Soundz Roadshow Ltd">Unique Soundz Roadshow Ltd</option>
+            <option value="Unique Soundz Roadshow Ltd">
+              Unique Soundz Roadshow Ltd
+            </option>
           </select>
         </div>
       ),
@@ -40,7 +39,10 @@ const useColumns = (filters?: Filters, setFilters?: (f: Filters) => void) => {
           <select
             className="border rounded-lg w-[140px]"
             value={filters?.client || ""}
-            onChange={(e) => setFilters && setFilters({ ...(filters || {}), client: e.target.value })}
+            onChange={(e) =>
+              setFilters &&
+              setFilters({ ...(filters || {}), client: e.target.value })
+            }
           >
             <option value=""></option>
             <option value="Gugan Sangha">Gugan Sangha</option>
@@ -59,7 +61,10 @@ const useColumns = (filters?: Filters, setFilters?: (f: Filters) => void) => {
           <select
             className="border rounded-lg w-[120px]"
             value={filters?.eventDate || ""}
-            onChange={(e) => setFilters && setFilters({ ...(filters || {}), eventDate: e.target.value })}
+            onChange={(e) =>
+              setFilters &&
+              setFilters({ ...(filters || {}), eventDate: e.target.value })
+            }
           >
             <option value=""></option>
             <option value="02/08/2025">02/08/2025</option>
@@ -78,7 +83,10 @@ const useColumns = (filters?: Filters, setFilters?: (f: Filters) => void) => {
           <select
             className="border rounded-lg w-[120px]"
             value={filters?.eventStatus || ""}
-            onChange={(e) => setFilters && setFilters({ ...(filters || {}), eventStatus: e.target.value })}
+            onChange={(e) =>
+              setFilters &&
+              setFilters({ ...(filters || {}), eventStatus: e.target.value })
+            }
           >
             <option value=""></option>
             <option value="COMPLETED">COMPLETED</option>
@@ -95,7 +103,9 @@ const useColumns = (filters?: Filters, setFilters?: (f: Filters) => void) => {
         };
         const classes = map[value] || "bg-gray-100 text-gray-700";
         return (
-          <span className={`${classes} px-3 py-1 rounded-full text-xs font-semibold inline-block`}>
+          <span
+            className={`${classes} px-3 py-1 rounded-full text-xs font-semibold inline-block`}
+          >
             {value}
           </span>
         );
@@ -103,14 +113,17 @@ const useColumns = (filters?: Filters, setFilters?: (f: Filters) => void) => {
     },
     {
       key: "dj",
-      dataIndex: "dj",
+      dataIndex: "dj_first_name ",
       title: (
         <div>
           <p className="mb-1">DJ</p>
           <select
             className="border rounded-lg w-[120px]"
             value={filters?.dj || ""}
-            onChange={(e) => setFilters && setFilters({ ...(filters || {}), dj: e.target.value })}
+            onChange={(e) =>
+              setFilters &&
+              setFilters({ ...(filters || {}), dj: e.target.value })
+            }
           >
             <option value=""></option>
             <option value="DJ Neetu">DJ Neetu</option>
@@ -129,7 +142,10 @@ const useColumns = (filters?: Filters, setFilters?: (f: Filters) => void) => {
           <select
             className="border rounded-lg w-[140px]"
             value={filters?.venue || ""}
-            onChange={(e) => setFilters && setFilters({ ...(filters || {}), venue: e.target.value })}
+            onChange={(e) =>
+              setFilters &&
+              setFilters({ ...(filters || {}), venue: e.target.value })
+            }
           >
             <option value=""></option>
             <option value="Sandon Hall">Sandon Hall</option>

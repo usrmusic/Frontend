@@ -1,8 +1,11 @@
 "use client";
+import { useUploadList } from "@/src/api/upload";
 import Button from "@/src/components/Button";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, Export, MagnifyingGlass } from "@/src/components/Icons";
+import { useDebounce } from "@/src/hooks/useDebounce";
 import { TableColumnsType } from "antd";
+import dayjs from "dayjs";
 import {
   Copy,
   Download,
@@ -12,23 +15,39 @@ import {
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 
-const page = () => {
+const initialParams = {
+  page: 1,
+  perPage: 10,
+  search: "",
+};
+const FileUploadPage = () => {
+  const [params, setParams] = useState(initialParams);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 1000);
+
+  const { data: uploadListData, isLoading } = useUploadList({
+    ...params,
+    search: debouncedSearch,
+  });
+
   const columns: TableColumnsType = [
     {
       title: "File Name",
-      dataIndex: "fileName",
-      key: "fileName",
+      dataIndex: "file_name",
+      key: "file_name",
     },
     {
       title: "Type",
-      dataIndex: "type",
-      key: "type",
+      dataIndex: "file_type",
+      key: "file_type",
     },
     {
       title: "Upload At",
-      dataIndex: "uploadAt",
-      key: "uploadAt",
+      dataIndex: "created_at",
+      key: "created_at",
+      render: (date) => <>{dayjs(date).format("DD-MM-YYYY")}</>,
     },
     {
       title: "Event",
@@ -58,88 +77,6 @@ const page = () => {
     },
   ];
 
-  const data = [
-    {
-      key: "1",
-      fileName: "example-document.pdf",
-      type: "PDF",
-      size: "124 KB",
-      event: "23-08-2025 (Jagsdeep Singh Bhondal)",
-      uploadAt: "25/03/2025 - (17:44)",
-    },
-    {
-      key: "2",
-      fileName: "presentation.pptx",
-      type: "PPTX",
-      size: "2.1 MB",
-      event: "28-07-2025 (Amit Kumar)",
-      uploadAt: "26/03/2025 - (09:13)",
-    },
-    {
-      key: "3",
-      fileName: "photo.jpg",
-      type: "JPG",
-      size: "813 KB",
-      event: "10-06-2026 (Sara Lee)",
-      uploadAt: "01/04/2025 - (12:36)",
-    },
-    {
-      key: "4",
-      fileName: "report.xlsx",
-      type: "XLSX",
-      size: "567 KB",
-      event: "11-11-2026 (Carlos Romero)",
-      uploadAt: "10/05/2025 - (15:20)",
-    },
-    {
-      key: "5",
-      fileName: "archive.zip",
-      type: "ZIP",
-      size: "4.2 MB",
-      event: "31-12-2024 (Emily Chen)",
-      uploadAt: "17/06/2025 - (08:45)",
-    },
-    {
-      key: "6",
-      fileName: "notes.txt",
-      type: "TXT",
-      size: "5 KB",
-      event: "03-03-2025 (Rajat Kapoor)",
-      uploadAt: "03/03/2025 - (14:02)",
-    },
-    {
-      key: "7",
-      fileName: "resume.docx",
-      type: "DOCX",
-      size: "103 KB",
-      event: "15-05-2025 (Anya Singh)",
-      uploadAt: "15/05/2025 - (17:05)",
-    },
-    {
-      key: "8",
-      fileName: "budget.csv",
-      type: "CSV",
-      size: "27 KB",
-      event: "20-07-2025 (Brian Miller)",
-      uploadAt: "19/06/2025 - (18:32)",
-    },
-    {
-      key: "9",
-      fileName: "music.mp3",
-      type: "MP3",
-      size: "3.9 MB",
-      event: "29-08-2025 (Sidney Clark)",
-      uploadAt: "29/08/2025 - (21:01)",
-    },
-    {
-      key: "10",
-      fileName: "design.psd",
-      type: "PSD",
-      size: "13.7 MB",
-      event: "12-10-2025 (Gina Stone)",
-      uploadAt: "12/10/2025 - (10:24)",
-    },
-  ];
   return (
     <div className="mt-4 space-y-4">
       <div className="flex justify-between items-center">
@@ -163,13 +100,27 @@ const page = () => {
               type="text"
               placeholder="Search"
               className="w-full bg-transparent! text-sm placeholder:text-gray-500"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
         </div>
-        <DataTable columns={columns} dataSource={data} pagination={false} />
+        <DataTable
+          columns={columns}
+          dataSource={uploadListData?.data}
+          loading={isLoading}
+          pagination={{
+            pageSize: params.perPage,
+            current: params.page,
+            total: uploadListData?.meta.total,
+            onChange: (page, pageSize) =>
+              setParams({ ...params, page, perPage: pageSize }),
+          }}
+          rowKey={(data) => data.id}
+        />
       </div>
     </div>
   );
 };
 
-export default page;
+export default FileUploadPage;
