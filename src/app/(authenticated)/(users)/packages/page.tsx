@@ -9,8 +9,9 @@ import Input from "@/src/components/Input";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import { Modal, notification, TableColumnsType } from "antd";
 import { TableRowSelection } from "antd/es/table/interface";
-import { Eye, User } from "lucide-react";
+import { Eye, Pencil, User } from "lucide-react";
 import { useState } from "react";
+import PackageModal from "./PackageModal";
 
 const initialParams = {
   page: 1,
@@ -23,6 +24,7 @@ const PackagesPage = () => {
   const [search, setSearch] = useState("");
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [alertModal, setAlertModal] = useState(false);
+  const [packageItem, setPackageItem] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const debouncedSearch = useDebounce(search, 1000);
 
@@ -34,6 +36,7 @@ const PackagesPage = () => {
   const deletePackage = useDeletePackage();
 
   const handleCancel = () => {
+    setPackageItem(null);
     setModalOpen(false);
   };
 
@@ -90,7 +93,7 @@ const PackagesPage = () => {
     {
       title: "Actions",
       key: "actions",
-      render: () => (
+      render: (data) => (
         <div className="flex gap-2">
           <span className="cursor-pointer" title="View">
             {/* Eye Icon (outline) */}
@@ -100,6 +103,14 @@ const PackagesPage = () => {
             {/* User Icon */}
             <User size={14} />
           </span>
+          <button
+            onClick={() => {
+              setModalOpen(true);
+              setPackageItem(data);
+            }}
+          >
+            <Pencil size={14} />
+          </button>
         </div>
       ),
     },
@@ -147,24 +158,13 @@ const PackagesPage = () => {
         rowKey={(data) => Number(data.id)}
         rowSelection={rowSelection}
       />
-      <Modal open={modalOpen} onCancel={handleCancel} title="Add" okText="Add">
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Staff</label>
-            <select className="w-full h-10 rounded-xl px-3 text-sm bg-secondary-100">
-              <option value="">Select Staff</option>
-              <option value="staff1">Staff 1</option>
-              <option value="staff2">Staff 2</option>
-              <option value="staff3">Staff 3</option>
-            </select>
-          </div>
-          <Input label="Package Name" />
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Cost Price" type="number" />
-            <Input label="Sell Price" type="number" />
-          </div>
-        </div>
-      </Modal>
+      {modalOpen && (
+        <PackageModal
+          handleCancel={handleCancel}
+          modalOpen={modalOpen}
+          initialValues={packageItem}
+        />
+      )}
       {alertModal && (
         <AlertModal
           loading={deletePackage.isPending}
