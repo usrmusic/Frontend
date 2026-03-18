@@ -1,12 +1,14 @@
 "use client";
-import { usePackages } from "@/src/api/usersApi";
+import { useDeletePackage, usePackages } from "@/src/api/usersApi";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
+import AlertModal from "@/src/components/common/AlertModal";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
 import Input from "@/src/components/Input";
 import { useDebounce } from "@/src/hooks/useDebounce";
-import { Modal, TableColumnsType } from "antd";
+import { Modal, notification, TableColumnsType } from "antd";
+import { TableRowSelection } from "antd/es/table/interface";
 import { Eye, User } from "lucide-react";
 import { useState } from "react";
 
@@ -19,16 +21,45 @@ const initialParams = {
 const PackagesPage = () => {
   const [params, setParams] = useState(initialParams);
   const [search, setSearch] = useState("");
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [alertModal, setAlertModal] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const debouncedSearch = useDebounce(search, 1000);
 
   const { data: packagesData, isLoading } = usePackages({
     ...params,
     search: debouncedSearch,
   });
-  const [modalOpen, setModalOpen] = useState(false);
+
+  const deletePackage = useDeletePackage();
 
   const handleCancel = () => {
     setModalOpen(false);
+  };
+
+  const onSelectChange = (newSelectedRowKeys: React.Key[]) => {
+    setSelectedRowKeys(newSelectedRowKeys);
+  };
+
+  const rowSelection: TableRowSelection = {
+    selectedRowKeys,
+    onChange: onSelectChange,
+  };
+
+  const handleDelete = () => {
+    deletePackage.mutate(
+      { ids: selectedRowKeys, force: false },
+      {
+        onSuccess: () => {
+          setAlertModal(false);
+          notification.success({
+            message: "Success",
+            description: "Package(s) deleted successfully.",
+            placement: "topRight",
+          });
+        },
+      },
+    );
   };
   const columns: TableColumnsType = [
     {
@@ -91,8 +122,12 @@ const PackagesPage = () => {
           </div>
           <div className="flex gap-2">
             <Button onClick={() => setModalOpen(true)}>Add</Button>
-            <Button>Remove</Button>
-            <Button>Deleted Users</Button>
+            <Button
+              disabled={selectedRowKeys.length === 0}
+              onClick={() => setAlertModal(true)}
+            >
+              Remove
+            </Button>
             <Button>Export Data</Button>
           </div>
         </div>
@@ -109,7 +144,8 @@ const PackagesPage = () => {
           onChange: (page, pageSize) =>
             setParams({ ...params, page, perPage: pageSize }),
         }}
-        rowKey={(data) => data.id}
+        rowKey={(data) => Number(data.id)}
+        rowSelection={rowSelection}
       />
       <Modal open={modalOpen} onCancel={handleCancel} title="Add" okText="Add">
         <div className="space-y-4">
@@ -129,6 +165,16 @@ const PackagesPage = () => {
           </div>
         </div>
       </Modal>
+      {alertModal && (
+        <AlertModal
+          loading={deletePackage.isPending}
+          onYes={handleDelete}
+          open={alertModal}
+          handleCancel={() => setAlertModal(false)}
+          title="Delete Pacakge"
+          text="Are you sure you want to delete package(s)?"
+        />
+      )}
     </div>
   );
 };

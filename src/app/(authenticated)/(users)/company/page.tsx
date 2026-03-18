@@ -1,12 +1,14 @@
 "use client";
-import { Company, useCompanies } from "@/src/api/usersApi";
+import { Company, useCompanies, useDeleteCompany } from "@/src/api/usersApi";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
+import AlertModal from "@/src/components/common/AlertModal";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
 import Input from "@/src/components/Input";
 import { useDebounce } from "@/src/hooks/useDebounce";
-import { Modal, TableColumnsType } from "antd";
+import { Modal, notification, TableColumnsType } from "antd";
+import { TableRowSelection } from "antd/es/table/interface";
 import {
   Building2,
   Eye,
@@ -34,15 +36,43 @@ const CompanyPage = () => {
   const [params, setParams] = useState(initialParams);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 1000);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [alertModal, setAlertModal] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const { data: companiesData, isLoading } = useCompanies({
     ...params,
     search: debouncedSearch,
   });
-  const [modalOpen, setModalOpen] = useState(false);
+  const deleteCompany = useDeleteCompany();
 
   const handleCancel = () => {
     setModalOpen(false);
+  };
+
+  const onSelectChange = (newSelectedRowKeys: React.Key[]) => {
+    setSelectedRowKeys(newSelectedRowKeys);
+  };
+
+  const rowSelection: TableRowSelection = {
+    selectedRowKeys,
+    onChange: onSelectChange,
+  };
+
+  const handleDelete = () => {
+    deleteCompany.mutate(
+      { ids: selectedRowKeys, force: false },
+      {
+        onSuccess: () => {
+          setAlertModal(false);
+          notification.success({
+            message: "Success",
+            description: "Package(s) deleted successfully.",
+            placement: "topRight",
+          });
+        },
+      },
+    );
   };
   const columns: TableColumnsType = [
     {
@@ -105,8 +135,12 @@ const CompanyPage = () => {
           </div>
           <div className="flex gap-2">
             <Button onClick={() => setModalOpen(true)}>Add</Button>
-            <Button>Remove</Button>
-            <Button>Deleted Users</Button>
+            <Button
+              disabled={selectedRowKeys.length === 0}
+              onClick={() => setAlertModal(true)}
+            >
+              Remove
+            </Button>
             <Button>Export Data</Button>
           </div>
         </div>
@@ -115,6 +149,7 @@ const CompanyPage = () => {
       <DataTable
         columns={columns}
         loading={isLoading}
+        rowSelection={rowSelection}
         dataSource={companiesData?.data}
         pagination={{
           pageSize: params.perPage,
@@ -183,6 +218,16 @@ const CompanyPage = () => {
           </div>
         </div>
       </Modal>
+      {alertModal && (
+        <AlertModal
+          loading={deleteCompany.isPending}
+          onYes={handleDelete}
+          open={alertModal}
+          handleCancel={() => setAlertModal(false)}
+          title="Delete User"
+          text="Are you sure you want to delete user(s)?"
+        />
+      )}
     </div>
   );
 };

@@ -1,14 +1,16 @@
 "use client";
-import { useClients } from "@/src/api/usersApi";
+import { useClients, useDeleteClient } from "@/src/api/usersApi";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
 import { useDebounce } from "@/src/hooks/useDebounce";
-import { TableColumnsType } from "antd";
+import { notification, TableColumnsType } from "antd";
 import { useState, Suspense } from "react";
 import ClientModal from "./ClientModal";
 import { Pencil } from "lucide-react";
+import { TableRowSelection } from "antd/es/table/interface";
+import AlertModal from "@/src/components/common/AlertModal";
 
 const initialParams = {
   page: 1,
@@ -19,7 +21,10 @@ const initialParams = {
 const ClientsPageContent = () => {
   const [params, setParams] = useState(initialParams);
   const [search, setSearch] = useState("");
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+
   const [modalOpen, setModalOpen] = useState(false);
+  const [alertModal, setAlertModal] = useState(false);
   const [clientData, setClientData] = useState(null);
 
   const debouncedSearch = useDebounce(search, 1000);
@@ -27,10 +32,36 @@ const ClientsPageContent = () => {
     ...params,
     search: debouncedSearch,
   });
+  const deleteClient = useDeleteClient();
 
   const handleCancel = () => {
     setClientData(null);
     setModalOpen(false);
+  };
+
+  const onSelectChange = (newSelectedRowKeys: React.Key[]) => {
+    setSelectedRowKeys(newSelectedRowKeys);
+  };
+
+  const rowSelection: TableRowSelection = {
+    selectedRowKeys,
+    onChange: onSelectChange,
+  };
+
+  const handleDelete = () => {
+    deleteClient.mutate(
+      { ids: selectedRowKeys, force: false },
+      {
+        onSuccess: () => {
+          setAlertModal(false);
+          notification.success({
+            message: "Success",
+            description: "Client(s) deleted successfully.",
+            placement: "topRight",
+          });
+        },
+      },
+    );
   };
 
   const columns: TableColumnsType = [
@@ -113,8 +144,12 @@ const ClientsPageContent = () => {
           </div>
           <div className="flex gap-2">
             <Button onClick={() => setModalOpen(true)}>Add</Button>
-            <Button>Remove</Button>
-            <Button>Deleted Users</Button>
+            <Button
+              disabled={selectedRowKeys.length === 0}
+              onClick={() => setAlertModal(true)}
+            >
+              Remove
+            </Button>
             <Button>Export Data</Button>
           </div>
         </div>
@@ -131,6 +166,7 @@ const ClientsPageContent = () => {
           onChange: (page, pageSize) =>
             setParams({ ...params, page, perPage: pageSize }),
         }}
+        rowSelection={rowSelection}
         rowKey={(data) => data.id}
       />
       {modalOpen && (
@@ -138,6 +174,16 @@ const ClientsPageContent = () => {
           modalOpen={modalOpen}
           onCancel={handleCancel}
           initialValues={clientData}
+        />
+      )}
+      {alertModal && (
+        <AlertModal
+          loading={deleteClient.isPending}
+          onYes={handleDelete}
+          open={alertModal}
+          handleCancel={() => setAlertModal(false)}
+          title="Delete Client"
+          text="Are you sure you want to delete client(s)?"
         />
       )}
     </div>

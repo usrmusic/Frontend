@@ -3,6 +3,7 @@ import { AntdRegistry } from "@ant-design/nextjs-registry";
 import React from "react";
 import ThemeConfig from "./ThemeConfig";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ToastContainer } from "react-toastify";
 
 function makeQueryClient() {
   return new QueryClient({
@@ -46,6 +47,7 @@ const ClientProviders = ({ children }: { children: React.ReactNode }) => {
         <QueryClientProvider client={queryClient}>
           {children}
         </QueryClientProvider>
+        <ToastContainer position="top-right" />
       </ThemeConfig>
     </AntdRegistry>
   );

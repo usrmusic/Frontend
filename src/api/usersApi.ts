@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import AxiosInstance from "../lib/axios";
-import { notification } from "antd";
 import axios from "axios";
+import { Key } from "react";
+import { toast } from "react-toastify";
 
 type QueryParams = {
   page: number;
@@ -174,17 +175,9 @@ export const useClients = (params: QueryParams) => {
         if (axios.isAxiosError(error)) {
           const msg = error.response?.data;
 
-          notification.error({
-            message: "API Error",
-            description: msg?.error,
-            placement: "topRight",
-          });
+          toast.error(msg?.error || "API Error");
         } else {
-          notification.error({
-            message: "Unexpected Error",
-            description: "Something went wrong",
-            placement: "topRight",
-          });
+          toast.error("Something went wrong");
         }
 
         throw error;
@@ -488,6 +481,168 @@ export const useAddUser = () => {
     },
     onError: (error) => {
       console.error("add user failed:", error.message);
+    },
+  });
+};
+export const useDeleteClient = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: { ids: Key[]; force: boolean }) => {
+      try {
+        const response = await AxiosInstance.post(
+          "/client/delete-many",
+          payload,
+        );
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+    },
+    onError: (error) => {
+      console.error("delete failed:", error.message);
+    },
+  });
+};
+export const useDeleteVenue = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: { ids: Key[]; force: boolean }) => {
+      try {
+        const response = await AxiosInstance.post(
+          "/venue/delete-many",
+          payload,
+        );
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["venues"] });
+    },
+    onError: (error) => {
+      console.error("delete failed:", error.message);
+    },
+  });
+};
+export const useDeleteSupplier = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: { ids: Key[]; force: boolean }) => {
+      try {
+        const response = await AxiosInstance.post(
+          "/supplier/delete-many",
+          payload,
+        );
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["venues"] });
+    },
+    onError: (error) => {
+      console.error("delete failed:", error.message);
+    },
+  });
+};
+export const useDeletePackage = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: { ids: Key[]; force: boolean }) => {
+      try {
+        const response = await AxiosInstance.post(
+          "/package/delete-many",
+          payload,
+        );
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["packages"] });
+    },
+    onError: (error) => {
+      console.error("delete failed:", error.message);
+    },
+  });
+};
+export const useDeleteUser = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: { ids: Key[]; force: boolean }) => {
+      try {
+        const response = await AxiosInstance.post(
+          "/user/delete-many",
+          payload,
+        );
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    },
+    onError: (error) => {
+      console.error("delete failed:", error.message);
+    },
+  });
+};
+export const useDeleteCompany = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: { ids: Key[]; force: boolean }) => {
+      try {
+        const response = await AxiosInstance.post(
+          "/company/delete-many",
+          payload,
+        );
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    },
+    onError: (error) => {
+      console.error("delete failed:", error.message);
     },
   });
 };
