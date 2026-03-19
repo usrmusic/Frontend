@@ -162,11 +162,13 @@ const VenuesPage = () => {
         rowKey={(data) => data.id}
         rowSelection={rowSelection}
       />
-      <VenueModal
-        modalOpen={modalOpen}
-        onCancel={handleCancel}
-        initialValues={venueItem}
-      />
+      {modalOpen && (
+        <VenueModal
+          modalOpen={modalOpen}
+          onCancel={handleCancel}
+          initialValues={venueItem}
+        />
+      )}
       {alertModal && (
         <AlertModal
           loading={deleteVenue.isPending}

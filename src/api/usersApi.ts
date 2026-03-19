@@ -171,6 +171,19 @@ type PackagePayload = {
   package_name: string;
 };
 
+type CompanyPayload = {
+  name: string;
+  contact_name: string;
+  telephone_number: string;
+  email: string;
+  website: string;
+  address_name: string;
+  city: string;
+  company_logo: File;
+  brochure: File;
+  admin_signature: string;
+};
+
 export const useClients = (params: QueryParams) => {
   return useQuery<ApiResponse<Client>>({
     queryKey: ["clients", params],
@@ -478,6 +491,65 @@ export const useAddRole = () => {
     },
     onError: (error) => {
       console.error("add role failed:", error.message);
+    },
+  });
+};
+export const useAddCompany = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: FormData) => {
+      try {
+        // Send FormData as the request body with the correct Content-Type
+        const response = await AxiosInstance.post("/company", payload, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["companies"] });
+    },
+    onError: (error) => {
+      console.error("add company failed:", error.message);
+    },
+  });
+};
+export const useEditCompany = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    // Accept both id and formData as params
+    mutationFn: async ({ id, payload }: { id: number | string; payload: FormData }) => {
+      try {
+        // PATCH is more typical for updates, but POST will be preserved if your backend requires it
+        const response = await AxiosInstance.post(`/company/${id}`, payload, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["companies"] });
+    },
+    onError: (error) => {
+      console.error("edit company failed:", error.message);
     },
   });
 };

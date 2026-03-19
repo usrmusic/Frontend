@@ -4,8 +4,8 @@ import dayjs from "dayjs";
 const useColumns = () => {
   const columns: TableColumnsType = [
     {
-      key: "supplier",
-      dataIndex: "supplier",
+      key: "company_name",
+      dataIndex: "company_name",
       title: (
         <div>
           <p className="mb-1">Supplier DJ</p>
@@ -100,8 +100,8 @@ const useColumns = () => {
       ),
     },
     {
-      key: "costs",
-      dataIndex: "costs",
+      key: "payment",
+      dataIndex: "payment",
       title: (
         <div>
           <p className="mb-1">Costs</p>

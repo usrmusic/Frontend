@@ -5,26 +5,12 @@ import Card from "@/src/components/Card";
 import AlertModal from "@/src/components/common/AlertModal";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
-import Input from "@/src/components/Input";
 import { useDebounce } from "@/src/hooks/useDebounce";
-import { Modal, notification, TableColumnsType } from "antd";
+import { notification, TableColumnsType } from "antd";
 import { TableRowSelection } from "antd/es/table/interface";
-import {
-  Building2,
-  Eye,
-  FileInput,
-  Globe,
-  Landmark,
-  Mail,
-  NotebookTabs,
-  Percent,
-  Phone,
-  User,
-} from "lucide-react";
+import { Eye, Pencil } from "lucide-react";
 import { useState } from "react";
-import { BsInstagram } from "react-icons/bs";
-import { FaFacebook } from "react-icons/fa";
-import { FaEnvelopesBulk } from "react-icons/fa6";
+import CompanyModal from "./CompanyModal";
 
 const initialParams = {
   page: 1,
@@ -39,6 +25,7 @@ const CompanyPage = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [alertModal, setAlertModal] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [companyItem, setCompanyItem] = useState(null);
 
   const { data: companiesData, isLoading } = useCompanies({
     ...params,
@@ -114,7 +101,20 @@ const CompanyPage = () => {
     {
       title: "Actions",
       key: "actions",
-      render: () => <Eye size={14} />,
+      fixed: "right",
+      render: (data) => (
+        <div className="flex gap-3">
+          <Eye size={14} />
+          <button
+            onClick={() => {
+              setModalOpen(true);
+              setCompanyItem(data);
+            }}
+          >
+            <Pencil size={14} />
+          </button>
+        </div>
+      ),
     },
   ];
 
@@ -160,64 +160,13 @@ const CompanyPage = () => {
         }}
         rowKey={(data) => data.id}
       />
-      <Modal
-        open={modalOpen}
-        onCancel={handleCancel}
-        title="Add Company"
-        okText="Add"
-        centered
-        width={700}
-      >
-        <div className="space-y-4">
-          <div className="space-y-3">
-            <p className="text-center font-medium">Company Details</p>
-            <Input label="Company Name" labelIcon={<Building2 size={14} />} />
-          </div>
-          <div className="space-y-3">
-            <p className="text-center font-medium">Files</p>
-            <Input
-              label="Company Logo"
-              type="file"
-              labelIcon={<FileInput size={14} />}
-            />
-            <Input
-              label="Brochure"
-              type="file"
-              labelIcon={<FileInput size={14} />}
-            />
-          </div>
-          <div className="space-y-3">
-            <p className="text-center font-medium">Contact Details</p>
-            <Input label="Name" labelIcon={<User size={14} />} />
-            <Input label="Telephone Number" labelIcon={<Phone size={14} />} />
-            <Input label="Email" type="email" labelIcon={<Mail size={14} />} />
-            <Input label="Website" labelIcon={<Globe size={14} />} />
-            <Input label="Instagram" labelIcon={<BsInstagram size={14} />} />
-            <Input label="Facebook" labelIcon={<FaFacebook size={14} />} />
-          </div>
-          <div className="space-y-3">
-            <p className="text-center font-medium">Address Details</p>
-            <Input
-              label="Address Name Number"
-              labelIcon={<NotebookTabs size={14} />}
-            />
-            <Input label="Street" />
-            <Input label="City" labelIcon={<Building2 size={14} />} />
-            <Input
-              label="Postal Code"
-              labelIcon={<FaEnvelopesBulk size={14} />}
-            />
-          </div>
-          <div className="space-y-3">
-            <p className="text-center font-medium">Bank Details</p>
-            <Input label="Bank Name" labelIcon={<Landmark size={14} />} />
-            <Input label="Account Number" />
-            <Input label="Sort Code" labelIcon={<Landmark size={14} />} />
-            <Input label="Vat" labelIcon={<Percent size={14} />} />
-            <Input label="Vat Percentage" labelIcon={<Percent size={14} />} />
-          </div>
-        </div>
-      </Modal>
+      {modalOpen && (
+        <CompanyModal
+          handleCancel={handleCancel}
+          modalOpen={modalOpen}
+          initialValues={companyItem}
+        />
+      )}
       {alertModal && (
         <AlertModal
           loading={deleteCompany.isPending}
