@@ -26,7 +26,9 @@ interface VenueModalProps {
   initialValues: VenueData | null;
 }
 
-const getInitialVenueValues = (venue: VenueData | null): VenueData => ({
+const getInitialVenueValues = (
+  venue: VenueData | null,
+): Omit<VenueData, "id"> => ({
   venue: venue?.venue || "",
   venue_address: venue?.venue_address || "",
   stage: venue?.stage || "",
@@ -34,7 +36,6 @@ const getInitialVenueValues = (venue: VenueData | null): VenueData => ({
   access: venue?.access || "",
   rigging_point: venue?.rigging_point || "",
   notes: venue?.notes || "",
-  id: venue?.id || "",
 });
 
 const VenueModal = ({
@@ -53,15 +54,18 @@ const VenueModal = ({
     onSubmit: (values) => {
       // Add or Edit logic goes here
       if (isEditMode) {
-        editVenue.mutate(values, {
-          onSuccess: () => {
-            onCancel();
-            notification.success({
-              message: "Success",
-              description: "Venue Successfully updated",
-            });
+        editVenue.mutate(
+          { ...values, id: initialValues.id },
+          {
+            onSuccess: () => {
+              onCancel();
+              notification.success({
+                message: "Success",
+                description: "Venue Successfully updated",
+              });
+            },
           },
-        });
+        );
       } else {
         addVenue.mutate(values, {
           onSuccess: () => {

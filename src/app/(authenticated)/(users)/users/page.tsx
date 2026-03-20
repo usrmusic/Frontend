@@ -1,14 +1,16 @@
 "use client";
-import { useUsers } from "@/src/api/usersApi";
+import { useDeleteUser, useUsers } from "@/src/api/usersApi";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
 import { useDebounce } from "@/src/hooks/useDebounce";
-import { TableColumnsType } from "antd";
+import { notification, TableColumnsType } from "antd";
 import { useState } from "react";
 import UserModal from "./UserModal";
 import { Pencil } from "lucide-react";
+import { TableRowSelection } from "antd/es/table/interface";
+import AlertModal from "@/src/components/common/AlertModal";
 
 const initialParams = {
   page: 1,
@@ -19,18 +21,46 @@ const initialParams = {
 const UsersPage = () => {
   const [params, setParams] = useState(initialParams);
   const [search, setSearch] = useState("");
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [userDataItem, setUserDataItem] = useState(null);
+  const [alertModal, setAlertModal] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const debouncedSearch = useDebounce(search, 1000);
 
   const { data: usersData, isLoading } = useUsers({
     ...params,
     search: debouncedSearch,
   });
-  const [modalOpen, setModalOpen] = useState(false);
+  const deleteUser = useDeleteUser();
 
   const handleCancel = () => {
     setUserDataItem(null);
     setModalOpen(false);
+  };
+
+  const onSelectChange = (newSelectedRowKeys: React.Key[]) => {
+    setSelectedRowKeys(newSelectedRowKeys);
+  };
+
+  const rowSelection: TableRowSelection = {
+    selectedRowKeys,
+    onChange: onSelectChange,
+  };
+
+  const handleDelete = () => {
+    deleteUser.mutate(
+      { ids: selectedRowKeys, force: false },
+      {
+        onSuccess: () => {
+          setAlertModal(false);
+          notification.success({
+            message: "Success",
+            description: "Package(s) deleted successfully.",
+            placement: "topRight",
+          });
+        },
+      },
+    );
   };
   const columns: TableColumnsType = [
     {
@@ -101,7 +131,12 @@ const UsersPage = () => {
           </div>
           <div className="flex gap-2">
             <Button onClick={() => setModalOpen(true)}>Add</Button>
-            <Button>Remove</Button>
+            <Button
+              disabled={selectedRowKeys.length === 0}
+              onClick={() => setAlertModal(true)}
+            >
+              Remove
+            </Button>
             <Button>Deleted Users</Button>
             <Button>Export Data</Button>
           </div>
@@ -110,6 +145,7 @@ const UsersPage = () => {
       {/* Data Table  */}
       <DataTable
         columns={columns}
+        rowSelection={rowSelection}
         dataSource={usersData?.data}
         pagination={{
           pageSize: params.perPage,
@@ -119,13 +155,23 @@ const UsersPage = () => {
             setParams({ ...params, page, perPage: pageSize }),
         }}
         loading={isLoading}
-        rowKey={(data) => data.email}
+        rowKey={(data) => data.id}
       />
       {modalOpen && (
         <UserModal
           handleCancel={handleCancel}
           initialValues={userDataItem}
           modalOpen={modalOpen}
+        />
+      )}
+      {alertModal && (
+        <AlertModal
+          loading={deleteUser.isPending}
+          onYes={handleDelete}
+          open={alertModal}
+          handleCancel={() => setAlertModal(false)}
+          title="Delete User"
+          text="Are you sure you want to delete user(s)?"
         />
       )}
     </div>

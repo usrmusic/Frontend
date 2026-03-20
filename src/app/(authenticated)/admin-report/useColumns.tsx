@@ -1,6 +1,7 @@
 import { TableColumnsType } from "antd";
 import { Dispatch, SetStateAction } from "react";
 import { Filters } from "./page";
+import dayjs from "dayjs";
 
 const useColumns = (
   filters: Filters,
@@ -8,8 +9,8 @@ const useColumns = (
 ) => {
   const columns: TableColumnsType = [
     {
-      key: "company",
-      dataIndex: "company",
+      key: "name",
+      dataIndex: "name",
       title: (
         <div>
           <p className="mb-1">Company</p>
@@ -31,8 +32,8 @@ const useColumns = (
       ),
     },
     {
-      key: "client",
-      dataIndex: "client",
+      key: "name",
+      dataIndex: "name",
       title: (
         <div>
           <p className="mb-1">Client</p>
@@ -53,8 +54,8 @@ const useColumns = (
       ),
     },
     {
-      key: "eventDate",
-      dataIndex: "eventDate",
+      key: "date",
+      dataIndex: "date",
       title: (
         <div>
           <p className="mb-1">Event Date</p>
@@ -73,6 +74,7 @@ const useColumns = (
           </select>
         </div>
       ),
+      render:(date)=><>{dayjs(date).format("DD-MM-YYYY")}</>
     },
     {
       key: "eventStatus",
@@ -113,7 +115,7 @@ const useColumns = (
     },
     {
       key: "dj",
-      dataIndex: "dj_first_name ",
+      dataIndex: "dj_first_name",
       title: (
         <div>
           <p className="mb-1">DJ</p>
@@ -156,8 +158,8 @@ const useColumns = (
       ),
     },
     {
-      key: "totalPrice",
-      dataIndex: "totalPrice",
+      key: "total_cost_for_equipment",
+      dataIndex: "total_cost_for_equipment",
       title: (
         <div>
           <p className="mb-1">Total Price</p>
@@ -186,8 +188,8 @@ const useColumns = (
       ),
     },
     {
-      key: "extraCost",
-      dataIndex: "extraCost",
+      key: "extra_cost_price_total",
+      dataIndex: "extra_cost_price_total",
       title: (
         <div>
           <p className="mb-1">Extra Cost</p>

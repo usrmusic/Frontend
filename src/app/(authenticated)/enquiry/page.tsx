@@ -10,7 +10,7 @@ import { Formik, Form, Field, FormikProps } from "formik";
 import * as Yup from "yup";
 import {
   useClientDropdown,
-  useDjDropdown,
+  useUsersDropdown,
   useVenueDropdown,
 } from "@/src/api/dropdown";
 import { usePackageData, useSingleClient } from "@/src/api/enquiry";
@@ -117,7 +117,7 @@ const NewEnquiryPage = () => {
   });
   const { data: clientDropdownName } = useClientDropdown();
   const { data: venueDropdownName } = useVenueDropdown();
-  const { data: djDropdownData } = useDjDropdown();
+  const { data: djDropdownData } = useUsersDropdown();
   const { data: packageData } = usePackageData(packageParams);
   const { data: clientDetails } = useSingleClient(clientId ?? null);
   const formikRef = useRef<FormikProps<EnquiryFormValues>>(null);

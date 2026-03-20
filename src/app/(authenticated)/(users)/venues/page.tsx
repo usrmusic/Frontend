@@ -1,14 +1,16 @@
 "use client";
-import { useVenues } from "@/src/api/usersApi";
+import { useDeleteVenue, useVenues } from "@/src/api/usersApi";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
 import { useDebounce } from "@/src/hooks/useDebounce";
-import { TableColumnsType } from "antd";
+import { notification, TableColumnsType } from "antd";
 import { useState } from "react";
 import VenueModal from "./VenueModal";
 import { Pencil } from "lucide-react";
+import AlertModal from "@/src/components/common/AlertModal";
+import { TableRowSelection } from "antd/es/table/interface";
 
 const initialParams = {
   page: 1,
@@ -19,6 +21,9 @@ const initialParams = {
 const VenuesPage = () => {
   const [params, setParams] = useState(initialParams);
   const [search, setSearch] = useState("");
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [alertModal, setAlertModal] = useState(false);
+
   const [modalOpen, setModalOpen] = useState(false);
   const [venueItem, setVenueItem] = useState(null);
 
@@ -27,10 +32,36 @@ const VenuesPage = () => {
     ...params,
     search: debouncedSearch,
   });
+  const deleteVenue = useDeleteVenue();
 
   const handleCancel = () => {
     setVenueItem(null);
     setModalOpen(false);
+  };
+
+  const onSelectChange = (newSelectedRowKeys: React.Key[]) => {
+    setSelectedRowKeys(newSelectedRowKeys);
+  };
+
+  const rowSelection: TableRowSelection = {
+    selectedRowKeys,
+    onChange: onSelectChange,
+  };
+
+  const handleDelete = () => {
+    deleteVenue.mutate(
+      { ids: selectedRowKeys, force: false },
+      {
+        onSuccess: () => {
+          setAlertModal(false);
+          notification.success({
+            message: "Success",
+            description: "Venue(s) deleted successfully.",
+            placement: "topRight",
+          });
+        },
+      },
+    );
   };
   const columns: TableColumnsType = [
     {
@@ -106,8 +137,12 @@ const VenuesPage = () => {
           </div>
           <div className="flex gap-2">
             <Button onClick={() => setModalOpen(true)}>Add</Button>
-            <Button>Remove</Button>
-            <Button>Deleted Users</Button>
+            <Button
+              disabled={selectedRowKeys.length === 0}
+              onClick={() => setAlertModal(true)}
+            >
+              Remove
+            </Button>
             <Button>Export Data</Button>
           </div>
         </div>
@@ -125,12 +160,25 @@ const VenuesPage = () => {
             setParams({ ...params, page, perPage: pageSize }),
         }}
         rowKey={(data) => data.id}
+        rowSelection={rowSelection}
       />
-      <VenueModal
-        modalOpen={modalOpen}
-        onCancel={handleCancel}
-        initialValues={venueItem}
-      />
+      {modalOpen && (
+        <VenueModal
+          modalOpen={modalOpen}
+          onCancel={handleCancel}
+          initialValues={venueItem}
+        />
+      )}
+      {alertModal && (
+        <AlertModal
+          loading={deleteVenue.isPending}
+          onYes={handleDelete}
+          open={alertModal}
+          handleCancel={() => setAlertModal(false)}
+          title="Delete Venue"
+          text="Are you sure you want to delete venue(s)?"
+        />
+      )}
     </div>
   );
 };

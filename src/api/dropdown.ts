@@ -6,7 +6,7 @@ interface Role {
   name: string;
 }
 
-interface DjDropdown {
+interface UserDropdown {
   id: number;
   name: string;
   package_users: { id: string; package_name: string }[];
@@ -39,10 +39,10 @@ export const useVenueDropdown = () => {
     },
   });
 };
-export const useDjDropdown = () => {
+export const useUsersDropdown = () => {
   return useQuery({
-    queryKey: ["dj-dropdown"],
-    queryFn: async (): Promise<DjDropdown[]> => {
+    queryKey: ["user-dropdown"],
+    queryFn: async (): Promise<UserDropdown[]> => {
       const response = await AxiosInstance.get("/user/get-dropdown");
       return response.data;
     },

@@ -1,14 +1,16 @@
 "use client";
-import { useSuppliers } from "@/src/api/usersApi";
+import { useDeleteSupplier, useSuppliers } from "@/src/api/usersApi";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
 import { useDebounce } from "@/src/hooks/useDebounce";
-import { TableColumnsType } from "antd";
+import { notification, TableColumnsType } from "antd";
 import { useState } from "react";
 import SupplierModal from "./SupplierModal";
 import { Pencil } from "lucide-react";
+import AlertModal from "@/src/components/common/AlertModal";
+import { TableRowSelection } from "antd/es/table/interface";
 
 const initialParams = {
   page: 1,
@@ -20,18 +22,45 @@ const SuppliersPage = () => {
   const [params, setParams] = useState(initialParams);
   const [search, setSearch] = useState("");
   const [supplierItemData, setSupplierItemData] = useState(null);
-
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [alertModal, setAlertModal] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const debouncedSearch = useDebounce(search, 1000);
 
   const { data: suppliersData, isLoading } = useSuppliers({
     ...params,
     search: debouncedSearch,
   });
-  const [modalOpen, setModalOpen] = useState(false);
+  const deleteSupplier = useDeleteSupplier();
 
   const handleCancel = () => {
     setSupplierItemData(null);
     setModalOpen(false);
+  };
+
+  const onSelectChange = (newSelectedRowKeys: React.Key[]) => {
+    setSelectedRowKeys(newSelectedRowKeys);
+  };
+
+  const rowSelection: TableRowSelection = {
+    selectedRowKeys,
+    onChange: onSelectChange,
+  };
+
+  const handleDelete = () => {
+    deleteSupplier.mutate(
+      { ids: selectedRowKeys, force: false },
+      {
+        onSuccess: () => {
+          setAlertModal(false);
+          notification.success({
+            message: "Success",
+            description: "Supplier(s) deleted successfully.",
+            placement: "topRight",
+          });
+        },
+      },
+    );
   };
   const columns: TableColumnsType = [
     {
@@ -96,8 +125,12 @@ const SuppliersPage = () => {
           </div>
           <div className="flex gap-2">
             <Button onClick={() => setModalOpen(true)}>Add</Button>
-            <Button>Remove</Button>
-            <Button>Deleted Users</Button>
+            <Button
+              disabled={selectedRowKeys.length === 0}
+              onClick={() => setAlertModal(true)}
+            >
+              Remove
+            </Button>
             <Button>Export Data</Button>
           </div>
         </div>
@@ -115,12 +148,23 @@ const SuppliersPage = () => {
             setParams({ ...params, page, perPage: pageSize }),
         }}
         rowKey={(data) => data.id}
+        rowSelection={rowSelection}
       />
       <SupplierModal
         initialValues={supplierItemData}
         modalOpen={modalOpen}
         onCancel={handleCancel}
       />
+      {alertModal && (
+        <AlertModal
+          loading={deleteSupplier.isPending}
+          onYes={handleDelete}
+          open={alertModal}
+          handleCancel={() => setAlertModal(false)}
+          title="Delete Supplier"
+          text="Are you sure you want to delete supplier(s)?"
+        />
+      )}
     </div>
   );
 };
