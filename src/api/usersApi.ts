@@ -327,8 +327,16 @@ export const useAddClient = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (payload: ClientPayload) => {
-      const response = await AxiosInstance.post("/client", payload);
-      return response.data;
+      try {
+        const response = await AxiosInstance.post("/client", payload);
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
     },
     onError: (error) => {
       console.error("add client failed:", error.message);
@@ -342,8 +350,16 @@ export const useAddVenue = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (payload: VenuePayload) => {
-      const response = await AxiosInstance.post("/venue", payload);
-      return response.data;
+      try {
+        const response = await AxiosInstance.post("/venue", payload);
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
     },
     onError: (error) => {
       console.error("add venue failed:", error.message);
@@ -357,8 +373,16 @@ export const useAddSupplier = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (payload: SupplierPayload) => {
-      const response = await AxiosInstance.post("/supplier", payload);
-      return response.data;
+      try {
+        const response = await AxiosInstance.post("/supplier", payload);
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
     },
     onError: (error) => {
       console.error("add supplier failed:", error.message);
@@ -375,9 +399,17 @@ export const useEditClient = () => {
   return useMutation({
     // Expect payload to contain an id property along with other client properties
     mutationFn: async (payload: ClientPayload & { id: number | string }) => {
-      const { id, ...rest } = payload;
-      const response = await AxiosInstance.put(`/client/${id}`, rest);
-      return response.data;
+      try {
+        const { id, ...rest } = payload;
+        const response = await AxiosInstance.put(`/client/${id}`, rest);
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clients"] });
@@ -393,9 +425,17 @@ export const useEditVenue = () => {
   return useMutation({
     // Expect payload to contain an id property along with other client properties
     mutationFn: async (payload: VenuePayload & { id: number | string }) => {
-      const { id, ...rest } = payload;
-      const response = await AxiosInstance.put(`/venue/${id}`, rest);
-      return response.data;
+      try {
+        const { id, ...rest } = payload;
+        const response = await AxiosInstance.put(`/venue/${id}`, rest);
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["venues"] });
@@ -411,9 +451,17 @@ export const useEditSupplier = () => {
   return useMutation({
     // Expect payload to contain an id property along with other client properties
     mutationFn: async (payload: SupplierPayload & { id: number | string }) => {
-      const { id, ...rest } = payload;
-      const response = await AxiosInstance.put(`/supplier/${id}`, rest);
-      return response.data;
+      try {
+        const { id, ...rest } = payload;
+        const response = await AxiosInstance.put(`/supplier/${id}`, rest);
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
