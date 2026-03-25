@@ -30,6 +30,7 @@ const VenuesPage = () => {
   const debouncedSearch = useDebounce(search, 1000);
   const { data: venueData, isLoading } = useVenues({
     ...params,
+    page: debouncedSearch ? 1 : params.page,
     search: debouncedSearch,
   });
   const deleteVenue = useDeleteVenue();
