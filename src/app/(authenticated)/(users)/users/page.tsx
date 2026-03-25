@@ -26,9 +26,10 @@ const UsersPage = () => {
   const [alertModal, setAlertModal] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const debouncedSearch = useDebounce(search, 1000);
-
+  
   const { data: usersData, isLoading } = useUsers({
     ...params,
+    page: debouncedSearch ? 1 : params.page,
     search: debouncedSearch,
   });
   const deleteUser = useDeleteUser();
