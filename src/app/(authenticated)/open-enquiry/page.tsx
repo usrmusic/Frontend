@@ -1,5 +1,5 @@
 "use client";
-import { useOpenEnquiryList } from "@/src/api/enquiry";
+import { useAddNote, useOpenEnquiryList } from "@/src/api/enquiry";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
@@ -10,6 +10,7 @@ import { MoreVertical } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import SendBrochureModal from "./SendBrochure";
+import { toast } from "react-toastify";
 
 const initialParams = {
   page: 1,
@@ -20,15 +21,22 @@ const initialParams = {
 const OpenEnquiryPage = () => {
   const [params, setParams] = useState(initialParams);
   const [modalOpen, setModalOpen] = useState(false);
+  const [note, setNote] = useState("");
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [selectedRowData, setSelectedRowData] = useState(null);
+  const [clickedBtn, setClickedBtn] = useState<"brochure" | "quote" | "">("");
 
   const { data: enquiryData, isLoading } = useOpenEnquiryList(params);
+  const { mutate: addNoteMutation } = useAddNote();
 
-  const onSelectChange = (newSelectedRowKeys: React.Key[]) => {
+  const onSelectChange = (newSelectedRowKeys: React.Key[], row) => {
     setSelectedRowKeys(newSelectedRowKeys);
+    setSelectedRowData(row);
   };
+  console.log(selectedRowData);
 
   const rowSelection: TableRowSelection = {
+    type: "radio",
     selectedRowKeys,
     onChange: onSelectChange,
   };
@@ -36,25 +44,37 @@ const OpenEnquiryPage = () => {
   const columns: TableColumnsType = [
     {
       title: "Name",
-      dataIndex: "name",
+      dataIndex: ["users_events_user_idTousers", "name"],
       key: "name",
     },
     {
       title: "Mobile",
-      dataIndex: "mobile",
+      dataIndex: ["users_events_user_idTousers", "contact_number"],
       key: "mobile",
     },
     {
       title: "Event Date",
-      dataIndex: "event_date",
-      key: "event_date",
+      dataIndex: "date",
+      key: "date",
     },
     {
       title: "Tell Us More",
-      dataIndex: "tellUsMore",
-      key: "tellUsMore",
+      dataIndex: "details",
+      key: "details",
     },
   ];
+
+  const hanldeAddNote = () => {
+    addNoteMutation(
+      { id: selectedRowKeys[0] as number, note },
+      {
+        onSuccess: () => {
+          toast.success("Note Added Successfully");
+          setNote("");
+        },
+      },
+    );
+  };
   return (
     <div className="mt-8 space-y-6">
       <div className="grid grid-cols-12 gap-6">
@@ -78,11 +98,23 @@ const OpenEnquiryPage = () => {
               <Button
                 type="default"
                 className="themeDefaultButton"
-                onClick={() => setModalOpen(true)}
+                onClick={() => {
+                  setModalOpen(true);
+                  setClickedBtn("brochure");
+                }}
+                disabled={!selectedRowKeys.length}
               >
                 Send Brochure
               </Button>
-              <Button type="primary" className="themeDefaultButton">
+              <Button
+                type="primary"
+                className="themeDefaultButton"
+                disabled={!selectedRowKeys.length}
+                onClick={() => {
+                  setModalOpen(true);
+                  setClickedBtn("quote");
+                }}
+              >
                 Send Quote
               </Button>
               <button className=" size-9 flex items-center justify-center rounded-lg bg-secondary-100 hover:bg-secondary-200 transition-colors">
@@ -128,10 +160,17 @@ const OpenEnquiryPage = () => {
           <div className="flex gap-2 h-[88px]">
             <input
               type="text"
-              placeholder=""
+              placeholder="Enter Note"
               className="rounded-xl w-full border border-gray-200 px-3 text-sm outline-none bg-white!"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
             />
-            <Button type="primary" className="h-auto! w-[89px] shrink-0">
+            <Button
+              type="primary"
+              className="h-auto! w-[89px] shrink-0"
+              onClick={hanldeAddNote}
+              disabled={!selectedRowKeys.length}
+            >
               Add
             </Button>
           </div>
@@ -145,6 +184,11 @@ const OpenEnquiryPage = () => {
             </div>
             <div className="min-h-[120px] px-5 py-4 text-sm text-gray-500">
               {/* Empty state - list will populate here */}
+              <ul className="list-disc">
+                {selectedRowData?.[0].event_notes?.map((note) => (
+                  <li key={note.id}>{note.notes}</li>
+                ))}
+              </ul>
             </div>
           </Card>
 
@@ -179,6 +223,8 @@ const OpenEnquiryPage = () => {
       {modalOpen && (
         <SendBrochureModal
           open={modalOpen}
+          sendMode={clickedBtn}
+          eventId={selectedRowKeys[0] as string}
           onCancel={() => setModalOpen(false)}
         />
       )}

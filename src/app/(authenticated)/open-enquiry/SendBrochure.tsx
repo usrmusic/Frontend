@@ -1,20 +1,43 @@
+import { useCompanyDropdown } from "@/src/api/dropdown";
+import { useSendBrochure, useSendQuote } from "@/src/api/enquiry";
 import Button from "@/src/components/Button";
 import Input from "@/src/components/Input";
 import { Modal, Select } from "antd";
 import { useFormik } from "formik";
+import { toast } from "react-toastify";
 
 interface BrochureProps {
   open: boolean;
   onCancel: VoidFunction;
+  eventId: string;
+  sendMode: "brochure" | "quote" | "";
 }
 
-const SendBrochureModal = ({ open, onCancel }: BrochureProps) => {
+const MODAL_TITLES = {
+  brochure: "Send Brochure",
+  quote: "Send Quote",
+};
+
+const SendBrochureModal = ({
+  open,
+  onCancel,
+  eventId,
+  sendMode,
+}: BrochureProps) => {
+  const { data: companyNameOptions } = useCompanyDropdown();
+  const { mutateAsync: sendBrochureMutation, isPending: brochureLoading } =
+    useSendBrochure();
+  const { mutateAsync: sendQuoteMutation, isPending: quoteLoading } =
+    useSendQuote();
+
+  const isPending = brochureLoading || quoteLoading;
+
   const formik = useFormik({
     initialValues: {
-      event_id: "",
+      event_id: Number(eventId),
       company_name_id: "",
       subject: "Brochure",
-      body: `Thank you for very much for your interest in booking us for your event.
+      body: `Thank you very much for your interest in booking us for your event.
 
 Please find attached a copy of our brochure. This will give you lots of inspiration, creating the perfect look for your big day! 
 
@@ -24,12 +47,32 @@ Thank you once again,`,
     },
     onSubmit: (values) => {
       // handle form submission, e.g., send API request
+      if (sendMode === "brochure") {
+        sendBrochureMutation(values, {
+          onSuccess: () => {
+            toast.success("Brochure Sent Successfully");
+            onCancel();
+          },
+        });
+      } else if (sendMode === "quote") {
+        sendQuoteMutation(values, {
+          onSuccess: () => {
+            toast.success("Quote Sent Successfully");
+            onCancel();
+          },
+        });
+      }
       console.log("Send Brochure form values:", values);
     },
   });
 
   return (
-    <Modal open={open} onCancel={onCancel} footer={false} title="Send Brochure">
+    <Modal
+      open={open}
+      onCancel={onCancel}
+      footer={false}
+      title={MODAL_TITLES[sendMode as keyof typeof MODAL_TITLES]}
+    >
       <form className="space-y-4" onSubmit={formik.handleSubmit}>
         <div>
           <label className="block mb-1 font-medium text-xs text-gray-700">
@@ -38,10 +81,10 @@ Thank you once again,`,
           <Select
             className="w-full"
             placeholder="Select company"
-            options={[
-              { value: "company1", label: "Company 1" },
-              { value: "company2", label: "Company 2" },
-            ]}
+            options={companyNameOptions?.data?.map((opt) => ({
+              label: opt.name,
+              value: opt.id,
+            }))}
             value={formik.values.company_name_id}
             onChange={(value) => formik.setFieldValue("company_name_id", value)}
           />
@@ -67,12 +110,12 @@ Thank you once again,`,
             onChange={formik.handleChange}
           ></textarea>
         </div>
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-3">
           <Button htmlType="submit" onClick={onCancel}>
             Cancel
           </Button>
-          <Button htmlType="submit" type="primary">
-            Send
+          <Button htmlType="submit" type="primary" loading={isPending}>
+            Send Email
           </Button>
         </div>
       </form>
