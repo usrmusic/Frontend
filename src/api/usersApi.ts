@@ -3,23 +3,12 @@ import AxiosInstance from "../lib/axios";
 import axios from "axios";
 import { Key } from "react";
 import { toast } from "react-toastify";
+import { ApiResponse } from "../types/types";
 
 type QueryParams = {
   page: number;
   perPage: number;
   search: string;
-};
-
-type Meta = {
-  total: number;
-  perPage: number;
-  page: number;
-  totalPages: number;
-};
-
-type ApiResponse<T> = {
-  data: T[];
-  meta: Meta;
 };
 
 type Venue = {
@@ -576,7 +565,13 @@ export const useEditCompany = () => {
 
   return useMutation({
     // Accept both id and formData as params
-    mutationFn: async ({ id, payload }: { id: number | string; payload: FormData }) => {
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id: number | string;
+      payload: FormData;
+    }) => {
       try {
         // PATCH is more typical for updates, but POST will be preserved if your backend requires it
         const response = await AxiosInstance.post(`/company/${id}`, payload, {

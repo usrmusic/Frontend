@@ -1,102 +1,60 @@
+"use client";
+import { useOpenEnquiryList } from "@/src/api/enquiry";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
+import DataTable from "@/src/components/DataTable";
 import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
-import { ChevronDown, ChevronUp, MoreVertical } from "lucide-react";
+import { TableColumnsType } from "antd";
+import { TableRowSelection } from "antd/es/table/interface";
+import { MoreVertical } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
+import SendBrochureModal from "./SendBrochure";
 
-const enquiries = [
-  {
-    id: 1,
-    name: "Sangeeta Kaushik",
-    mobile: "07922629123",
-    eventDate: "27/04/2024",
-    tellUsMore:
-      "Hi, I have a wedding booked at Borgo Seno'Anni near Siena, and looking for someone with",
-    selected: true,
-  },
-  {
-    id: 2,
-    name: "Jasbir Singh",
-    mobile: "",
-    eventDate: "16/09/2024",
-    tellUsMore: "",
-    selected: false,
-  },
-  {
-    id: 3,
-    name: "Dan Singh",
-    mobile: "",
-    eventDate: "28/09/2024",
-    tellUsMore: "",
-    selected: false,
-  },
-  {
-    id: 4,
-    name: "Pand Kang",
-    mobile: "",
-    eventDate: "13/02/2025",
-    tellUsMore: "",
-    selected: false,
-  },
-  {
-    id: 5,
-    name: "Parminder Kang",
-    mobile: "",
-    eventDate: "16/05/2025",
-    tellUsMore: "",
-    selected: false,
-  },
-  {
-    id: 6,
-    name: "Parminder Kang",
-    mobile: "",
-    eventDate: "16/05/2025",
-    tellUsMore: "",
-    selected: false,
-  },
-  {
-    id: 7,
-    name: "Shane Johri",
-    mobile: "",
-    eventDate: "28/02/2025",
-    tellUsMore: "",
-    selected: false,
-  },
-  {
-    id: 8,
-    name: "Simon Basra",
-    mobile: "",
-    eventDate: "15/11/2024",
-    tellUsMore: "",
-    selected: false,
-  },
-  {
-    id: 9,
-    name: "Hardeep Mann",
-    mobile: "",
-    eventDate: "24/07/2024",
-    tellUsMore: "",
-    selected: false,
-  },
-  {
-    id: 10,
-    name: "Nick Singh",
-    mobile: "",
-    eventDate: "30/04/2025",
-    tellUsMore: "",
-    selected: false,
-  },
-  {
-    id: 11,
-    name: "Rajbinder Bains",
-    mobile: "",
-    eventDate: "08/08/2025",
-    tellUsMore: "",
-    selected: false,
-  },
-];
+const initialParams = {
+  page: 1,
+  limit: 10,
+  search: "",
+};
 
 const OpenEnquiryPage = () => {
+  const [params, setParams] = useState(initialParams);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+
+  const { data: enquiryData, isLoading } = useOpenEnquiryList(params);
+
+  const onSelectChange = (newSelectedRowKeys: React.Key[]) => {
+    setSelectedRowKeys(newSelectedRowKeys);
+  };
+
+  const rowSelection: TableRowSelection = {
+    selectedRowKeys,
+    onChange: onSelectChange,
+  };
+
+  const columns: TableColumnsType = [
+    {
+      title: "Name",
+      dataIndex: "name",
+      key: "name",
+    },
+    {
+      title: "Mobile",
+      dataIndex: "mobile",
+      key: "mobile",
+    },
+    {
+      title: "Event Date",
+      dataIndex: "event_date",
+      key: "event_date",
+    },
+    {
+      title: "Tell Us More",
+      dataIndex: "tellUsMore",
+      key: "tellUsMore",
+    },
+  ];
   return (
     <div className="mt-8 space-y-6">
       <div className="grid grid-cols-12 gap-6">
@@ -117,7 +75,11 @@ const OpenEnquiryPage = () => {
               <Button type="default" className="themeDefaultButton">
                 Email Update
               </Button>
-              <Button type="default" className="themeDefaultButton">
+              <Button
+                type="default"
+                className="themeDefaultButton"
+                onClick={() => setModalOpen(true)}
+              >
                 Send Brochure
               </Button>
               <Button type="primary" className="themeDefaultButton">
@@ -144,77 +106,20 @@ const OpenEnquiryPage = () => {
                 />
               </div>
             </div>
-            <div className="overflow-x-auto max-h-[calc(100vh-20px)] overflow-y-auto">
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-white z-10 border-b border-gray-200">
-                  <tr className="text-left font-semibold">
-                    <th className="w-12 py-4 px-4"></th>
-                    <th className="py-4 px-4">
-                      <div className="flex items-center gap-1">
-                        Name
-                        <span className="flex flex-col -space-y-1">
-                          <ChevronUp size={14} className="opacity-60" />
-                          <ChevronDown size={14} className="opacity-60" />
-                        </span>
-                      </div>
-                    </th>
-                    <th className="py-4 px-4">Mobile</th>
-                    <th className="py-4 px-4">
-                      <div className="flex items-center gap-1">
-                        Event Date
-                        <span className="flex flex-col -space-y-1">
-                          <ChevronUp size={14} className="opacity-60" />
-                          <ChevronDown size={14} className="opacity-60" />
-                        </span>
-                      </div>
-                    </th>
-                    <th className="py-4 px-4">
-                      <div className="flex items-center gap-1">
-                        Tell us more
-                        <span className="flex flex-col -space-y-1">
-                          <ChevronUp size={14} className="opacity-60" />
-                          <ChevronDown size={14} className="opacity-60" />
-                        </span>
-                      </div>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {enquiries.map((row, index) => (
-                    <tr
-                      key={row.id}
-                      className={`${
-                        row.selected
-                          ? "bg-primary/10"
-                          : index % 2 === 0
-                            ? "bg-white"
-                            : "bg-secondary-50/60"
-                      }`}
-                    >
-                      <td className="py-3 px-4">
-                        <input
-                          type="checkbox"
-                          defaultChecked={row.selected}
-                          className="size-4 rounded border-gray-300"
-                        />
-                      </td>
-                      <td className="py-3 px-4 font-medium text-gray-900">
-                        {row.name}
-                      </td>
-                      <td className="py-3 px-4 text-gray-600">
-                        {row.mobile || "—"}
-                      </td>
-                      <td className="py-3 px-4 text-gray-600">
-                        {row.eventDate}
-                      </td>
-                      <td className="py-3 px-4 text-gray-600 max-w-xs truncate">
-                        {row.tellUsMore || "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              columns={columns}
+              dataSource={enquiryData?.data}
+              loading={isLoading}
+              rowKey={(data) => data.id}
+              pagination={{
+                pageSize: params.limit,
+                current: params.page,
+                total: enquiryData?.meta.total,
+                onChange: (page, pageSize) =>
+                  setParams({ ...params, page, limit: pageSize }),
+              }}
+              rowSelection={rowSelection}
+            />
           </Card>
           {/* Left side Enquiry table */}
         </div>
@@ -271,6 +176,12 @@ const OpenEnquiryPage = () => {
           </div>
         </div>
       </div>
+      {modalOpen && (
+        <SendBrochureModal
+          open={modalOpen}
+          onCancel={() => setModalOpen(false)}
+        />
+      )}
     </div>
   );
 };
