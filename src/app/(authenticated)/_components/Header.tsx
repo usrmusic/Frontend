@@ -17,6 +17,7 @@ interface Session {
 }
 
 const Header = () => {
+  
   const [year, setYear] = useState<number>(new Date().getFullYear());
   const [search, setSearch] = useState("");
   const debounced = useDebounce<string>(search, 300);
@@ -110,7 +111,7 @@ const Header = () => {
           <button className="shrink-0 bg-black w-10 h-10 flex items-center justify-center text-white rounded-full hover:bg-gray-800 transition-all duration-300 ml-2">
             {dropdownFetching ? <Spin size="small" /> : <MagnifyingGlass />}
           </button>
-        </div>
+          </div>
         <div>
           <Select
             value={year}
