@@ -17,9 +17,9 @@ const Page = () => {
   const { data: rigNotesData, isLoading } = useGetRigList(eventId);
   const { mutate: saveRigNotesMutation } = useSaveRigNotes();
 
-  const eventsptions = eventsDropdown?.data.map((item) => ({
+  const eventsptions = eventsDropdown?.data.map((item: any) => ({
     label: `${dayjs(item.date).format("DD/MM/YYYY")} - ${item.venues?.venue} (${item.users_events_user_idTousers?.name})`,
-    value: item.id,
+    value: String(item.id),
   }));
 
   const handleSave = () => {
@@ -72,14 +72,14 @@ const Page = () => {
                 <>
                   {rigNotesData?.packages?.length > 0 ? (
                     <div className="space-y-4">
-                      {rigNotesData?.packages?.map((pkg, idx) => (
+                      {rigNotesData?.packages?.map((pkg: any, idx: number) => (
                         <div key={idx}>
                           <p>{pkg.equipment?.name}</p>
                           <p>
                             {pkg.equipment?.rig_notes
                               ?.split("<br>")
-                              .map((note, idx) => (
-                                <ul key={idx} className="space-y-2">
+                              .map((note: string, nidx: number) => (
+                                <ul key={nidx} className="space-y-2">
                                   <li className="flex items-center gap-2">
                                     <input type="checkbox" />
                                     {note.trim()}
