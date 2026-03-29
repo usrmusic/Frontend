@@ -95,7 +95,7 @@ Thank you once again,`,
           <Select
             className="w-full"
             placeholder="Select company"
-            options={companyNameOptions?.data?.map((opt) => ({
+            options={companyNameOptions?.data?.map((opt:any) => ({
               label: opt.name,
               value: opt.id,
             }))}
