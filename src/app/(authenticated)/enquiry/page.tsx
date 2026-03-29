@@ -5,7 +5,7 @@ import Input from "@/src/components/Input";
 import { BackButton, CancelButton } from "@/src/components/Icons";
 import { PlusIcon, Printer, Save, Send, SquareCheckBig } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { Formik, Form, Field, FormikProps } from "formik";
 import * as Yup from "yup";
 import {
@@ -13,7 +13,7 @@ import {
   useUsersDropdown,
   useVenueDropdown,
 } from "@/src/api/dropdown";
-import { usePackageData, useSingleClient } from "@/src/api/enquiry";
+import { usePackageData, useSingleClient, useCreateEnquiry } from "@/src/api/enquiry";
 import dayjs from "dayjs";
 
 type EnquiryFormValues = {
@@ -26,7 +26,7 @@ type EnquiryFormValues = {
   endTime: string;
   startTime: string;
   guestCount: string | number;
-  dj: { id: number; name: string };
+  dj: { id: string | number; name: string };
   depositAmount: string | number;
   notes: string;
   tellMeMore: string;
@@ -115,11 +115,17 @@ const NewEnquiryPage = () => {
     staff: null,
     package_name: "",
   });
+  const [selectedPackageEquipments, setSelectedPackageEquipments] =
+    useState<Record<string, boolean>>({});
+  const [selectedExtras, setSelectedExtras] = useState<Record<string, boolean>>(
+    {},
+  );
   const { data: clientDropdownName } = useClientDropdown();
   const { data: venueDropdownName } = useVenueDropdown();
   const { data: djDropdownData } = useUsersDropdown();
   const { data: packageData } = usePackageData(packageParams);
   const { data: clientDetails } = useSingleClient(clientId ?? null);
+  const createEnquiry = useCreateEnquiry();
   const formikRef = useRef<FormikProps<EnquiryFormValues>>(null);
   console.log(packageData);
 
@@ -127,13 +133,69 @@ const NewEnquiryPage = () => {
     if (clientDetails && formikRef.current) {
       formikRef.current.setValues((prev) => ({
         ...prev,
-        name: clientDetails.id,
-        address: clientDetails.address,
-        email: clientDetails.email,
-        number: clientDetails.contact_number,
+        name: clientDetails.name ?? String(clientDetails.id),
+        address: clientDetails.address ?? prev.address,
+        email: clientDetails.email ?? prev.email,
+        number: clientDetails.contact_number ?? prev.number,
       }));
     }
   }, [clientDetails]);
+
+  useEffect(() => {
+    // initialize selection state when package data changes
+    if (packageData?.data) {
+      const pkgEquip =
+        packageData.data.equipments?.package_user_equipments ?? [];
+      const initPkg: Record<string, boolean> = {};
+      pkgEquip.forEach((it: any) => {
+        const id = it.id ?? it.equipment_id ?? it.equipment?.id;
+        if (id) initPkg[String(id)] = true;
+      });
+      setSelectedPackageEquipments(initPkg);
+
+      const extras = packageData.data.extras ?? [];
+      const initExtras: Record<string, boolean> = {};
+      extras.forEach((ex: any) => {
+        if (ex.id) initExtras[ex.id] = false;
+      });
+      setSelectedExtras(initExtras);
+    }
+  }, [packageData]);
+
+  const { rigList, totalPrice } = useMemo(() => {
+    const list: Array<{ name: string; notes?: string }> = [];
+    let total = 0;
+
+    const basePrice = packageData?.data?.equipments?.sell_price ?? 0;
+    total += Number(basePrice) || 0;
+
+    const pkgEquip =
+      packageData?.data?.equipments?.package_user_equipments ?? [];
+    pkgEquip.forEach((it: any) => {
+      const equipment = it.equipment ?? null;
+      const id = it.id ?? it.equipment_id ?? equipment?.id;
+      const key = id != null ? String(id) : null;
+      const qty = it.quantity ?? 1;
+      const unit = equipment?.sell_price ?? 0;
+      if (key && selectedPackageEquipments[key]) {
+        total += Number(unit) * Number(qty);
+        list.push({ name: equipment?.name, notes: equipment?.rig_notes });
+      }
+    });
+
+    const extras = packageData?.data?.extras ?? [];
+    extras.forEach((ex: any) => {
+      const id = ex.id;
+      const qty = ex.quantity ?? 1;
+      const unit = ex.sell_price ?? 0;
+      if (id && selectedExtras[id]) {
+        total += Number(unit) * Number(qty);
+        list.push({ name: ex.name, notes: ex.rig_notes });
+      }
+    });
+
+    return { rigList: list, totalPrice: total };
+  }, [packageData, selectedPackageEquipments, selectedExtras]);
 
   const initialValues = {
     name: "",
@@ -152,7 +214,7 @@ const NewEnquiryPage = () => {
   };
 
   return (
-    <Formik
+    <Formik<EnquiryFormValues>
       innerRef={formikRef}
       initialValues={initialValues}
       validationSchema={validationSchema}
@@ -174,14 +236,83 @@ const NewEnquiryPage = () => {
                     <BackButton />
                   </Link>
                   <div className="flex flex-wrap gap-2">
-                    <Button type="default" icon={<Save size={14} />}>
+                    <Button
+                      type="primary"
+                      icon={<Save size={14} />}
+                      onClick={async () => {
+                        const eventDate = values.eventDate
+                          ? dayjs(values.eventDate).format("DD-MM-YYYY")
+                          : packageParams.event_date || dayjs().format("DD-MM-YYYY");
+
+                        const djName = values.dj?.name || "";
+                        const djPackageName = packageData?.data?.equipments?.package_name || packageParams.package_name || "";
+                        const djCost = Number(packageData?.data?.equipments?.sell_price ?? 0);
+
+                        const equipment_data: any[] = [];
+                        const rig_notes_data: any[] = [];
+                        const pkgEquip = packageData?.data?.equipments?.package_user_equipments ?? [];
+                        pkgEquip.forEach((it: any) => {
+                          const equipment = it.equipment ?? null;
+                          const id = equipment?.id ?? it.equipment_id ?? it.id;
+                          const key = id != null ? String(id) : null;
+                          if (key && selectedPackageEquipments[key]) {
+                            equipment_data.push({
+                              equipment_id: Number(id),
+                              sell_price: Number(equipment?.sell_price ?? 0),
+                              quantity: Number(it.quantity ?? 1),
+                              notes: equipment?.rig_notes ?? "",
+                            });
+                            rig_notes_data.push({ equipment_id: Number(id), rig_notes: equipment?.rig_notes ?? "" });
+                          }
+                        });
+
+                        const extra_data: any[] = [];
+                        const extras = packageData?.data?.extras ?? [];
+                        extras.forEach((ex: any) => {
+                          if (ex.id && selectedExtras[ex.id]) {
+                            extra_data.push({
+                              equipment_id: Number(ex.id),
+                              sell_price: Number(ex.sell_price ?? 0),
+                              quantity: Number(ex.quantity ?? 1),
+                              notes: ex.rig_notes ?? "",
+                            });
+                            rig_notes_data.push({ equipment_id: Number(ex.id), rig_notes: ex.rig_notes ?? "" });
+                          }
+                        });
+
+                        const clientName =
+                          clientDetails?.name ||
+                          clientDropdownName?.find((c) => String(c.id) === String(clientId))
+                            ?.name || values.name;
+
+                        const payload = {
+                          name: clientName,
+                          email: values.email,
+                          contact_number: values.number,
+                          address: values.address,
+                          event_date: eventDate,
+                          start_time: values.startTime,
+                          end_time: values.endTime,
+                          deposit_amount: Number(values.depositAmount) || 0,
+                          new_venue_name: typeof values.venue === "string" ? values.venue : "",
+                          event_details: values.tellMeMore || values.notes || "",
+                          dj_name: djName,
+                          dj_package_name: djPackageName,
+                          total_cost: Number(totalPrice) || 0,
+                          dj_cost: djCost,
+                          equipment_data,
+                          extra_data,
+                          rig_notes_data,
+                        };
+
+                        try {
+                          await createEnquiry.mutateAsync(payload);
+                        } catch (err) {
+                          console.error(err);
+                        }
+                      }}
+                    >
                       Save
-                    </Button>
-                    <Button type="default" icon={<Printer size={14} />}>
-                      Print
-                    </Button>
-                    <Button type="primary" icon={<Send size={14} />}>
-                      Send Quote
                     </Button>
                   </div>
                 </div>
@@ -227,16 +358,12 @@ const NewEnquiryPage = () => {
                                 value={values.name}
                                 onChange={(e) => {
                                   const selectedId = e.target.value;
+                                  const selectedClient = clientDropdownName?.find(
+                                    (opt) => String(opt.id) === String(selectedId),
+                                  );
                                   setClientId(Number(selectedId));
-                                  setFieldValue("name", selectedId);
-
-                                  setValues({
-                                    ...values,
-                                    name: selectedId,
-                                    address: clientDetails?.address,
-                                    email: clientDetails?.email,
-                                    number: clientDetails?.contact_number,
-                                  });
+                                  // set form name to the client's actual name (not the id)
+                                  setFieldValue("name", selectedClient?.name ?? selectedId);
                                 }}
                               >
                                 <option value="">Select Name</option>
@@ -505,12 +632,20 @@ const NewEnquiryPage = () => {
                                     const selectedDj = djDropdownData?.find(
                                       (item) => item.id === value,
                                     );
+                                    const eventDateFormatted =
+                                      packageParams.event_date ||
+                                      (values.eventDate
+                                        ? dayjs(values.eventDate).format(
+                                            "DD-MM-YYYY",
+                                          )
+                                        : dayjs().format("DD-MM-YYYY"));
+
                                     setPackageParams({
-                                      ...packageParams,
                                       staff: selectedDj?.id ?? null,
                                       package_name:
                                         selectedDj?.package_users?.[0]
                                           ?.package_name ?? "",
+                                      event_date: eventDateFormatted,
                                     });
                                     setFieldValue("dj", selectedDj);
                                   }}
@@ -580,20 +715,40 @@ const NewEnquiryPage = () => {
                       <span className="w-1/12 text-center">Price</span>
                     </div>
                     <div className="space-y-2">
-                      {Array.from({ length: 5 }).map((_, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between rounded-2xl bg-secondary-50/60 px-3 py-2 text-xs"
-                        >
-                          <div className="flex w-7/12 items-center gap-2">
-                            <input type="checkbox" className="size-4 rounded" />
-                            <span>Professional DJ/Host</span>
-                          </div>
-                          <div className="w-1/12 text-center">0</div>
-                          <div className="w-1/12 text-center">1</div>
-                          <div className="w-1/12 text-center">1</div>
-                        </div>
-                      ))}
+                      {packageData?.data?.equipments?.package_user_equipments?.map(
+                        (item: any, idx: number) => {
+                          const equipment = item.equipment ?? null;
+                          const id = item.id ?? item.equipment_id ?? equipment?.id ?? `pkg-${idx}`;
+                          const key = String(id);
+                          const unitPrice = equipment?.sell_price ?? 0;
+                          const qty = item.quantity ?? 1;
+                          const price = unitPrice * qty;
+                          return (
+                            <div
+                              key={key}
+                              className="flex items-center justify-between rounded-2xl bg-secondary-50/60 px-3 py-2 text-xs"
+                            >
+                              <div className="flex w-7/12 items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(selectedPackageEquipments[key])}
+                                  onChange={() =>
+                                    setSelectedPackageEquipments((prev) => ({
+                                      ...prev,
+                                      [key]: !prev[key],
+                                    }))
+                                  }
+                                  className="size-4 rounded"
+                                />
+                                <span>{equipment?.name}</span>
+                              </div>
+                              <div className="w-1/12 text-center">{unitPrice}</div>
+                              <div className="w-1/12 text-center">{qty}</div>
+                              <div className="w-1/12 text-center">{price}</div>
+                            </div>
+                          );
+                        },
+                      )}
                     </div>
                   </div>
                 </Card>
@@ -613,31 +768,41 @@ const NewEnquiryPage = () => {
                       <span className="w-2/12 text-center">Notes</span>
                     </div>
                     <div className="space-y-2">
-                      {packageData?.data?.extras?.map((extra) => (
-                        <div
-                          key={extra.id}
-                          className="flex items-center rounded-2xl bg-secondary-50/60 px-3 py-2 text-xs"
-                        >
-                          <div className="flex w-7/12 items-center gap-2">
-                            <input type="checkbox" className="size-4 rounded" />
-                            <span>{extra.name}</span>
+                      {packageData?.data?.extras?.map((extra: any) => {
+                        const id = extra.id;
+                        const unitPrice = extra.sell_price ?? 0;
+                        const qty = extra.quantity ?? 1;
+                        const price = unitPrice * qty;
+                        return (
+                          <div
+                            key={id}
+                            className="flex items-center rounded-2xl bg-secondary-50/60 px-3 py-2 text-xs"
+                          >
+                            <div className="flex w-7/12 items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(selectedExtras[id])}
+                                onChange={() =>
+                                  setSelectedExtras((prev) => ({
+                                    ...prev,
+                                    [id]: !prev[id],
+                                  }))
+                                }
+                                className="size-4 rounded"
+                              />
+                              <span>{extra.name}</span>
+                            </div>
+                            <div className="w-1/12 text-center">{unitPrice}</div>
+                            <div className="w-1/12 text-center">{qty}</div>
+                            <div className="w-1/12 text-center">{price}</div>
+                            <div className="w-2/12 text-center">
+                              <button className="hover:bg-white!">
+                                <SquareCheckBig size={19} />
+                              </button>
+                            </div>
                           </div>
-                          <div className="w-1/12 text-center">
-                            {extra.unitPrice ?? 0}
-                          </div>
-                          <div className="w-1/12 text-center">
-                            {extra.quantity ?? 1}
-                          </div>
-                          <div className="w-1/12 text-center">
-                            {extra.price ?? 1}
-                          </div>
-                          <div className="w-2/12 text-center">
-                            <button className="hover:bg-white!">
-                              <SquareCheckBig size={19} />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 </Card>
@@ -648,23 +813,24 @@ const NewEnquiryPage = () => {
                 {/* Summary card */}
                 <Card variant="white" className="p-3 overflow-hidden">
                   <h3 className="text-sm font-semibold pb-4">
-                    {values.dj.name}
+                    {values.dj?.name || "Selected Items"}
                   </h3>
                   <div className="pb-5 pt-1 text-xs text-gray-700 space-y-1">
-                    <p>• Professional DJ/Host</p>
-                    <p>• Digital Sound System &amp; Technician</p>
-                    <p>• 8 x LIGHTING: Moving Heads</p>
-                    <p>• SCREEN: 6m x 2m LED Screen &amp; Technician</p>
-                    <p>• Staging &amp; Fascia for LED Wall (Where Required)</p>
-                    <p>• 2x BOOTHS pre lit</p>
-                    <p>• Wireless Microphone</p>
-                    <p>• Haze Machine</p>
-                    <p>• Confetti Cannon</p>
-                    <p>• Site visit/s</p>
-                    <p>• Venue Documentation (10m PLI, PAT, HS, RA)</p>
+                    {rigList.length ? (
+                      rigList.map((r, i) => (
+                        <div key={i}>
+                          <p className="font-medium text-gray-900">{r.name}</p>
+                          {r.notes && (
+                            <p className="text-[11px] text-gray-500">{r.notes}</p>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-[11px] text-gray-500">No items selected</p>
+                    )}
                   </div>
                   <div className="rounded-lg bg-primary w-[124px] px-6 py-2 text-xl font-medium mx-auto text-white">
-                    £4,250
+                    {"£" + (Number(totalPrice) || 0).toLocaleString()}
                   </div>
                 </Card>
 
@@ -674,39 +840,18 @@ const NewEnquiryPage = () => {
                     <h3 className="text-sm font-medium">Rig List</h3>
                   </div>
                   <div className="space-y-3 px-6 py-4 text-xs text-gray-700">
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        Professional DJ/Host
-                      </p>
-                      <p className="text-[11px] text-gray-500">
-                        onetwofourtwoothwoafwohafowthewo gregregregregregreg
-                      </p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        Digital Sound System &amp; Technician
-                      </p>
-                      <p className="text-[11px] text-gray-500">
-                        gfdgfdgfdgfdgfdgvmjhgkjbcnxvbvnmhj kjgfjhgvbvcbvjvhj
-                        Printed
-                      </p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        8 x LIGHTING: Moving Heads
-                      </p>
-                      <p className="text-[11px] text-gray-500">
-                        Venue Documentation (10m PLI, PAT, HS, RA)
-                      </p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        SCREEN: 6m x 2m LED Screen &amp; Technician
-                      </p>
-                      <p className="text-[11px] text-gray-500">
-                        kjgfjhvfbvcbvvhj Printed
-                      </p>
-                    </div>
+                    {rigList.length ? (
+                      rigList.map((r, idx) => (
+                        <div key={idx}>
+                          <p className="font-medium text-gray-900">{r.name}</p>
+                          {r.notes && (
+                            <p className="text-[11px] text-gray-500">{r.notes}</p>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-[11px] text-gray-500">No rig items selected</p>
+                    )}
                   </div>
                 </Card>
               </div>
