@@ -1,0 +1,172 @@
+"use client";
+import { useState } from "react";
+import Button from "@/src/components/Button";
+import Card from "@/src/components/Card";
+import DataTable from "@/src/components/DataTable";
+import { BackButton, Export, MagnifyingGlass } from "@/src/components/Icons";
+import { DatePicker } from "antd";
+import { MoreVertical, RefreshCw } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import useColumns from "./useColumns";
+import { useAdminReport } from "@/src/api/reports";
+import SkeletonInput from "antd/es/skeleton/Input";
+
+interface StatItem {
+  label: string;
+  value: string;
+  image: string;
+  imageAlt?: string;
+  variant?: "white" | "green";
+}
+
+const initialParams = {
+  page: 1,
+  perPage: 10,
+};
+
+export type Filters = {
+  company?: string;
+  client?: string;
+  eventDate?: string;
+  eventStatus?: string;
+  dj?: string;
+  venue?: string;
+  page: number;
+  perPage: number;
+};
+
+const Page = () => {
+  const [filters, setFilters] = useState<Filters>(initialParams);
+  const { data: reportData, isLoading } = useAdminReport(filters);
+
+  const { columns } = useColumns(filters, setFilters);
+
+  const statsData = reportData?.stats;
+
+  const stats: StatItem[] = [
+    { label: "Events", value: "2230", image: "/svgs/stat-icon.svg" },
+    {
+      label: "Remaining",
+      value: statsData?.remaining,
+      image: "/svgs/red-chart.svg",
+    },
+    {
+      label: "Total paid",
+      value: statsData?.totalPaid,
+      image: "/svgs/red-chart.svg",
+    },
+    {
+      label: "Total cost",
+      value: statsData?.totalCost,
+      image: "/svgs/Line-chart.svg",
+      variant: "green",
+    },
+  ];
+
+  return (
+    <div className="mt-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard" className="">
+            <BackButton />
+          </Link>
+          <div>
+            <p className="text-sm text-gray-500">Hello, Carlic!</p>
+            <h2 className="themeH1">Admin Report</h2>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button icon={<Export />}>Export Data</Button>
+          <Button>
+            <MoreVertical size={18} />
+          </Button>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((item) => (
+          <Card
+            key={item.label}
+            variant={item.variant || "white"}
+            className={`flex items-center justify-between`}
+          >
+            <div className="flex items-center gap-3">
+              <div>
+                <p
+                  className={`text-sm ${item.variant === "green" ? "text-white" : "text-primary"}`}
+                >
+                  {item.label}
+                </p>
+                {isLoading ? (
+                  <SkeletonInput />
+                ) : (
+                  <p
+                    className={`text-xl font-semibold ${item.variant === "green" ? "text-white" : "text-black"}`}
+                  >
+                    {item.value}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <Image
+              src={item.image}
+              alt={item.imageAlt || item.label}
+              width={52}
+              height={39}
+            />
+          </Card>
+        ))}
+      </div>
+      <div className="rounded-2xl overflow-hidden">
+        <div className="bg-primary p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
+          <div className="flex items-center gap-2 rounded-lg bg-white px-4 h-10">
+            <MagnifyingGlass w={18} h={18} />
+            <input
+              type="text"
+              placeholder="Search event"
+              className="w-full bg-transparent! text-sm placeholder:text-gray-500"
+            />
+          </div>
+          <select
+            name="confirmedEvent"
+            className="bg-white rounded-lg text-xs px-3"
+          >
+            <option value="">Confirmed and Completed Events</option>
+          </select>
+          <DatePicker
+            placeholder="Date (From)"
+            className="[&_input]:bg-white!"
+          />
+          <DatePicker placeholder="Date (To)" className="[&_input]:bg-white!" />
+          <div className="flex gap-2">
+            <Button className="flex-1 h-full!">Apply Filters</Button>
+            <Button
+              className="flex-1 h-full!"
+              icon={<RefreshCw size={14} />}
+              onClick={() => setFilters(initialParams)}
+            >
+              Reset Filters
+            </Button>
+          </div>
+        </div>
+        <DataTable
+          columns={columns}
+          dataSource={reportData?.result}
+          pagination={{
+            pageSize: filters.perPage,
+            current: filters.page,
+            total: reportData?.total,
+            onChange: (page, pageSize) => {
+              setFilters({ ...filters, page, perPage: pageSize });
+            },
+          }}
+          loading={isLoading}
+          rowKey={(data) => data.id}
+        />
+      </div>
+    </div>
+  );
+};
+
+export default Page;

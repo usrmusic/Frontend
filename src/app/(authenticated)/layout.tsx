@@ -2,10 +2,11 @@ import { PropsWithChildren } from "react";
 import Sidebar from "./_components/Sidebar";
 import Header from "./_components/Header";
 
-const layout = ({ children }: PropsWithChildren) => {
+const layout = async ({ children }: PropsWithChildren) => {
+
   return (
     <div className="p-6">
-      <div className="bg-secondary-200 rounded-3xl min-h-[calc(100vh-48px)] p-8">
+      <div className="bg-secondary-200 rounded-3xl min-h-[calc(100vh-48px)] p-8 overflow-y-auto max-h-[calc(100vh-48px)]">
         <Sidebar />
         <div className="ml-25">
           <Header />

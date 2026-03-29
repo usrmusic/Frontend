@@ -1,6 +1,10 @@
 import { ConfigProvider } from "antd";
 import { ReactNode } from "react";
 
+// Add your primary gradient here for global use
+export const colorPrimaryGradient =
+  "linear-gradient(90deg, #7A9683 0%, #B6E2C6 100%)";
+
 const ThemeConfig = ({ children }: { children: ReactNode }) => {
   return (
     <ConfigProvider
@@ -9,6 +13,13 @@ const ThemeConfig = ({ children }: { children: ReactNode }) => {
           colorPrimary: "#719984",
           borderRadius: 8,
           fontFamily: "var(--font-inter)",
+        },
+        components: {
+          Select: {
+            selectorBg: "#f5f5f5", // background of select input
+            controlHeight: 40,
+            borderRadius: 12,
+          },
         },
       }}
     >
