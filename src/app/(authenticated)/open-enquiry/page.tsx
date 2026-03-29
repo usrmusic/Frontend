@@ -1,102 +1,80 @@
+"use client";
+import { useAddNote, useOpenEnquiryList } from "@/src/api/enquiry";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
+import DataTable from "@/src/components/DataTable";
 import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
-import { ChevronDown, ChevronUp, MoreVertical } from "lucide-react";
+import { TableColumnsType } from "antd";
+import { TableRowSelection } from "antd/es/table/interface";
+import { MoreVertical } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
+import SendBrochureModal from "./SendBrochure";
+import { toast } from "react-toastify";
 
-const enquiries = [
-  {
-    id: 1,
-    name: "Sangeeta Kaushik",
-    mobile: "07922629123",
-    eventDate: "27/04/2024",
-    tellUsMore:
-      "Hi, I have a wedding booked at Borgo Seno'Anni near Siena, and looking for someone with",
-    selected: true,
-  },
-  {
-    id: 2,
-    name: "Jasbir Singh",
-    mobile: "",
-    eventDate: "16/09/2024",
-    tellUsMore: "",
-    selected: false,
-  },
-  {
-    id: 3,
-    name: "Dan Singh",
-    mobile: "",
-    eventDate: "28/09/2024",
-    tellUsMore: "",
-    selected: false,
-  },
-  {
-    id: 4,
-    name: "Pand Kang",
-    mobile: "",
-    eventDate: "13/02/2025",
-    tellUsMore: "",
-    selected: false,
-  },
-  {
-    id: 5,
-    name: "Parminder Kang",
-    mobile: "",
-    eventDate: "16/05/2025",
-    tellUsMore: "",
-    selected: false,
-  },
-  {
-    id: 6,
-    name: "Parminder Kang",
-    mobile: "",
-    eventDate: "16/05/2025",
-    tellUsMore: "",
-    selected: false,
-  },
-  {
-    id: 7,
-    name: "Shane Johri",
-    mobile: "",
-    eventDate: "28/02/2025",
-    tellUsMore: "",
-    selected: false,
-  },
-  {
-    id: 8,
-    name: "Simon Basra",
-    mobile: "",
-    eventDate: "15/11/2024",
-    tellUsMore: "",
-    selected: false,
-  },
-  {
-    id: 9,
-    name: "Hardeep Mann",
-    mobile: "",
-    eventDate: "24/07/2024",
-    tellUsMore: "",
-    selected: false,
-  },
-  {
-    id: 10,
-    name: "Nick Singh",
-    mobile: "",
-    eventDate: "30/04/2025",
-    tellUsMore: "",
-    selected: false,
-  },
-  {
-    id: 11,
-    name: "Rajbinder Bains",
-    mobile: "",
-    eventDate: "08/08/2025",
-    tellUsMore: "",
-    selected: false,
-  },
-];
+const initialParams = {
+  page: 1,
+  limit: 10,
+  search: "",
+};
 
 const OpenEnquiryPage = () => {
+  const [params, setParams] = useState(initialParams);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [note, setNote] = useState("");
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [selectedRowData, setSelectedRowData] = useState(null);
+  const [clickedBtn, setClickedBtn] = useState<"brochure" | "quote" | "">("");
+
+  const { data: enquiryData, isLoading } = useOpenEnquiryList(params);
+  const { mutate: addNoteMutation } = useAddNote();
+
+  const onSelectChange = (newSelectedRowKeys: React.Key[], row) => {
+    setSelectedRowKeys(newSelectedRowKeys);
+    setSelectedRowData(row);
+  };
+  console.log(selectedRowData);
+
+  const rowSelection: TableRowSelection = {
+    type: "radio",
+    selectedRowKeys,
+    onChange: onSelectChange,
+  };
+
+  const columns: TableColumnsType = [
+    {
+      title: "Name",
+      dataIndex: ["users_events_user_idTousers", "name"],
+      key: "name",
+    },
+    {
+      title: "Mobile",
+      dataIndex: ["users_events_user_idTousers", "contact_number"],
+      key: "mobile",
+    },
+    {
+      title: "Event Date",
+      dataIndex: "date",
+      key: "date",
+    },
+    {
+      title: "Tell Us More",
+      dataIndex: "details",
+      key: "details",
+    },
+  ];
+
+  const hanldeAddNote = () => {
+    addNoteMutation(
+      { id: selectedRowKeys[0] as number, note },
+      {
+        onSuccess: () => {
+          toast.success("Note Added Successfully");
+          setNote("");
+        },
+      },
+    );
+  };
   return (
     <div className="mt-8 space-y-6">
       <div className="grid grid-cols-12 gap-6">
@@ -117,10 +95,26 @@ const OpenEnquiryPage = () => {
               <Button type="default" className="themeDefaultButton">
                 Email Update
               </Button>
-              <Button type="default" className="themeDefaultButton">
+              <Button
+                type="default"
+                className="themeDefaultButton"
+                onClick={() => {
+                  setModalOpen(true);
+                  setClickedBtn("brochure");
+                }}
+                disabled={!selectedRowKeys.length}
+              >
                 Send Brochure
               </Button>
-              <Button type="primary" className="themeDefaultButton">
+              <Button
+                type="primary"
+                className="themeDefaultButton"
+                disabled={!selectedRowKeys.length}
+                onClick={() => {
+                  setModalOpen(true);
+                  setClickedBtn("quote");
+                }}
+              >
                 Send Quote
               </Button>
               <button className=" size-9 flex items-center justify-center rounded-lg bg-secondary-100 hover:bg-secondary-200 transition-colors">
@@ -144,77 +138,20 @@ const OpenEnquiryPage = () => {
                 />
               </div>
             </div>
-            <div className="overflow-x-auto max-h-[calc(100vh-20px)] overflow-y-auto">
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-white z-10 border-b border-gray-200">
-                  <tr className="text-left font-semibold">
-                    <th className="w-12 py-4 px-4"></th>
-                    <th className="py-4 px-4">
-                      <div className="flex items-center gap-1">
-                        Name
-                        <span className="flex flex-col -space-y-1">
-                          <ChevronUp size={14} className="opacity-60" />
-                          <ChevronDown size={14} className="opacity-60" />
-                        </span>
-                      </div>
-                    </th>
-                    <th className="py-4 px-4">Mobile</th>
-                    <th className="py-4 px-4">
-                      <div className="flex items-center gap-1">
-                        Event Date
-                        <span className="flex flex-col -space-y-1">
-                          <ChevronUp size={14} className="opacity-60" />
-                          <ChevronDown size={14} className="opacity-60" />
-                        </span>
-                      </div>
-                    </th>
-                    <th className="py-4 px-4">
-                      <div className="flex items-center gap-1">
-                        Tell us more
-                        <span className="flex flex-col -space-y-1">
-                          <ChevronUp size={14} className="opacity-60" />
-                          <ChevronDown size={14} className="opacity-60" />
-                        </span>
-                      </div>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {enquiries.map((row, index) => (
-                    <tr
-                      key={row.id}
-                      className={`${
-                        row.selected
-                          ? "bg-primary/10"
-                          : index % 2 === 0
-                            ? "bg-white"
-                            : "bg-secondary-50/60"
-                      }`}
-                    >
-                      <td className="py-3 px-4">
-                        <input
-                          type="checkbox"
-                          defaultChecked={row.selected}
-                          className="size-4 rounded border-gray-300"
-                        />
-                      </td>
-                      <td className="py-3 px-4 font-medium text-gray-900">
-                        {row.name}
-                      </td>
-                      <td className="py-3 px-4 text-gray-600">
-                        {row.mobile || "—"}
-                      </td>
-                      <td className="py-3 px-4 text-gray-600">
-                        {row.eventDate}
-                      </td>
-                      <td className="py-3 px-4 text-gray-600 max-w-xs truncate">
-                        {row.tellUsMore || "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              columns={columns}
+              dataSource={enquiryData?.data}
+              loading={isLoading}
+              rowKey={(data) => data.id}
+              pagination={{
+                pageSize: params.limit,
+                current: params.page,
+                total: enquiryData?.meta.total,
+                onChange: (page, pageSize) =>
+                  setParams({ ...params, page, limit: pageSize }),
+              }}
+              rowSelection={rowSelection}
+            />
           </Card>
           {/* Left side Enquiry table */}
         </div>
@@ -223,10 +160,17 @@ const OpenEnquiryPage = () => {
           <div className="flex gap-2 h-[88px]">
             <input
               type="text"
-              placeholder=""
+              placeholder="Enter Note"
               className="rounded-xl w-full border border-gray-200 px-3 text-sm outline-none bg-white!"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
             />
-            <Button type="primary" className="h-auto! w-[89px] shrink-0">
+            <Button
+              type="primary"
+              className="h-auto! w-[89px] shrink-0"
+              onClick={hanldeAddNote}
+              disabled={!selectedRowKeys.length}
+            >
               Add
             </Button>
           </div>
@@ -240,6 +184,11 @@ const OpenEnquiryPage = () => {
             </div>
             <div className="min-h-[120px] px-5 py-4 text-sm text-gray-500">
               {/* Empty state - list will populate here */}
+              <ul className="list-disc">
+                {selectedRowData?.[0].event_notes?.map((note) => (
+                  <li key={note.id}>{note.notes}</li>
+                ))}
+              </ul>
             </div>
           </Card>
 
@@ -271,6 +220,14 @@ const OpenEnquiryPage = () => {
           </div>
         </div>
       </div>
+      {modalOpen && (
+        <SendBrochureModal
+          open={modalOpen}
+          sendMode={clickedBtn}
+          eventId={selectedRowKeys[0] as string}
+          onCancel={() => setModalOpen(false)}
+        />
+      )}
     </div>
   );
 };

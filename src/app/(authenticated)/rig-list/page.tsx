@@ -1,40 +1,35 @@
 "use client";
-import { useState } from "react";
 import Button from "@/src/components/Button";
-import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
-import { PlusIcon, Printer, Save } from "lucide-react";
+import { BackButton } from "@/src/components/Icons";
+import { Printer, Save } from "lucide-react";
 import Link from "next/link";
-import Input from "@/src/components/Input";
-
-const djBoothItems = [
-  "1 x Front Board",
-  "2 x Side Board",
-  "1 x Front CNC",
-  "2 x Side Pilades",
-  "2 x Gold Strips",
-];
-const soundSystemItems = [
-  "2 x Bass Speakers",
-  "2 x Tops Speakers",
-  "1 x Monitor",
-  "2 x Small Speaker Poles",
-  "Power Cables/Links",
-];
+import { Select, Spin } from "antd";
+import { useRigListEventsDropdown } from "@/src/api/dropdown";
+import dayjs from "dayjs";
+import { useState } from "react";
+import { useGetRigList, useSaveRigNotes } from "@/src/api/riglist";
+import { toast } from "react-toastify";
 
 const Page = () => {
-  // Instead of booleans, store the checked items as an array of item labels (strings)
-  const [checkedItems, setCheckedItems] = useState<string[]>([]);
+  const [eventId, setEventId] = useState("");
+  const [note, setNote] = useState("");
+  const { data: eventsDropdown } = useRigListEventsDropdown();
+  const { data: rigNotesData, isLoading } = useGetRigList(eventId);
+  const { mutate: saveRigNotesMutation } = useSaveRigNotes();
 
-  const handleCheckboxChange = (idx: number) => {
-    const item = djBoothItems[idx];
-    setCheckedItems((prev) =>
-      prev.includes(item)
-        ? prev.filter((checkedItem) => checkedItem !== item)
-        : [...prev, item],
+  const eventsptions = eventsDropdown?.data.map((item) => ({
+    label: `${dayjs(item.date).format("DD/MM/YYYY")} - ${item.venues?.venue} (${item.users_events_user_idTousers?.name})`,
+    value: item.id,
+  }));
+
+  const handleSave = () => {
+    saveRigNotesMutation(
+      { id: eventId, note },
+      {
+        onSuccess: () => toast.success("Notes Saved Successfully"),
+      },
     );
   };
-
-  //   console.log("checked items", checkedItems);
 
   return (
     <div className="space-y-4 mt-4">
@@ -46,7 +41,12 @@ const Page = () => {
           <h2 className="themeH1">Rig List</h2>
         </div>
         <div className="flex gap-3">
-          <Button type="primary" icon={<Save size={14} />}>
+          <Button
+            type="primary"
+            icon={<Save size={14} />}
+            disabled={!eventId}
+            onClick={handleSave}
+          >
             Save
           </Button>
           <Button icon={<Printer size={14} />}>Print</Button>
@@ -55,87 +55,62 @@ const Page = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div className="rounded-xl overflow-hidden">
           <div className="p-4 bg-primary">
-            <div className="flex items-center gap-2 rounded-lg bg-white px-4 py-3">
-              <MagnifyingGlass w={18} h={18} />
-              <input
-                type="text"
-                placeholder="Search by name, mobile, or event details..."
-                className="w-full bg-transparent! text-sm placeholder:text-gray-500"
-              />
-            </div>
+            <Select
+              value={eventId ? eventId : undefined}
+              className="w-[430px]"
+              placeholder="Select event"
+              options={eventsptions}
+              onChange={(value) => setEventId(value)}
+              allowClear
+            />
           </div>
           <div className="bg-white px-5 py-4">
             <div className="text-sm space-y-4">
-              <p className="mb-2">DJ BOOTH: Premium (3D Lettering and LED)</p>
-              <div className="pl-4 space-y-2">
-                {djBoothItems.map((label, idx) => (
-                  <div className="flex items-center gap-1" key={idx}>
-                    <input
-                      type="checkbox"
-                      id={`rig-item-${idx}`}
-                      checked={checkedItems.includes(label)}
-                      onChange={() => handleCheckboxChange(idx)}
-                    />
-                    <label htmlFor={`rig-item-${idx}`}>{label}</label>
-                  </div>
-                ))}
-              </div>
-              <div>
-                <p className="mb-2">Digital Sound System & Technician</p>
-                <div className="pl-4 space-y-2">
-                  {soundSystemItems.map((label, idx) => (
-                    <div className="flex items-center gap-1" key={idx}>
-                      <input
-                        type="checkbox"
-                        id={`rig-item-${idx}`}
-                        checked={checkedItems.includes(label)}
-                        onChange={() => handleCheckboxChange(idx)}
-                      />
-                      <label htmlFor={`rig-item-${idx}`}>{label}</label>
+              {isLoading ? (
+                <Spin />
+              ) : (
+                <>
+                  {rigNotesData?.packages?.length > 0 ? (
+                    <div className="space-y-4">
+                      {rigNotesData?.packages?.map((pkg, idx) => (
+                        <div key={idx}>
+                          <p>{pkg.equipment?.name}</p>
+                          <p>
+                            {pkg.equipment?.rig_notes
+                              ?.split("<br>")
+                              .map((note, idx) => (
+                                <ul key={idx} className="space-y-2">
+                                  <li className="flex items-center gap-2">
+                                    <input type="checkbox" />
+                                    {note.trim()}
+                                  </li>
+                                </ul>
+                              ))}
+                          </p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
+                  ) : (
+                    <>No rig notes available. </>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>
-        <div className="rounded-xl overflow-hidden">
-          <div className="bg-primary h-20"></div>
-          <div className="space-y-4 bg-white h-full px-4 py-3">
-            <div className="space-y-1">
-              <div className="flex gap-2 items-end">
-                <Input label="Venue" placeholder="Select venue" />
-                <Button
-                  type="primary"
-                  className="h-10! w-[100px]! text-xs!"
-                  icon={<PlusIcon size={14} />}
-                >
-                  Add Venue
-                </Button>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Input label="Event Date" type="date" />
-              </div>
-              <div className="space-y-1">
-                <Input label="End Time" type="time" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Input label="Start Time" type="time" />
-              </div>
-              <div className="space-y-1">
-                <Input label="Select DJ" placeholder="Choose DJ" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Input label="Deposit Amount" type="number" placeholder="0" />
-              </div>
-            </div>
+        <div className="rounded-xl overflow-hidden bg-white">
+          <div className="bg-primary h-20 flex items-center px-4 text-white">
+            <p>Event Notes</p>
           </div>
+          <textarea
+            name="notes"
+            id="notes"
+            placeholder="Add Notes"
+            className="w-full resize-none p-5"
+            rows={18}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          ></textarea>
         </div>
       </div>
     </div>

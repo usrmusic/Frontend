@@ -48,3 +48,21 @@ export const useUsersDropdown = () => {
     },
   });
 };
+export const useCompanyDropdown = () => {
+  return useQuery({
+    queryKey: ["company-dropdown"],
+    queryFn: async () => {
+      const response = await AxiosInstance.get("/company/get-dropdown");
+      return response.data;
+    },
+  });
+};
+export const useRigListEventsDropdown = () => {
+  return useQuery({
+    queryKey: ["events-dropdown"],
+    queryFn: async () => {
+      const response = await AxiosInstance.get("/rig-list/drop-down");
+      return response.data;
+    },
+  });
+};
