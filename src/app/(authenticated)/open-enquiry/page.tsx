@@ -23,15 +23,18 @@ const OpenEnquiryPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [note, setNote] = useState("");
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [selectedRowData, setSelectedRowData] = useState(null);
+  const [selectedRowData, setSelectedRowData] = useState<any[] | null>(null);
   const [clickedBtn, setClickedBtn] = useState<"brochure" | "quote" | "invoice">("invoice");
 
   const { data: enquiryData, isLoading } = useOpenEnquiryList(params);
   const { mutate: addNoteMutation } = useAddNote();
 
-  const onSelectChange = (newSelectedRowKeys: React.Key[], row) => {
+  const onSelectChange = (
+    newSelectedRowKeys: React.Key[],
+    rows: any[] | null,
+  ) => {
     setSelectedRowKeys(newSelectedRowKeys);
-    setSelectedRowData(row);
+    setSelectedRowData(rows ?? null);
   };
   console.log(selectedRowData);
 
@@ -185,7 +188,7 @@ const OpenEnquiryPage = () => {
             <div className="min-h-[120px] px-5 py-4 text-sm text-gray-500">
               {/* Empty state - list will populate here */}
               <ul className="list-disc">
-                {selectedRowData?.[0].event_notes?.map((note) => (
+                {selectedRowData?.[0].event_notes?.map((note: { id: number; notes: string }) => (
                   <li key={note.id}>{note.notes}</li>
                 ))}
               </ul>
