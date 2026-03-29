@@ -23,11 +23,14 @@ import Link from "next/link";
 import { CSSProperties, useState } from "react";
 import Files from "./Files";
 import { ConfirmEventData, EventsDropdownItem } from "@/src/types/types";
+import SendBrochureModal from "../open-enquiry/SendBrochure";
 
 const ConfirmedEventsPage = () => {
   const [eventId, setEventId] = useState("");
+  const [sendMode, setSendMode] = useState<"invoice" | "quote">("quote");
   const [isModifyMode, setIsModifyMode] = useState(false);
   const [showPayments, setShowPayments] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
 
   const { mutate: updateEventMutation, isPending } = useUpdateConfirmEvent();
@@ -175,41 +178,60 @@ const ConfirmedEventsPage = () => {
             <h2 className="themeH1">Confirmed Events</h2>
           </div>
           <div className="flex gap-2">
-            {isModifyMode ? (
+            {eventId && (
               <>
-                <Button type="primary" htmlType="submit" loading={isPending}>
-                  Update
+                {isModifyMode ? (
+                  <>
+                    <Button
+                      type="primary"
+                      htmlType="submit"
+                      loading={isPending}
+                    >
+                      Update
+                    </Button>
+                    <Button onClick={() => setIsModifyMode(false)}>
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    htmlType="button"
+                    onClick={() => setIsModifyMode(true)}
+                  >
+                    Modify
+                  </Button>
+                )}
+                <Button>Print</Button>
+                <Button onClick={handleCancelEvent} loading={isCancelingEvent}>
+                  Cancel Event
                 </Button>
-                <Button onClick={() => setIsModifyMode(false)}>Cancel</Button>
+                <Button
+                  onClick={() => {
+                    setSendMode("quote");
+                    setShowModal(true);
+                  }}
+                >
+                  Send Quote
+                </Button>
+                <Button
+                  loading={isDownloadingInvoice}
+                  onClick={handleDownloadInvoice}
+                >
+                  Download Invoice
+                </Button>
+                <Button
+                  onClick={() => {
+                    setSendMode("invoice");
+                    setShowModal(true);
+                  }}
+                >
+                  Send Invoice
+                </Button>
+                <Button>
+                  <MoreVertical size={14} />
+                </Button>
               </>
-            ) : (
-              <Button
-                htmlType="button"
-                disabled={!eventId}
-                onClick={() => setIsModifyMode(true)}
-              >
-                Modify
-              </Button>
             )}
-            <Button>Print</Button>
-            <Button
-              onClick={handleCancelEvent}
-              disabled={!eventId}
-              loading={isCancelingEvent}
-            >
-              Cancel Event
-            </Button>
-            <Button>Send Quote</Button>
-            <Button
-              loading={isDownloadingInvoice}
-              onClick={handleDownloadInvoice}
-            >
-              Download Invoice
-            </Button>
-            <Button>Send Invoice</Button>
-            <Button>
-              <MoreVertical size={14} />
-            </Button>
           </div>
         </div>
         <div className="max-w-100">
@@ -586,6 +608,14 @@ const ConfirmedEventsPage = () => {
         style={{ background: "transparent" }}
         items={getItems(panelStyle)}
       />
+      {showModal && (
+        <SendBrochureModal
+          open={showModal}
+          eventId={eventId}
+          sendMode={sendMode}
+          onCancel={() => setShowModal(false)}
+        />
+      )}
     </div>
   );
 };

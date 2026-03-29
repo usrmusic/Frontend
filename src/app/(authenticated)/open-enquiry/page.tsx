@@ -24,7 +24,7 @@ const OpenEnquiryPage = () => {
   const [note, setNote] = useState("");
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [selectedRowData, setSelectedRowData] = useState(null);
-  const [clickedBtn, setClickedBtn] = useState<"brochure" | "quote" | "">("");
+  const [clickedBtn, setClickedBtn] = useState<"brochure" | "quote" | "invoice">("invoice");
 
   const { data: enquiryData, isLoading } = useOpenEnquiryList(params);
   const { mutate: addNoteMutation } = useAddNote();

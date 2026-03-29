@@ -1,5 +1,9 @@
 import { useCompanyDropdown } from "@/src/api/dropdown";
-import { useSendBrochure, useSendQuote } from "@/src/api/enquiry";
+import {
+  useSendBrochure,
+  useSendInvoice,
+  useSendQuote,
+} from "@/src/api/enquiry";
 import Button from "@/src/components/Button";
 import Input from "@/src/components/Input";
 import { Modal, Select } from "antd";
@@ -10,12 +14,13 @@ interface BrochureProps {
   open: boolean;
   onCancel: VoidFunction;
   eventId: string;
-  sendMode: "brochure" | "quote" | "";
+  sendMode: "brochure" | "quote" | "invoice";
 }
 
 const MODAL_TITLES = {
   brochure: "Send Brochure",
   quote: "Send Quote",
+  invoice: "Send Invoice",
 };
 
 const SendBrochureModal = ({
@@ -29,8 +34,10 @@ const SendBrochureModal = ({
     useSendBrochure();
   const { mutateAsync: sendQuoteMutation, isPending: quoteLoading } =
     useSendQuote();
+  const { mutateAsync: sendInvoiceMutation, isPending: invoiceLoading } =
+    useSendInvoice();
 
-  const isPending = brochureLoading || quoteLoading;
+  const isPending = brochureLoading || quoteLoading || invoiceLoading;
 
   const formik = useFormik({
     initialValues: {
@@ -58,6 +65,13 @@ Thank you once again,`,
         sendQuoteMutation(values, {
           onSuccess: () => {
             toast.success("Quote Sent Successfully");
+            onCancel();
+          },
+        });
+      } else if (sendMode === "invoice") {
+        sendInvoiceMutation(values, {
+          onSuccess: () => {
+            toast.success("Invoice Sent Successfully");
             onCancel();
           },
         });
