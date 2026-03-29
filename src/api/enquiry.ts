@@ -111,6 +111,25 @@ export const useSendQuote = () => {
     },
   });
 };
+export const useSendInvoice = () => {
+  return useMutation({
+    mutationFn: async (payload: SendBrochurePayload) => {
+      try {
+        const response = await AxiosInstance.post(`/confirm-event/send-invoice`, payload);
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onError: (error) => {
+      console.error("send invoice failed:", error.message);
+    },
+  });
+};
 export const useAddNote = () => {
   const queryClient = useQueryClient();
 

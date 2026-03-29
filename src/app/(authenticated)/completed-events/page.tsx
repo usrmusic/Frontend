@@ -1,12 +1,25 @@
 "use client";
+import { useGetCompletedEventsList } from "@/src/api/events";
 import Button from "@/src/components/Button";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
 import { TableColumnsType, TableProps } from "antd";
+import dayjs from "dayjs";
 import { MoreVertical } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 
-const page = () => {
+const initialParams = {
+  page: 1,
+  perPage: 10,
+  search: "",
+};
+
+const CompletedEventsPage = () => {
+  const [params, setParams] = useState(initialParams);
+
+  const { data: completedEventsData, isLoading } =
+    useGetCompletedEventsList(params);
   const rowSelection: TableProps["rowSelection"] = {
     onChange: (selectedRowKeys: React.Key[], selectedRows) => {
       console.log(
@@ -20,17 +33,17 @@ const page = () => {
   const columns: TableColumnsType = [
     {
       key: "name",
-      dataIndex: "name",
+      dataIndex: ["users_events_user_idTousers", "name"],
       title: "Name",
     },
     {
       key: "email",
-      dataIndex: "email",
+      dataIndex: ["users_events_user_idTousers", "email"],
       title: "Email",
     },
     {
       key: "mobile",
-      dataIndex: "mobile",
+      dataIndex: ["users_events_user_idTousers", "contact_number"],
       title: "Mobile",
     },
     {
@@ -42,55 +55,22 @@ const page = () => {
       key: "date",
       dataIndex: "date",
       title: "Event Date",
+      render: (date) => <>{dayjs(date).format("DD-MM-YYYY")}</>,
     },
     {
       key: "payment",
-      dataIndex: "payment",
+      dataIndex: "is_event_payment_fully_paid",
       title: "Payment",
       render: (data) => (
         <div
-          className={`${data === "completed" && "bg-[#D4F4DD]"} ${data === "pending" && "bg-[#FFF4CC] text-[#9C6F19]"} w-[98px] rounded-full text-center text-[#0F7B3B] py-1 text-xs capitalize`}
+          className={`${data && "bg-[#D4F4DD]"} ${!data && "bg-[#FFF4CC] text-[#9C6F19]"} w-[98px] rounded-full text-center text-[#0F7B3B] py-1 text-xs capitalize`}
         >
-          {data}
+          {data ? "Completed" : "Pending"}
         </div>
       ),
     },
   ];
 
-  const data = [
-    {
-      name: "Sangeeta Kaushik",
-      email: "sangeeta@test.com",
-      mobile: "07922629123",
-      venue: "Atheneus Haves",
-      date: "27/04/2024",
-      payment: "completed",
-    },
-    {
-      name: "Sangeeta Kaushik",
-      email: "johndeo@test.com",
-      mobile: "07922629123",
-      venue: "Atheneus Haves",
-      date: "27/04/2024",
-      payment: "pending",
-    },
-    {
-      name: "Sangeeta Kaushik",
-      email: "jonny@test.com",
-      mobile: "07922629123",
-      venue: "Atheneus Haves",
-      date: "27/04/2024",
-      payment: "pending",
-    },
-    {
-      name: "Sangeeta Kaushik",
-      email: "biggy@test.com",
-      mobile: "07922629123",
-      venue: "Atheneus Haves",
-      date: "27/04/2024",
-      payment: "pending",
-    },
-  ];
   return (
     <>
       <div className="space-y-4 mt-4">
@@ -134,13 +114,20 @@ const page = () => {
         <DataTable
           rowSelection={rowSelection}
           columns={columns}
-          rowKey={(data) => data.email}
-          dataSource={data}
-          pagination={false}
+          rowKey={(data) => data.id}
+          loading={isLoading}
+          dataSource={completedEventsData?.data}
+          pagination={{
+            pageSize: params.perPage,
+            current: params.page,
+            total: completedEventsData?.meta.total,
+            onChange: (page, pageSize) =>
+              setParams({ ...params, page, perPage: pageSize }),
+          }}
         />
       </div>
     </>
   );
 };
 
-export default page;
+export default CompletedEventsPage;
