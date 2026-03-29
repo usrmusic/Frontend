@@ -106,6 +106,7 @@ export type Role = {
   updated_at: string | null;
 };
 
+
 export type EmailContent = {
   id: string;
   email_name: string;
@@ -117,6 +118,13 @@ export type EmailContent = {
 
 export type ManageAccessResponse = {
   roles: Role[];
+  permissions: {
+    id: string;
+    name: string;
+    guard_name?: string | null;
+    created_at?: string | null;
+    updated_at?: string | null;
+  }[];
 };
 
 type ClientPayload = {
@@ -300,7 +308,7 @@ export const useEmail = (params: QueryParams) => {
   });
 };
 
-export const useManageAccess = () => {
+export const useManageAccess = (enabled = true) => {
   return useQuery<ManageAccessResponse>({
     queryKey: ["manage-access"],
     queryFn: async (): Promise<ManageAccessResponse> => {
@@ -309,6 +317,7 @@ export const useManageAccess = () => {
       );
       return response.data;
     },
+    enabled,
   });
 };
 
