@@ -138,3 +138,29 @@ export const useAddNote = () => {
     },
   });
 };
+
+export const useCreateEnquiry = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: any) => {
+      try {
+        const response = await AxiosInstance.post(`/enquiry`, payload);
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["enquiry-list"] });
+      toast.success("Enquiry created successfully");
+      return data;
+    },
+    onError: (error: any) => {
+      console.error("create enquiry failed:", error?.message || error);
+    },
+  });
+};
