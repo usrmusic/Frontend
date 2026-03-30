@@ -10,6 +10,7 @@ export const useGetRigList = (id: string) => {
       const response = await AxiosInstance.get(`/rig-list/${id}`);
       return response.data;
     },
+    enabled: !!id,
   });
 };
 

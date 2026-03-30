@@ -1,16 +1,21 @@
 "use client";
 import { useAddNote, useOpenEnquiryList } from "@/src/api/enquiry";
+import { useConfirmEvent } from "@/src/api/events";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
-import { TableColumnsType } from "antd";
+import { useFormik } from "formik";
+import { Select, TableColumnsType } from "antd";
 import { TableRowSelection } from "antd/es/table/interface";
+import dayjs from "dayjs";
 import { MoreVertical } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import SendBrochureModal from "./SendBrochure";
 import { toast } from "react-toastify";
+import { useCompanyDropdown } from "@/src/api/dropdown";
+import Input from "@/src/components/Input";
 
 const initialParams = {
   page: 1,
@@ -18,23 +23,79 @@ const initialParams = {
   search: "",
 };
 
+interface EventNote {
+  id: number;
+  notes: string;
+}
+
+interface EnquiryRow {
+  id: number | string;
+  event_notes?: EventNote[];
+}
+
+interface CompanyOption {
+  id: number | string;
+  name: string;
+}
+
 const OpenEnquiryPage = () => {
   const [params, setParams] = useState(initialParams);
   const [modalOpen, setModalOpen] = useState(false);
   const [note, setNote] = useState("");
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [selectedRowData, setSelectedRowData] = useState<any[] | null>(null);
-  const [clickedBtn, setClickedBtn] = useState<"brochure" | "quote" | "invoice">("invoice");
+  const [selectedRowData, setSelectedRowData] = useState<EnquiryRow[] | null>(
+    null,
+  );
+  const [clickedBtn, setClickedBtn] = useState<
+    "brochure" | "quote" | "invoice"
+  >("invoice");
 
   const { data: enquiryData, isLoading } = useOpenEnquiryList(params);
+  const { data: companyNameOptions } = useCompanyDropdown();
+
   const { mutate: addNoteMutation } = useAddNote();
+  const { mutate: confirmEventMutation, isPending: confirmingEvent } =
+    useConfirmEvent();
+
+  const formik = useFormik({
+    initialValues: {
+      company_name: "",
+      event_date: "",
+      deposit_amount: "",
+      payment_method_id: "",
+    },
+    onSubmit: (values, { resetForm }) => {
+      if (!selectedRowKeys.length) {
+        toast.error("Please select an enquiry first");
+        return;
+      }
+
+      confirmEventMutation(
+        {
+          id: String(selectedRowKeys[0]),
+          payload: {
+            company_name: String(values.company_name),
+            event_date: dayjs(values.event_date).format("DD-MM-YYYY"),
+            deposit_amount: Number(values.deposit_amount),
+            payment_method_id: Number(values.payment_method_id),
+          },
+        },
+        {
+          onSuccess: () => {
+            toast.success("Deposit added successfully");
+            resetForm();
+          },
+        },
+      );
+    },
+  });
 
   const onSelectChange = (
     newSelectedRowKeys: React.Key[],
-    rows: any[] | null,
+    rows: Record<string, unknown>[],
   ) => {
     setSelectedRowKeys(newSelectedRowKeys);
-    setSelectedRowData(rows ?? null);
+    setSelectedRowData((rows as unknown as EnquiryRow[]) ?? null);
   };
   console.log(selectedRowData);
 
@@ -188,38 +249,68 @@ const OpenEnquiryPage = () => {
             <div className="min-h-[120px] px-5 py-4 text-sm text-gray-500">
               {/* Empty state - list will populate here */}
               <ul className="list-disc">
-                {selectedRowData?.[0].event_notes?.map((note: { id: number; notes: string }) => (
-                  <li key={note.id}>{note.notes}</li>
-                ))}
+                {selectedRowData?.[0].event_notes?.map(
+                  (note: { id: number; notes: string }) => (
+                    <li key={note.id}>{note.notes}</li>
+                  ),
+                )}
               </ul>
             </div>
           </Card>
 
           {/* Deposit Received */}
           <div className="p-5">
-            <div className="space-y-4">
+            <form className="space-y-4" onSubmit={formik.handleSubmit}>
               <div className="grid grid-cols-2 gap-3">
-                <select className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-xs outline-none">
-                  <option>Company</option>
-                </select>
-                <input
-                  type="text"
-                  defaultValue="12/27/2025"
-                  className="h-10 w-full rounded-xl border border-gray-200 bg-white! px-3 text-xs outline-none"
+                <Select
+                  className="w-full"
+                  placeholder="Select company"
+                  options={companyNameOptions?.data?.map((opt: CompanyOption) => ({
+                    label: opt.name,
+                    value: opt.id,
+                  }))}
+                  value={formik.values.company_name}
+                  onChange={(value) =>
+                    formik.setFieldValue("company_name", value)
+                  }
+                />
+                <Input
+                  name="event_date"
+                  type="date"
+                  value={formik.values.event_date}
+                  onChange={formik.handleChange}
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <select className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-xs outline-none">
-                  <option>Amount</option>
-                </select>
-                <select className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-xs outline-none">
-                  <option>Payment</option>
+                <Input
+                  name="deposit_amount"
+                  type="number"
+                  placeholder="Deposit Amount"
+                  value={formik.values.deposit_amount}
+                  onChange={formik.handleChange}
+                />
+                <select
+                  name="payment_method_id"
+                  className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-xs outline-none"
+                  value={formik.values.payment_method_id}
+                  onChange={formik.handleChange}
+                >
+                  <option value="">Payment</option>
+                  <option value="1">Cash</option>
+                  <option value="2">Bank Transfer</option>
+                  <option value="3">Card</option>
                 </select>
               </div>
-              <Button type="primary" className="w-full">
-                Deposit Received
+              <Button
+                type="primary"
+                className="w-full"
+                htmlType="submit"
+                loading={confirmingEvent}
+                disabled={!selectedRowKeys.length}
+              >
+                Add Deposit
               </Button>
-            </div>
+            </form>
           </div>
         </div>
       </div>
