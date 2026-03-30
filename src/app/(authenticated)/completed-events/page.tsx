@@ -3,6 +3,7 @@ import { useGetCompletedEventsList } from "@/src/api/events";
 import Button from "@/src/components/Button";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
+import { useDebounce } from "@/src/hooks/useDebounce";
 import { TableColumnsType, TableProps } from "antd";
 import dayjs from "dayjs";
 import { MoreVertical } from "lucide-react";
@@ -17,9 +18,13 @@ const initialParams = {
 
 const CompletedEventsPage = () => {
   const [params, setParams] = useState(initialParams);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 1000);
 
-  const { data: completedEventsData, isLoading } =
-    useGetCompletedEventsList(params);
+  const { data: completedEventsData, isLoading } = useGetCompletedEventsList({
+    ...params,
+    search: debouncedSearch,
+  });
   const rowSelection: TableProps["rowSelection"] = {
     onChange: (selectedRowKeys: React.Key[], selectedRows) => {
       console.log(
@@ -81,7 +86,7 @@ const CompletedEventsPage = () => {
             </Link>
             <h2 className="themeH1">Completed Events</h2>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          {/* <div className="flex flex-wrap items-center gap-2">
             <Button>View</Button>
             <Button type="primary">Send Email</Button>
             <Button type="primary">Send Invoice</Button>
@@ -90,24 +95,26 @@ const CompletedEventsPage = () => {
             <button className=" size-9 flex items-center justify-center rounded-lg bg-white hover:bg-secondary-200 transition-colors">
               <MoreVertical size={18} />
             </button>
-          </div>
+          </div> */}
         </div>
 
         <div className="grid grid-cols-4 gap-2">
-          <select
+          {/* <select
             name="event"
             id="event"
             className="bg-white rounded-lg h-10 px-3 text-sm"
           >
             <option value="">Select Event</option>
             <option value="event one">event one</option>
-          </select>
+          </select> */}
           <div className="flex max-w-[385px] items-center gap-2 rounded-lg bg-white px-4 h-10">
             <MagnifyingGlass w={18} h={18} />
             <input
               type="text"
               placeholder="Search"
               className="w-full bg-transparent! text-sm placeholder:text-gray-500"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
         </div>

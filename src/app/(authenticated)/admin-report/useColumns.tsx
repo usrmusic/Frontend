@@ -19,7 +19,7 @@ const useColumns = (
     },
     {
       key: "name",
-      dataIndex: "name",
+      dataIndex: "client_name",
       title: (
         <div>
           <p className="mb-1">Client</p>
@@ -62,7 +62,7 @@ const useColumns = (
     },
     {
       key: "dj",
-      dataIndex: "dj_first_name",
+      dataIndex: "dj_name",
       title: (
         <div>
           <p className="mb-1">DJ</p>
@@ -79,8 +79,8 @@ const useColumns = (
       ),
     },
     {
-      key: "total_cost_for_equipment",
-      dataIndex: "total_cost_for_equipment",
+      key: "total_price",
+      dataIndex: "total_price",
       title: (
         <div>
           <p className="mb-1">Total Price</p>
@@ -88,8 +88,8 @@ const useColumns = (
       ),
     },
     {
-      key: "cost",
-      dataIndex: "cost",
+      key: "total_cost",
+      dataIndex: "total_cost",
       title: (
         <div>
           <p className="mb-1">Cost</p>
@@ -97,8 +97,8 @@ const useColumns = (
       ),
     },
     {
-      key: "extra_cost_price_total",
-      dataIndex: "extra_cost_price_total",
+      key: "extra_cost",
+      dataIndex: "extra_cost",
       title: (
         <div>
           <p className="mb-1">Extra Cost</p>
@@ -115,8 +115,8 @@ const useColumns = (
       ),
     },
     {
-      key: "paymentReceived",
-      dataIndex: "paymentReceived",
+      key: "payment_received",
+      dataIndex: "payment_received",
       title: (
         <div>
           <p className="mb-1">Payment Received</p>
