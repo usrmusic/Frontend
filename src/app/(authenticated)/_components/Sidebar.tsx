@@ -8,7 +8,6 @@ import {
   Logout,
   MailOpen,
   Reports,
-  Settings,
 } from "@/src/components/Icons";
 import {
   TbReportSearch,
@@ -75,10 +74,7 @@ const Sidebar = () => {
       href: "/rig-list",
       icon: <RiFileListLine />,
     },
-    {
-      href: "#",
-      icon: <Settings />,
-    },
+
     {
       href: "/login",
       icon: <Logout />,

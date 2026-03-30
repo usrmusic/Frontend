@@ -2,8 +2,9 @@ import { useUsersDropdown } from "@/src/api/dropdown";
 import { useAddPackage, useEditPackage } from "@/src/api/usersApi";
 import ModalFooter from "@/src/components/common/ModalFooter";
 import Input from "@/src/components/Input";
-import { Modal, notification } from "antd";
+import { Modal } from "antd";
 import { useFormik } from "formik";
+import { Trash } from "lucide-react";
 import { toast } from "react-toastify";
 
 interface PackageProps {
@@ -17,6 +18,10 @@ interface PackageFormValues {
   package_name: string;
   cost_price: number | string;
   sell_price: number | string;
+  equipments: {
+    equipment_id: number | string;
+    quantity: number | string;
+  }[];
 }
 
 interface PackageProps {
@@ -42,6 +47,10 @@ const PackageModal = ({
       user_id: initialValues?.user_id || "",
       cost_price: initialValues?.cost_price || "",
       sell_price: initialValues?.sell_price || "",
+      equipments: (initialValues as PackageFormValues | null)?.equipments
+        ?.length
+        ? (initialValues as PackageFormValues).equipments
+        : [{ equipment_id: "", quantity: "" }],
     },
     enableReinitialize: true,
     onSubmit: (values) => {
@@ -50,6 +59,12 @@ const PackageModal = ({
         cost_price: Number(values.cost_price),
         sell_price: Number(values.sell_price),
         user_id: Number(values.user_id),
+        equipments: values.equipments
+          .filter((item) => item.equipment_id && item.quantity)
+          .map((item) => ({
+            equipment_id: Number(item.equipment_id),
+            quantity: Number(item.quantity),
+          })),
       };
       if (isEdit) {
         editPackage.mutate(
@@ -82,7 +97,9 @@ const PackageModal = ({
       <form onSubmit={formik.handleSubmit}>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Staff</label>
+            <label className="mb-1 text-xs flex items-center gap-1">
+              Staff
+            </label>
             <select
               className="w-full h-10 rounded-xl px-3 text-sm bg-secondary-100"
               name="user_id"
@@ -119,6 +136,68 @@ const PackageModal = ({
               value={formik.values.sell_price}
               onChange={formik.handleChange}
             />
+          </div>
+          <div>
+            <label className="mb-1 text-xs flex items-center gap-1">
+              Select Equipments
+            </label>
+            <div className="space-y-3">
+              {formik.values.equipments?.map((item, index) => (
+                <div className="flex gap-3" key={index}>
+                  <select
+                    className="w-full h-10 rounded-xl px-3 text-sm bg-secondary-100"
+                    value={item.equipment_id}
+                    onChange={(e) =>
+                      formik.setFieldValue(
+                        `equipments[${index}].equipment_id`,
+                        e.target.value,
+                      )
+                    }
+                  >
+                    <option value="">Select Equipment</option>
+                    <option value="1">Equipment 1</option>
+                    <option value="2">Equipment 2</option>
+                    <option value="3">Equipment 3</option>
+                  </select>
+                  <Input
+                    label=""
+                    type="number"
+                    name={`equipments[${index}].quantity`}
+                    value={item.quantity}
+                    onChange={formik.handleChange}
+                    placeholder="Quantity"
+                  />
+                  {formik.values.equipments.length > 1 && (
+                    <button
+                      type="button"
+                      className="text-sm font-medium text-red-500 col-span-2 text-left"
+                      onClick={() =>
+                        formik.setFieldValue(
+                          "equipments",
+                          formik.values.equipments.filter(
+                            (_, i) => i !== index,
+                          ),
+                        )
+                      }
+                    >
+                      <Trash size={18} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                className="text-sm font-medium text-primary"
+                type="button"
+                onClick={() =>
+                  formik.setFieldValue("equipments", [
+                    ...formik.values.equipments,
+                    { equipment_id: "", quantity: "" },
+                  ])
+                }
+              >
+                + Add another equipment
+              </button>
+            </div>
           </div>
         </div>
         <div className="mt-4">

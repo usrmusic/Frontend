@@ -111,6 +111,21 @@ const Page = () => {
             value={note}
             onChange={(e) => setNote(e.target.value)}
           ></textarea>
+          <div className="p-4 text-sm">
+            <p>Venue: {rigNotesData?.event?.venues?.venue}</p>
+            <p>Date: {rigNotesData?.event?.date}</p>
+            <p>
+              Time: {dayjs(rigNotesData?.event?.start_time).format("HH:mm")} -{" "}
+              {dayjs(rigNotesData?.event?.end_time).format("HH:mm")}
+            </p>
+            <p>
+              Access Times:{" "}
+              {rigNotesData?.event?.access_time
+                ? dayjs(rigNotesData?.event?.access_time).format("HH:mm")
+                : "N/A"}
+            </p>
+            <p>Dj: {rigNotesData?.event?.users_events_dj_idTousers?.name}</p>
+          </div>
         </div>
       </div>
     </div>

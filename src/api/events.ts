@@ -39,6 +39,13 @@ export interface CompletedEvent {
   payment_remaining: number;
 }
 
+interface ConfirmEventPayload {
+  payment_method_id: number;
+  deposit_amount: number;
+  company_name: string;
+  event_date: string;
+}
+
 export const useGetConfirmEvent = (id: string) => {
   return useQuery({
     queryKey: ["confirm-event", id],
@@ -140,6 +147,33 @@ export const useDownloadInvoice = () => {
       try {
         const response = await AxiosInstance.post(
           `/confirm-event/download-invoice/${id}`,
+        );
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "API Error");
+        } else {
+          toast.error("Something went wrong");
+        }
+        throw error;
+      }
+    },
+  });
+};
+export const useConfirmEvent = () => {
+  return useMutation({
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: ConfirmEventPayload;
+    }) => {
+      try {
+        const response = await AxiosInstance.post(
+          `/confirm-event/${id}`,
+          payload,
         );
         return response.data;
       } catch (error: unknown) {
