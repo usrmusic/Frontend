@@ -1,4 +1,4 @@
-import { useUsersDropdown } from "@/src/api/dropdown";
+import { useUsersDropdown, useEquipmentDropdown } from "@/src/api/dropdown";
 import { useAddPackage, useEditPackage } from "@/src/api/usersApi";
 import ModalFooter from "@/src/components/common/ModalFooter";
 import Input from "@/src/components/Input";
@@ -38,6 +38,7 @@ const PackageModal = ({
   const isEdit = !!initialValues;
 
   const { data, isLoading } = useUsersDropdown();
+  const { data: equipmentData, isLoading: equipmentLoading } = useEquipmentDropdown();
   const addPackage = useAddPackage();
   const editPackage = useEditPackage();
   const loading = addPackage.isPending || editPackage.isPending;
@@ -155,9 +156,11 @@ const PackageModal = ({
                     }
                   >
                     <option value="">Select Equipment</option>
-                    <option value="1">Equipment 1</option>
-                    <option value="2">Equipment 2</option>
-                    <option value="3">Equipment 3</option>
+                    {equipmentData?.map((opt: any) => (
+                      <option key={opt.id} value={opt.id}>
+                        {opt.name}
+                      </option>
+                    ))}
                   </select>
                   <Input
                     label=""
