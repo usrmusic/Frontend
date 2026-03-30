@@ -66,3 +66,12 @@ export const useRigListEventsDropdown = () => {
     },
   });
 };
+export const useEquipmentDropdown = () => {
+  return useQuery({
+    queryKey: ["equipment-dropdown"],
+    queryFn: async () => {
+      const response = await AxiosInstance.get("/equipment/get-dropdown");
+      return response.data;
+    },
+  });
+};
