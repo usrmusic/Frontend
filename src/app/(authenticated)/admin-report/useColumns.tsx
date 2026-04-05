@@ -9,8 +9,8 @@ const useColumns = (
 ) => {
   const columns: TableColumnsType = [
     {
-      key: "name",
-      dataIndex: "name",
+      key: "company_name",
+      dataIndex: "company_name",
       title: (
         <div>
           <p className="mb-1">Company</p>

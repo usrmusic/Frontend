@@ -35,12 +35,12 @@ const FileUploadPage = () => {
   const columns: TableColumnsType = [
     {
       title: "File Name",
-      dataIndex: "file_name",
+      dataIndex: "display_name",
       key: "file_name",
     },
     {
       title: "Type",
-      dataIndex: "file_type",
+      dataIndex: "extension",
       key: "file_type",
     },
     {
