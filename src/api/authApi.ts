@@ -6,18 +6,21 @@ import AxiosInstance from "../lib/axios";
 export const useLogin = () => {
   return useMutation({
     mutationFn: async (payload: { email: string; password: string }) => {
-      const response = await AxiosInstance.post("/user/auth", payload);
-
-      return response.data;
+      const response = await AxiosInstance.post<unknown>("/user/auth", payload);
+      return response.data as unknown;
     },
 
-    onSuccess: (data) => {
-      setCookie("token", data.accessToken);
-      setCookie("refreshToken", data.refreshToken);
+    onSuccess: (data: unknown) => {
+      // ensure expected properties exist before using them
+      if (data && typeof data === "object") {
+        const maybe = data as { accessToken?: string; refreshToken?: string };
+        if (maybe.accessToken) setCookie("token", maybe.accessToken);
+        if (maybe.refreshToken) setCookie("refreshToken", maybe.refreshToken);
+      }
     },
 
-    onError: (error) => {
-      console.error("Login failed:", error.message);
+    onError: (error: unknown) => {
+      console.error("Login failed:", error);
     },
   });
 };

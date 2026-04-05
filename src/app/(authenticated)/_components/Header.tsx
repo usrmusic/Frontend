@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Spin, Select, Avatar } from "antd";
-import Image from "next/image";
+import { Spin, Select } from "antd";
+import UserAvatar from "@/src/components/common/Avatar";
 import AxiosInstance from "@/src/lib/axios";
+import { extractUser } from "@/src/lib/user";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import { useDashboardDropdown } from "@/src/api/dasboard";
 import { MagnifyingGlass, Plus } from "@/src/components/Icons";
@@ -15,6 +16,7 @@ interface Session {
     nickname?: string;
   };
 }
+
 
 const Header = () => {
   
@@ -30,10 +32,10 @@ const Header = () => {
     let mounted = true;
     (async () => {
       try {
-        const resp = await AxiosInstance.get<any>("/user");
-        const payload = resp?.data?.data ? resp.data.data : resp?.data;
-        const u = Array.isArray(payload) ? payload[0] : payload;
-        if (mounted && u) setUser({ name: u.name || u.full_name || u.couple_name, profile_photo: u.profile_photo || u.avatar });
+        const resp = await AxiosInstance.get<unknown>("/user");
+        const raw = resp?.data as unknown;
+        const parsed = extractUser(raw);
+        if (mounted && parsed) setUser(parsed);
       } catch {
         // ignore
       }
@@ -79,11 +81,12 @@ const Header = () => {
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
-        {imageSrc ? (
-          <Image src={imageSrc} alt="avatar" width={48} height={48} className="rounded-full" />
-        ) : (
-          <Avatar size={48}>{user?.name ? user.name.split(" ").map(n=>n[0]).slice(0,2).join("") : "U"}</Avatar>
-        )}
+        <UserAvatar
+          src={imageSrc}
+          initials={user?.name ? user.name.split(" ").map(n => n[0]).slice(0,2).join("") : "U"}
+          size={48}
+          className="rounded-full"
+        />
         <div>
           <h3 className="text-2xl font-raleway font-medium mb-1">Hello{user?.name ? `, ${user.name}` : ''}</h3>
           <p className="text-gray-100">Explore information and activity about your events</p>
@@ -97,7 +100,14 @@ const Header = () => {
             value={search || undefined}
             placeholder="Search..."
             onSearch={(val) => setSearch(val)}
-            onSelect={(val, option) => setSearch((option as any)?.label || String(val))}
+            onSelect={(val, option) => {
+              let label = String(val);
+              if (option && typeof option === 'object' && 'label' in (option as Record<string, unknown>)) {
+                const maybeLabel = (option as Record<string, unknown>).label;
+                if (typeof maybeLabel === 'string') label = maybeLabel;
+              }
+              setSearch(label);
+            }}
             notFoundContent={dropdownFetching ? <Spin size="small" /> : (dropdownParams ? <div className="text-sm text-gray-500">No results</div> : <div className="text-sm text-gray-500">Type to search</div>)}
             options={(dropdownItems || []).map((it) => ({ value: String(it.id), label: it.couple_name ?? it.client?.name ?? `#${it.id}` }))}
             loading={dropdownFetching}
