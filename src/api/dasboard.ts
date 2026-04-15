@@ -21,6 +21,7 @@ type PendingPayment = {
   outstanding: number;
   payment_date: string | null;
   client_name: string | null;
+  event_status_id?: number;
 };
 
 type CalendarEvent = {
@@ -59,6 +60,7 @@ export interface DashboardResponse {
   openEnquiries: any[];
   calendarEvents: CalendarEvent[];
   recentNotes: RecentNote[];
+  totalTurnover: number;
 }
 
 

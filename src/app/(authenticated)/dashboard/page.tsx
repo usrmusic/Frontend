@@ -5,8 +5,10 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import { colorPrimaryGradient } from "@/src/config/ThemeConfig";
 
-import { useState, useEffect } from "react";
-import { DayPicker } from "react-day-picker";
+import { useState, useEffect, useRef } from "react";
+import type { ComponentType } from "react";
+import { useRouter } from "next/navigation";
+import { DayPicker, type CustomComponents } from "react-day-picker";
 import "react-day-picker/dist/style.css";
 import {
   addMonths,
@@ -59,28 +61,100 @@ const sidebarOptions = [
   },
 ];
 
+// Type for open enquiry items used in this page
+type OpenEnquiry = {
+  id?: number | string;
+  couple_name?: string | null;
+  client?: { name?: string | null } | null;
+  venue?: string | null;
+  subtitle?: string | null;
+  created_at?: string | null;
+  tag?: string | null;
+  [key: string]: unknown;
+};
+
 function CalendarWithSidebar({
   events,
 }: {
   events?: Array<{ id?: number; date: string; title?: string }>;
 }) {
-  const [month, setMonth] = useState(new Date(2024, 3, 1)); // April 2024
-  const [selected, setSelected] = useState(new Date(2024, 3, 22));
+  const router = useRouter();
+  const [month, setMonth] = useState<Date>(() => startOfToday());
+  const [selected, setSelected] = useState<Date>(() => startOfToday());
   const [sidebarIdx, setSidebarIdx] = useState(0);
+  const lastClickRef = useRef<{ time: number; date: string | null }>({ time: 0, date: null });
 
-  // derive dot days from provided events (API)
+  // Build a fast lookup set of event dates (YYYY-MM-DD) for rendering dots
+  const toLocalIso = (d?: Date | string | null) => {
+    if (!d) return "";
+    const date = typeof d === "string" ? new Date(d) : d;
+    if (!date || Number.isNaN(date.getTime())) return "";
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  const dotSet = new Set(
+    (events || [])
+      .map((e) => toLocalIso((e as any).date))
+      .filter(Boolean) as string[],
+  );
+
+  // Also prepare Day objects for DayPicker modifiers (use midday UTC to avoid TZ shifts)
   const dotDays =
     events && events.length
       ? (events
           .map((e) => {
             try {
-              return new Date(e.date);
+              const dt = new Date(e.date);
+              dt.setHours(12, 0, 0, 0);
+              return dt;
             } catch {
               return null;
             }
           })
           .filter(Boolean) as Date[])
-      : [5, 6, 12].map((d) => new Date(2024, 3, d));
+      : [];
+
+  // When events arrive, show the month containing the earliest event
+  useEffect(() => {
+    if (!events || !events.length) return;
+    const dates = events
+      .map((e) => {
+        try {
+          const dt = new Date(e.date);
+          dt.setHours(12, 0, 0, 0);
+          return dt;
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean) as Date[];
+    if (dates.length) {
+      dates.sort((a, b) => a.getTime() - b.getTime());
+      const firstDate = dates[0];
+      const newMonth = startOfMonth(firstDate);
+      // Defer updates to a micro-task and use functional updates that avoid changing
+      // state when the value is already the same. This prevents unnecessary cascading renders.
+      Promise.resolve().then(() => {
+        setMonth((prev) => {
+          try {
+            return prev.getTime() === newMonth.getTime() ? prev : newMonth;
+          } catch {
+            return newMonth;
+          }
+        });
+        setSelected((prev) => {
+          try {
+            return prev && prev.getTime() === firstDate.getTime() ? prev : firstDate;
+          } catch {
+            return firstDate;
+          }
+        });
+      });
+    }
+  }, [events]);
 
   // Sidebar click handler
   const handleSidebar = (idx: number) => {
@@ -89,15 +163,66 @@ function CalendarWithSidebar({
     setMonth(start);
     setSelected(start);
   };
+
+  // Handle day selection with reliable double-click detection using a ref
+  const handleSelectDay = (date: Date | undefined) => {
+    if (!date) return;
+    const now = Date.now();
+    const isoDate = date.toISOString().split("T")[0];
+    const isDoubleClick =
+      lastClickRef.current.date === isoDate &&
+      now - (lastClickRef.current.time || 0) < 400;
+    
+    setSelected(date);
+    lastClickRef.current = { time: now, date: isoDate };
+    if (isDoubleClick) {
+      try {
+        
+        router.push(`/calendar?date=${isoDate}`);
+      } catch (e) {
+        console.error("Navigation error:", e);
+      }
+    }
+  };
   const handlePrev = () => setMonth((prev) => subMonths(prev, 1));
   const handleNext = () => setMonth((prev) => addMonths(prev, 1));
   const monthTitle = month.toLocaleString("default", {
     month: "long",
     year: "numeric",
   });
-  // suppress DayPicker caption by providing a typed-any components object
-  // (using `any` avoids TypeScript complaining about unknown component keys)
-  const dayPickerComponents: any = { Caption: () => null };
+  // Custom Day renderer to show a small dot when an event exists on that date.
+  const CustomDay = (dayProps: any) => {
+    const { date, children, className, onClick, onKeyDown, disabled } = dayProps as any;
+    const iso = toLocalIso(date as Date | undefined);
+    const hasDot = dotSet.has(iso);
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        onDoubleClick={(e) => {
+          try {
+            
+            e.stopPropagation();
+            if (!iso) return;
+            router.push(`/calendar?date=${iso}`);
+          } catch (err) {
+            console.error(err);
+          }
+        }}
+        onKeyDown={onKeyDown}
+        disabled={disabled}
+        className={`${className || ""} relative flex items-center justify-center w-full h-full`}
+      >
+        <span>{children}</span>
+        {hasDot && (
+          <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-blue-600" />
+        )}
+      </button>
+    );
+  };
+
+  // suppress DayPicker caption; provide our custom Day component
+  const dayPickerComponents = { Caption: () => null, Day: CustomDay } as unknown as Partial<CustomComponents>;
 
   return (
     <div className="flex">
@@ -144,7 +269,7 @@ function CalendarWithSidebar({
               />
             </svg>
           </button>
-          <div className="text-lg font-semibold text-white">{monthTitle}</div>
+          <div className="text-lg font-semibold text-gray-900">{monthTitle}</div>
           <button
             aria-label="Next month"
             onClick={handleNext}
@@ -162,11 +287,26 @@ function CalendarWithSidebar({
             </svg>
           </button>
         </div>
-        {/* @ts-expect-error: ignore strict DayPicker prop overload types here */}
         <DayPicker
           mode="single"
           selected={selected}
-          onSelect={setSelected}
+          onSelect={handleSelectDay}
+          onDayClick={(day: Date) => {
+            const iso = toLocalIso(day);
+            const now = Date.now();
+            const isDouble = lastClickRef.current.date === iso && now - (lastClickRef.current.time || 0) < 400;
+            
+            setSelected(day);
+            lastClickRef.current = { time: now, date: iso };
+            if (isDouble) {
+              try {
+                
+                router.push(`/calendar?date=${iso}`);
+              } catch (err) {
+                console.error(err);
+              }
+            }
+          }}
           month={month}
           onMonthChange={setMonth}
           showOutsideDays
@@ -190,10 +330,11 @@ function CalendarWithSidebar({
           }}
           modifiers={{ dot: dotDays }}
           modifiersClassNames={{
-            dot: "relative after:absolute after:left-1/2 after:-bottom-0 after:-translate-x-1/2 after:-translate-y-1/2 after:w-1.5 after:h-1.5 after:rounded-full after:bg-blue-600",
+            dot: "relative after:absolute after:left-1/2 after:-translate-x-1/2 after:bottom-2 after:w-1.5 after:h-1.5 after:rounded-full after:bg-blue-600",
           }}
           components={dayPickerComponents}
         />
+        
       </div>
     </div>
   );
@@ -202,33 +343,12 @@ function CalendarWithSidebar({
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
   ssr: false,
 });
-// ensure a loose-typed reference for JSX usage
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const ApexChart: any = ReactApexChart;
+// ensure a loosely-typed reference for JSX usage without `any`
+const ApexChart: ComponentType<Record<string, unknown>> = ReactApexChart as unknown as ComponentType<Record<string, unknown>>;
 
-// simple events sample used for local filtering (client-side demo data)
-const events = [
-  { date: "02/01/26", venue: "Ramside Hotel & Spa", dj: "DJ Nicku" },
-  { date: "02/01/26", venue: "Sports Connexions", dj: "Gurps Jandu" },
-  { date: "02/01/26", venue: "Ditton Manor, Langley", dj: "Rav & Huddy" },
-  { date: "02/01/26", venue: "Hilton T5", dj: "Gurps Jandu" },
-  { date: "02/01/25", venue: "Bedford Mercure Hotel", dj: "Arun Sandhar" },
-];
+// NOTE: using API-driven dashboard data; removed local demo events
 
-const enquiries = [
-  {
-    name: "Esthera Jackson",
-    subtitle: "4th September 2025 No venue available",
-    tag: "4M 19D",
-  },
-];
 
-const activities = [
-  "Aaim created a user admin_ui",
-  "Aaim deleted an admin admin_",
-  "Aaim updated a user admin_ui",
-  "Aaim created an event",
-];
 
 // Chart series + options for Event Overview
 const chartSeries = [
@@ -242,7 +362,11 @@ const chartSeries = [
   },
 ];
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+type ChartOptionsType = {
+  xaxis?: { categories?: unknown[] } & Record<string, unknown>;
+  [k: string]: unknown;
+};
+
 const chartOptions = {
   chart: {
     id: "events-overview",
@@ -297,18 +421,22 @@ const chartOptions = {
     enabled: true,
     followCursor: true,
     theme: "dark",
-    custom: function ({ series, seriesIndex, dataPointIndex, w }: any) {
-      const value = series[seriesIndex][dataPointIndex];
-      const category =
-        (w &&
-          w.globals &&
-          w.globals.labels &&
-          w.globals.labels[dataPointIndex]) ||
-        dataPointIndex + 1;
+    custom: function (opts: { series: unknown; seriesIndex: number; dataPointIndex: number; w?: Record<string, unknown> }) {
+      const { series, seriesIndex, dataPointIndex, w } = opts;
+      let value: unknown = undefined;
+      if (Array.isArray(series) && Array.isArray((series as unknown[])[seriesIndex as number])) {
+        const row = (series as unknown[])[seriesIndex as number] as unknown[];
+        value = row[dataPointIndex as number];
+      }
+      const wObj = w as Record<string, unknown> | undefined;
+      const globals = wObj?.globals as Record<string, unknown> | undefined;
+      const labels = globals?.labels as unknown[] | undefined;
+      const category = Array.isArray(labels) ? labels[dataPointIndex as number] : dataPointIndex + 1;
+      const numeric = Number(value as unknown);
       return `
         <div style="position:relative;display:flex;align-items:center;justify-content:center;">
           <div style="background:${colorPrimaryGradient};color:white;padding:10px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.12);font-size:12px;min-width:120px;text-align:center;">
-            <div style="font-weight:700;font-size:14px;line-height:1">${Number(value).toLocaleString()}</div>
+            <div style="font-weight:700;font-size:14px;line-height:1">${Number(numeric).toLocaleString()}</div>
             <div style="opacity:0.95;font-size:11px;margin-top:4px">${category}</div>
           </div>
           <div style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:8px solid ${colorPrimaryGradient};position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);"></div>
@@ -316,61 +444,46 @@ const chartOptions = {
       `;
     },
   },
-} as any;
-/* eslint-enable @typescript-eslint/no-explicit-any */
+} as ChartOptionsType;
 
 const DashboardPage = () => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [search, setSearch] = useState("");
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [filteredEvents, setFilteredEvents] = useState(events);
+  const router = useRouter();
 
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      if (!search) {
-        setFilteredEvents(events);
-        return;
-      }
-      const lower = search.toLowerCase();
-      setFilteredEvents(
-        events.filter(
-          (e) =>
-            e.date.toLowerCase().includes(lower) ||
-            e.venue.toLowerCase().includes(lower) ||
-            e.dj.toLowerCase().includes(lower),
-        ),
-      );
-    }, 250); // debounce
-    return () => clearTimeout(handler);
-  }, [search]);
+  // toggles to hide/show sensitive values (default: hidden)
+  const [showProfit, setShowProfit] = useState(false);
+  const [showOpenEnquiryValue, setShowOpenEnquiryValue] = useState(false);
 
   const [year, setYear] = useState<number>(new Date().getFullYear());
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
-    const handler = (e: any) => {
-      const y = Number(e?.detail?.year);
-      if (!Number.isNaN(y)) setYear(y);
+    const handler: EventListener = (ev) => {
+      const custom = ev as CustomEvent<{ year?: number }>;
+      const y = custom?.detail?.year;
+      if (typeof y === "number" && !Number.isNaN(y)) setYear(y);
     };
     if (typeof window !== "undefined") {
-      window.addEventListener("dashboard:yearChange", handler as EventListener);
+      window.addEventListener("dashboard:yearChange", handler);
     }
     return () => {
       if (typeof window !== "undefined") {
-        window.removeEventListener(
-          "dashboard:yearChange",
-          handler as EventListener,
-        );
+        window.removeEventListener("dashboard:yearChange", handler);
       }
     };
   }, []);
 
   useEffect(() => {
-    setIsMounted(true);
+    // Defer mounting flag update to a micro-task so we don't synchronously
+    // call setState inside the effect body which can trigger cascading renders.
+    Promise.resolve().then(() => {
+      setIsMounted((prev) => (prev === true ? prev : true));
+    });
   }, []);
 
   const { data: dashboard, isLoading: dashboardLoading } = useDashboard({
     year,
   });
+
+  
   const monthlyCounts = dashboard?.monthly?.counts ?? [];
   const monthlyLabels = dashboard?.monthly?.labels ?? [];
   const countsChange =
@@ -476,26 +589,45 @@ const DashboardPage = () => {
             </div>
           ) : (
             <>
-              <Image
-                src={"/svgs/Icon.svg"}
-                alt="Open Enquiry"
-                width={28}
-                height={28}
-                className="flex-1"
-              />
-              <div className="mt-4 flex-1">
-                <p className="text-base text-primary">Open Enquiry</p>
-                <p className="text-2xl font-semibold">
-                  {dashboard?.openEnquiriesCount ?? 0}
-                </p>
-              </div>
-              <Image
-                src={"/svgs/red-chart.svg"}
-                alt="Open Enquiry"
-                width={28}
-                height={28}
-                className="flex-1"
-              />
+                <Image
+                  src={"/svgs/Icon.svg"}
+                  alt="Open Enquiry"
+                  width={28}
+                  height={28}
+                  className="flex-1"
+                />
+<div className="mt-4 flex-1">
+                    <div className="flex items-center justify-between">
+                      <p className="text-base text-primary">Turn Over</p>
+                      <button
+                        type="button"
+                        onClick={() => setShowOpenEnquiryValue((s) => !s)}
+                        className="text-primary hover:opacity-70 transition-opacity"
+                        title={showOpenEnquiryValue ? "Hide value" : "Show value"}
+                      >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                          <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
+                    {showOpenEnquiryValue && (
+                      <button
+                        type="button"
+                        onClick={() => router.push('/open-enquiry')}
+                        className="text-2xl font-semibold hover:underline"
+                      >
+                        {dashboard?.totalTurnover ?? 0}
+                      </button>
+                    )}
+                  </div>
+                <Image
+                  src={"/svgs/red-chart.svg"}
+                  alt="Open Enquiry"
+                  width={28}
+                  height={28}
+                  className="flex-1"
+                />
             </>
           )}
         </Card>
@@ -510,18 +642,33 @@ const DashboardPage = () => {
             </div>
           ) : (
             <>
-              <div>
-                <p className="text-base text-white/80 mb-2">Profit</p>
-                <p className="text-2xl font-semibold text-white">
-                  {dashboardLoading
-                    ? "..."
-                    : new Intl.NumberFormat("en-GB", {
-                        style: "currency",
-                        currency: "GBP",
-                        maximumFractionDigits: 0,
-                      }).format(dashboard?.totalProfit ?? 0)}
-                </p>
-              </div>
+<div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <p className="text-base text-white/80 mb-2">Profit</p>
+                    <button
+                      type="button"
+                      onClick={() => setShowProfit((s) => !s)}
+                      className="text-white/80 hover:opacity-70 transition-opacity"
+                      title={showProfit ? "Hide value" : "Show value"}
+                    >
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                        <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </div>
+                  {showProfit && (
+                    <p className="text-2xl font-semibold text-white">
+                      {dashboardLoading
+                        ? "..."
+                        : new Intl.NumberFormat("en-GB", {
+                            style: "currency",
+                            currency: "GBP",
+                            maximumFractionDigits: 0,
+                          }).format(dashboard?.totalProfit ?? 0)}
+                    </p>
+                  )}
+                </div>
               <Image
                 src={"/svgs/Line-chart.svg"}
                 alt="line chart"
@@ -622,7 +769,7 @@ const DashboardPage = () => {
                           ...chartOptions.xaxis,
                           categories: monthlyLabels.length
                             ? monthlyLabels
-                            : chartOptions.xaxis.categories,
+                            : chartOptions.xaxis?.categories,
                         },
                       }}
                       series={
@@ -771,7 +918,7 @@ const DashboardPage = () => {
                                   name: { show: false },
                                   value: {
                                     show: true,
-                                    formatter: (val: any) => `${val}`,
+                                    formatter: (val: unknown) => String(val),
                                   },
                                   total: {
                                     show: true,
@@ -810,11 +957,26 @@ const DashboardPage = () => {
                     No pending payments.
                   </div>
                 ) : (
-                  <ul className="space-y-2 text-xs flex-1 max-h-[300px] overflow-auto">
+                  <ul className="space-y-2 no-scrollbar text-xs flex-1 max-h-[300px] overflow-auto">
                     {dashboard.pendingPayments.map((p) => (
                       <li
                         key={p.id}
-                        className="flex items-center justify-between py-2"
+                        className="flex items-center justify-between py-2 cursor-pointer hover:bg-gray-50 transition-colors"
+                        title={`Double-click to search in header`}
+                        onDoubleClick={() => {
+                            const clientName = p.client_name ?? p.couple_name ?? `Client #${p.id}`;
+                            const eventId = p.id;
+                            const status = Number(p.event_status_id);
+                            let target = "/dashboard";
+                            if (status === 1) target = "/open-enquiry";
+                            else if (status === 2) target = "/confirmed-events";
+                            else if (status === 3 || status === 4) target = "/completed-events";
+                            try {
+                              router.push(`${target}?search=${encodeURIComponent(String(eventId))}&name=${encodeURIComponent(String(clientName))}`);
+                            } catch (e) {
+                              console.error(e);
+                            }
+                          }}
                       >
                         <div>
                           <p>{p.client_name ?? `Client #${p.id}`}</p>
@@ -864,9 +1026,9 @@ const DashboardPage = () => {
             <div className="text-xs text-gray-500">No open enquiries.</div>
           ) : (
             <ul className="text-xs">
-              {dashboard.openEnquiries.map((enq: any) => (
+              {dashboard.openEnquiries.map((enq: OpenEnquiry, idx: number) => (
                 <li
-                  key={enq.id ?? enq.couple_name ?? Math.random()}
+                  key={String(enq.id ?? enq.couple_name ?? `enq-${idx}`)}
                   className="flex items-center border-b border-[#636363] last:border-0 justify-between px-3 py-3"
                 >
                   <div className="flex gap-3">
@@ -922,7 +1084,7 @@ const DashboardPage = () => {
               </p>
             </div>
           </div>
-          <ul className="mb-4 space-y-2 text-xs max-h-[250px] overflow-auto">
+          <ul className="mb-4 no-scrollbar space-y-2 text-xs max-h-[250px] overflow-auto">
             {dashboardLoading ? (
               <li className="flex items-center">
                 <Skeleton active paragraph={false} />
