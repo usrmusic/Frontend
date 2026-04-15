@@ -7,27 +7,64 @@ import { MapPin, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { useCalendar } from "@/src/api/calendar";
 
+// Strongly-typed shape for calendar events we render in this page
+type CalendarEvent = {
+  id?: number | string;
+  date?: string | null;
+  users_events_user_idTousers?: {
+    name?: string | null;
+    profile_photo?: string | null;
+  } | null;
+  venues?: {
+    venue?: string | null;
+  } | null;
+  [key: string]: unknown;
+};
+
 const CalendarPage = () => {
-  const [value, setValue] = useState(() => dayjs());
-  const [selectedValue, setSelectedValue] = useState(() => dayjs("2017-01-25"));
+  const searchParams = useSearchParams();
+  const dateParam = searchParams?.get("date");
+  
+  const [value, setValue] = useState<Dayjs>(() => {
+    if (dateParam) {
+      try {
+        return dayjs(dateParam);
+      } catch {
+        return dayjs();
+      }
+    }
+    return dayjs();
+  });
+  const [selectedValue, setSelectedValue] = useState<Dayjs>(() => {
+    if (dateParam) {
+      try {
+        return dayjs(dateParam);
+      } catch {
+        return dayjs("2017-01-25");
+      }
+    }
+    return dayjs("2017-01-25");
+  });
 
   const [year, setYear] = useState<number>(() => value.year());
   const { data: raw = undefined, isLoading } = useCalendar({ year });
 
-  const events = useMemo(() => {
-    if (!raw) return [] as any[];
-    if (Array.isArray(raw)) return raw as any[];
-    if (Array.isArray((raw as any).data)) return (raw as any).data as any[];
-    if (Array.isArray((raw as any).calendarEvents)) return (raw as any).calendarEvents as any[];
-    if (Array.isArray((raw as any).events)) return (raw as any).events as any[];
-    return [] as any[];
+  const events = useMemo<CalendarEvent[]>(() => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw as CalendarEvent[];
+    const candidate = raw as Record<string, unknown>;
+    if (Array.isArray(candidate.data as unknown[])) return candidate.data as CalendarEvent[];
+    if (Array.isArray(candidate.calendarEvents as unknown[])) return candidate.calendarEvents as CalendarEvent[];
+    if (Array.isArray(candidate.events as unknown[])) return candidate.events as CalendarEvent[];
+    return [];
   }, [raw]);
 
   const eventsByDate = useMemo(() => {
-    const map = new Map<string, any[]>();
-    events.forEach((e: any) => {
+    const map = new Map<string, CalendarEvent[]>();
+    events.forEach((e) => {
       if (!e?.date) return;
       const key = dayjs(e.date).format("YYYY-MM-DD");
       if (!map.has(key)) map.set(key, []);
@@ -37,8 +74,9 @@ const CalendarPage = () => {
   }, [events]);
 
   useEffect(() => {
-    const handler = (ev: any) => {
-      const y = ev?.detail?.year;
+    const handler = (ev: Event) => {
+      const custom = ev as CustomEvent<{ year?: number }>;
+      const y = custom?.detail?.year;
       if (typeof y === "number") setYear(y);
     };
     if (typeof window !== "undefined") {
@@ -59,12 +97,14 @@ const CalendarPage = () => {
     }
   }, [year]);
 
-  const onSelect = (newValue: Dayjs) => {
+  const onSelect = (newValue: Dayjs | null) => {
+    if (!newValue) return;
     setValue(newValue);
     setSelectedValue(newValue);
   };
 
-  const onPanelChange = (newValue: Dayjs) => {
+  const onPanelChange = (newValue: Dayjs | null) => {
+    if (!newValue) return;
     setValue(newValue);
   };
 
@@ -75,10 +115,10 @@ const CalendarPage = () => {
 
     const tooltipContent = (
       <div className="space-y-1">
-        {dayEvents.map((ev) => (
+        {dayEvents.map((ev: CalendarEvent) => (
           <div key={ev.id} className="py-1">
-            <div className="font-semibold">{ev.users_events_user_idTousers?.name}</div>
-            <div className="text-sm text-[#4A5565]">{ev.venues?.venue}</div>
+            <div className="font-semibold">{ev.users_events_user_idTousers?.name ?? "Event"}</div>
+            <div className="text-sm text-[#4A5565]">{ev.venues?.venue ?? "TBD"}</div>
           </div>
         ))}
       </div>
@@ -88,8 +128,8 @@ const CalendarPage = () => {
       <Tooltip title={tooltipContent} placement="top">
         <div className="p-2 rounded-md bg-yellow-50 h-full">
           <div>{current.date()}</div>
-          <div className="flex mt-1 gap-1 items-center">
-            {dayEvents.slice(0, 3).map((ev) => (
+            <div className="flex mt-1 gap-1 items-center">
+            {dayEvents.slice(0, 3).map((ev: CalendarEvent) => (
               <span key={ev.id} className="w-2 h-2 rounded-full bg-blue-500" />
             ))}
             {dayEvents.length > 3 && <span className="text-xs text-gray-500">+{dayEvents.length - 3}</span>}
@@ -166,7 +206,7 @@ const CalendarPage = () => {
               {sidebarEvents.length === 0 ? (
                 <div className="text-sm text-[#4A5565] mt-3">No events for this date.</div>
               ) : (
-                sidebarEvents.map((event: any) => (
+                sidebarEvents.map((event: CalendarEvent) => (
                   <div key={event.id} className="rounded-3xl border border-black/10 p-5 mb-4 last:mb-0" style={{ boxShadow: "0px 4.23px 10.59px 0px #0000001A" }}>
                     <div className="flex gap-3">
                       <Image
@@ -177,14 +217,14 @@ const CalendarPage = () => {
                         className="rounded-full size-10"
                       />
                       <div className="flex-1">
-                        <p className="text-base">{event.users_events_user_idTousers?.name}</p>
-                        <p className="text-sm text-[#4A5565] mt-2">{event.venues?.venue}</p>
+                        <p className="text-base">{event.users_events_user_idTousers?.name ?? "Unknown"}</p>
+                        <p className="text-sm text-[#4A5565] mt-2">{event.venues?.venue ?? "TBD"}</p>
                         <hr />
                       </div>
                     </div>
                     <div className="flex mt-1.5 gap-1">
                       <MapPin size={14} color="#4A5565" className="shrink-0" />
-                      <span className="text-sm text-[#4A5565]">{event.venues?.venue}</span>
+                      <span className="text-sm text-[#4A5565]">{event.venues?.venue ?? "TBD"}</span>
                     </div>
                   </div>
                 ))

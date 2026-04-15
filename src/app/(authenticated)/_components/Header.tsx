@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { Spin, Select } from "antd";
 import UserAvatar from "@/src/components/common/Avatar";
 import AxiosInstance from "@/src/lib/axios";
@@ -22,7 +23,14 @@ const Header = () => {
   
   const [year, setYear] = useState<number>(new Date().getFullYear());
   const [search, setSearch] = useState("");
+  const router = useRouter();
+  const pathname = usePathname();
   const debounced = useDebounce<string>(search, 300);
+
+  // Reset search when navigating to a different page
+  useEffect(() => {
+    setSearch("");
+  }, [pathname]);
   const dropdownParams = debounced.trim().length > 1 ? { search: debounced.trim() } : undefined;
   const { data: dropdownItems, isFetching: dropdownFetching } = useDashboardDropdown(dropdownParams);
 
@@ -101,15 +109,39 @@ const Header = () => {
             placeholder="Search..."
             onSearch={(val) => setSearch(val)}
             onSelect={(val, option) => {
-              let label = String(val);
+              const idStr = String(val);
+              let label = idStr;
               if (option && typeof option === 'object' && 'label' in (option as Record<string, unknown>)) {
                 const maybeLabel = (option as Record<string, unknown>).label;
                 if (typeof maybeLabel === 'string') label = maybeLabel;
               }
               setSearch(label);
+
+              // determine event status from option if present, otherwise lookup from dropdownItems
+              let statusId: number | string | undefined = undefined;
+              try {
+                if (option && typeof option === 'object' && 'status' in (option as any)) {
+                  statusId = (option as any).status;
+                }
+              } catch (e) {}
+              if (statusId === undefined && Array.isArray(dropdownItems)) {
+                const found = dropdownItems.find((d) => String(d.id) === idStr);
+                if (found) statusId = found.status;
+              }
+
+              let target = '/dashboard';
+              if (statusId === 1 || statusId === '1') target = '/open-enquiry';
+              else if (statusId === 2 || statusId === '2') target = '/confirmed-events';
+              else if (statusId === 3 || statusId === '3') target = '/completed-events';
+
+              try {
+                router.push(`${target}?search=${encodeURIComponent(idStr)}&name=${encodeURIComponent(label)}`);
+              } catch (e) {
+                if (typeof window !== 'undefined') window.location.href = `${target}?search=${encodeURIComponent(idStr)}&name=${encodeURIComponent(label)}`;
+              }
             }}
             notFoundContent={dropdownFetching ? <Spin size="small" /> : (dropdownParams ? <div className="text-sm text-gray-500">No results</div> : <div className="text-sm text-gray-500">Type to search</div>)}
-            options={(dropdownItems || []).map((it) => ({ value: String(it.id), label: it.couple_name ?? it.client?.name ?? `#${it.id}` }))}
+            options={(dropdownItems || []).map((it) => ({ value: String(it.id), label: it.couple_name ?? it.client?.name ?? `#${it.id}`, status: it.status, clientId: it.client?.id }))}
             loading={dropdownFetching}
             classNames={{ popup: { root: "rounded-md" } }}
             filterOption={false}
