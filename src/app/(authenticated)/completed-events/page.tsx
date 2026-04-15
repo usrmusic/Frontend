@@ -4,6 +4,8 @@ import Button from "@/src/components/Button";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
 import { useDebounce } from "@/src/hooks/useDebounce";
+import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 import { TableColumnsType, TableProps } from "antd";
 import dayjs from "dayjs";
 import { MoreVertical } from "lucide-react";
@@ -20,6 +22,17 @@ const CompletedEventsPage = () => {
   const [params, setParams] = useState(initialParams);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 1000);
+
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const s = searchParams?.get("search") ?? "";
+    const name = searchParams?.get("name") ?? "";
+    const displayValue = name || s;
+    if (displayValue && displayValue !== search) {
+      setSearch(displayValue);
+      setParams((prev) => ({ ...prev, page: 1 }));
+    }
+  }, [searchParams?.toString()]);
 
   const { data: completedEventsData, isLoading } = useGetCompletedEventsList({
     ...params,

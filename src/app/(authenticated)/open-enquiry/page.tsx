@@ -11,7 +11,8 @@ import { TableRowSelection } from "antd/es/table/interface";
 import dayjs from "dayjs";
 import { MoreVertical } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import SendBrochureModal from "./SendBrochure";
 import { toast } from "react-toastify";
 import { useCompanyDropdown } from "@/src/api/dropdown";
@@ -139,6 +140,19 @@ const OpenEnquiryPage = () => {
       },
     );
   };
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const s = searchParams?.get("search") ?? "";
+    const name = searchParams?.get("name") ?? "";
+    if (!s) return;
+    const displayValue = name || s;
+    setParams((prev) => {
+      if (prev.search === displayValue) return prev;
+      return { ...prev, search: displayValue, page: 1 };
+    });
+  }, [searchParams?.toString()]);
+
   return (
     <div className="mt-8 space-y-6">
       <div className="grid grid-cols-12 gap-6">
@@ -199,6 +213,8 @@ const OpenEnquiryPage = () => {
                   type="text"
                   placeholder="Search by name, mobile, or event details..."
                   className="w-full bg-transparent! text-sm placeholder:text-gray-500"
+                  value={params.search}
+                  onChange={(e) => setParams((prev) => ({ ...prev, search: e.target.value, page: 1 }))}
                 />
               </div>
             </div>

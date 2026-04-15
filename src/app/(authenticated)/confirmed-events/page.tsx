@@ -20,7 +20,8 @@ import {
   SquareCheckBig,
 } from "lucide-react";
 import Link from "next/link";
-import { CSSProperties, useState } from "react";
+import { CSSProperties, useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Files from "./Files";
 import { ConfirmEventData, EventsDropdownItem } from "@/src/types/types";
 import SendBrochureModal from "../open-enquiry/SendBrochure";
@@ -100,6 +101,15 @@ const ConfirmedEventsPage = () => {
       });
     },
   });
+
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const s = searchParams?.get("search") ?? "";
+    if (s && s !== eventId) {
+      setEventId(String(s));
+      setIsModifyMode(false);
+    }
+  }, [searchParams?.toString()]);
 
   const payments =
     (selectedEventData?.data as ConfirmEventData)?.event_payments ?? [];
