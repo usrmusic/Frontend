@@ -25,6 +25,8 @@ import { useSearchParams } from "next/navigation";
 import Files from "./Files";
 import { ConfirmEventData, EventsDropdownItem } from "@/src/types/types";
 import SendBrochureModal from "../open-enquiry/SendBrochure";
+import { toast } from "react-toastify";
+import { fetchEmailTemplate } from "@/src/api/enquiry";
 
 const ConfirmedEventsPage = () => {
   const [eventId, setEventId] = useState("");
@@ -33,6 +35,9 @@ const ConfirmedEventsPage = () => {
   const [showPayments, setShowPayments] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
+  const [buttonLoading, setButtonLoading] = useState<string | null>(null);
+  const [modalTemplate, setModalTemplate] = useState<any | null>(null);
+  const [modalCompanies, setModalCompanies] = useState<Array<{ id: string | number; name: string }> | null>(null);
 
   const { mutate: updateEventMutation, isPending } = useUpdateConfirmEvent();
   const { mutate: downloadInvoiceMutation, isPending: isDownloadingInvoice } =
@@ -211,15 +216,28 @@ const ConfirmedEventsPage = () => {
                     Modify
                   </Button>
                 )}
-                <Button>Print</Button>
+                {/* <Button>Print</Button> */}
                 <Button onClick={handleCancelEvent} loading={isCancelingEvent}>
                   Cancel Event
                 </Button>
                 <Button
-                  onClick={() => {
-                    setSendMode("quote");
-                    setShowModal(true);
+                  onClick={async () => {
+                    if (!eventId) return;
+                    setButtonLoading("quote");
+                    try {
+                      const data = await fetchEmailTemplate(String(eventId), "SEND QUOTE-CONFIRMED");
+                      setModalTemplate(data?.email ?? null);
+                      setModalCompanies(data?.companies ?? null);
+                      setSendMode("quote");
+                      setShowModal(true);
+                    } catch (err) {
+                      console.error(err);
+                      toast.error("Failed to load email template");
+                    } finally {
+                      setButtonLoading(null);
+                    }
                   }}
+                  loading={buttonLoading === "quote"}
                 >
                   Send Quote
                 </Button>
@@ -230,10 +248,23 @@ const ConfirmedEventsPage = () => {
                   Download Invoice
                 </Button>
                 <Button
-                  onClick={() => {
-                    setSendMode("invoice");
-                    setShowModal(true);
+                  onClick={async () => {
+                    if (!eventId) return;
+                    setButtonLoading("invoice");
+                    try {
+                      const data = await fetchEmailTemplate(String(eventId), "SEND INVOICE-OPEN");
+                      setModalTemplate(data?.email ?? null);
+                      setModalCompanies(data?.companies ?? null);
+                      setSendMode("invoice");
+                      setShowModal(true);
+                    } catch (err) {
+                      console.error(err);
+                      toast.error("Failed to load email template");
+                    } finally {
+                      setButtonLoading(null);
+                    }
                   }}
+                  loading={buttonLoading === "invoice"}
                 >
                   Send Invoice
                 </Button>
@@ -489,7 +520,7 @@ const ConfirmedEventsPage = () => {
                   </label>
                   <textarea
                     name="briefItinerary"
-                    className="h-[265px] w-full rounded-xl border border-gray-200 px-3 text-sm outline-none"
+                    className="h-[265px] w-full rounded-xl border border-gray-200 p-3 text-sm outline-none"
                     placeholder="Enter brief itinerary, playlist, and notes"
                     style={{ resize: "none" }}
                     value={formik.values.briefItinerary}
@@ -623,7 +654,14 @@ const ConfirmedEventsPage = () => {
           open={showModal}
           eventId={eventId}
           sendMode={sendMode}
-          onCancel={() => setShowModal(false)}
+          template={modalTemplate}
+          companies={modalCompanies}
+          onCancel={() => {
+            setShowModal(false);
+            setButtonLoading(null);
+            setModalTemplate(null);
+            setModalCompanies(null);
+          }}
         />
       )}
     </div>

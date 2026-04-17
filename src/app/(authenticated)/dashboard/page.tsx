@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import { colorPrimaryGradient } from "@/src/config/ThemeConfig";
 
 import { useState, useEffect, useRef } from "react";
-import type { ComponentType } from "react";
+import type { ComponentType, MouseEventHandler, KeyboardEventHandler } from "react";
 import { useRouter } from "next/navigation";
 import { DayPicker, type CustomComponents } from "react-day-picker";
 import "react-day-picker/dist/style.css";
@@ -65,12 +65,28 @@ const sidebarOptions = [
 type OpenEnquiry = {
   id?: number | string;
   couple_name?: string | null;
+  date?: string | null;
   client?: { name?: string | null } | null;
   venue?: string | null;
   subtitle?: string | null;
   created_at?: string | null;
   tag?: string | null;
+  users_events_dj_idTousers?: { id?: number; name?: string | null } | null;
+  users_events_user_idTousers?: { id?: number; name?: string | null } | null;
   [key: string]: unknown;
+};
+
+// Safe date formatter: accepts string|number|Date and returns formatted string or empty
+const formatDate = (v?: string | number | Date | null) => {
+  if (v == null) return "";
+  if (typeof v === "string" || typeof v === "number") {
+    const d = new Date(v as string | number);
+    return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  }
+  if (v instanceof Date) {
+    return Number.isNaN(v.getTime()) ? "" : v.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  }
+  return "";
 };
 
 function CalendarWithSidebar({
@@ -97,7 +113,7 @@ function CalendarWithSidebar({
 
   const dotSet = new Set(
     (events || [])
-      .map((e) => toLocalIso((e as any).date))
+      .map((e) => toLocalIso(e.date))
       .filter(Boolean) as string[],
   );
 
@@ -191,14 +207,19 @@ function CalendarWithSidebar({
     year: "numeric",
   });
   // Custom Day renderer to show a small dot when an event exists on that date.
-  const CustomDay = (dayProps: any) => {
-    const { date, children, className, onClick, onKeyDown, disabled } = dayProps as any;
+  const CustomDay = (dayProps: Record<string, unknown>) => {
+    const date = dayProps['date'] as Date | undefined;
+    const children = dayProps['children'] as React.ReactNode;
+    const className = (dayProps['className'] as string) || '';
+    const onClick = dayProps['onClick'] as ((e: unknown) => void) | undefined;
+    const onKeyDown = dayProps['onKeyDown'] as ((e: unknown) => void) | undefined;
+    const disabled = Boolean(dayProps['disabled']);
     const iso = toLocalIso(date as Date | undefined);
     const hasDot = dotSet.has(iso);
     return (
       <button
         type="button"
-        onClick={onClick}
+        onClick={onClick as unknown as MouseEventHandler}
         onDoubleClick={(e) => {
           try {
             
@@ -209,7 +230,7 @@ function CalendarWithSidebar({
             console.error(err);
           }
         }}
-        onKeyDown={onKeyDown}
+        onKeyDown={onKeyDown as unknown as KeyboardEventHandler}
         disabled={disabled}
         className={`${className || ""} relative flex items-center justify-center w-full h-full`}
       >
@@ -1025,42 +1046,50 @@ const DashboardPage = () => {
           ) : !dashboard?.openEnquiries?.length ? (
             <div className="text-xs text-gray-500">No open enquiries.</div>
           ) : (
-            <ul className="text-xs">
-              {dashboard.openEnquiries.map((enq: OpenEnquiry, idx: number) => (
-                <li
-                  key={String(enq.id ?? enq.couple_name ?? `enq-${idx}`)}
-                  className="flex items-center border-b border-[#636363] last:border-0 justify-between px-3 py-3"
-                >
-                  <div className="flex gap-3">
-                    <Image
-                      src={"/images/avatar.png"}
-                      alt="avatar"
-                      width={30}
-                      height={30}
-                      className="rounded-lg"
-                    />
-                    <div>
-                      <p className="text-gray-900">
-                        {enq.couple_name ?? enq.client?.name ?? "Unknown"}
-                      </p>
-                      <p className="text-[11px] text-gray-400">
-                        {enq.venue ??
-                          enq.subtitle ??
-                          (enq.created_at
-                            ? new Date(enq.created_at).toLocaleDateString()
-                            : "")}
-                      </p>
-                    </div>
-                  </div>
-                  <div
-                    className="rounded-sm w-12 text-center py-1 text-[10px] font-medium text-white"
-                    style={{ background: colorPrimaryGradient }}
-                  >
-                    {enq.tag ?? "New"}
-                  </div>
-                </li>
-              ))}
-            </ul>
+              <ul className="space-y-2 no-scrollbar text-xs max-h-[300px] overflow-auto">
+                {dashboard.openEnquiries.map((enq: OpenEnquiry, idx: number) => {
+                  const djName = enq.users_events_dj_idTousers?.name ?? enq.couple_name ?? "Unknown";
+                  const clientName = enq.users_events_user_idTousers?.name ?? enq.client?.name ?? "";
+                  const secondary = clientName || enq.venue || enq.subtitle || (enq.created_at ? formatDate(enq.created_at) : "");
+                  const badgeText = enq.date ? formatDate(enq.date) : enq.tag ?? "New";
+
+                  return (
+                    <li
+                          key={String(enq.id ?? enq.couple_name ?? `enq-${idx}`)}
+                          className="flex items-center border-b border-[#636363] last:border-0 justify-between px-3 py-3"
+                          onDoubleClick={() => {
+                            try {
+                              const clientName = enq.users_events_user_idTousers?.name ?? enq.client?.name ?? enq.couple_name ?? "";
+                              const eventId = enq.id ?? "";
+                              router.push(`/open-enquiry?search=${encodeURIComponent(String(eventId))}&name=${encodeURIComponent(String(clientName))}&select=${encodeURIComponent(String(eventId))}`);
+                            } catch (e) {
+                              console.error(e);
+                            }
+                          }}
+                        >
+                      <div className="flex gap-3">
+                        <Image
+                          src={'/images/avatar.png'}
+                          alt="avatar"
+                          width={30}
+                          height={30}
+                          className="rounded-lg"
+                        />
+                        <div>
+                          <p className="text-gray-900">{djName}</p>
+                          <p className="text-[11px] text-gray-400">{secondary}</p>
+                        </div>
+                      </div>
+                      <div
+                        className="rounded-sm px-2 text-center py-1 text-[10px] font-medium text-white min-w-[84px] whitespace-nowrap"
+                        style={{ background: colorPrimaryGradient }}
+                      >
+                        {badgeText}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
           )}
         </Card>
 

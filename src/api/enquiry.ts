@@ -130,6 +130,21 @@ export const useSendInvoice = () => {
     },
   });
 };
+
+export const fetchEmailTemplate = async (event_id: string | number, email_name: string) => {
+  try {
+    const response = await AxiosInstance.get(`/enquiry/get-email`, {
+      params: { event_id: String(event_id), email_name },
+    });
+    return response.data?.data ?? null;
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      const msg = error.response?.data;
+      toast.error(msg?.error || "Something went wrong");
+    }
+    throw error;
+  }
+};
 export const useAddNote = () => {
   const queryClient = useQueryClient();
 

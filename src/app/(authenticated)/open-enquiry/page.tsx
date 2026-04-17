@@ -11,10 +11,11 @@ import { TableRowSelection } from "antd/es/table/interface";
 import dayjs from "dayjs";
 import { MoreVertical } from "lucide-react";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import SendBrochureModal from "./SendBrochure";
 import { toast } from "react-toastify";
+import { fetchEmailTemplate } from "@/src/api/enquiry";
 import { useCompanyDropdown } from "@/src/api/dropdown";
 import Input from "@/src/components/Input";
 
@@ -32,6 +33,7 @@ interface EventNote {
 interface EnquiryRow {
   id: number | string;
   event_notes?: EventNote[];
+  [key: string]: any; // For dynamic data indices in Table
 }
 
 interface CompanyOption {
@@ -42,21 +44,32 @@ interface CompanyOption {
 const OpenEnquiryPage = () => {
   const [params, setParams] = useState(initialParams);
   const [modalOpen, setModalOpen] = useState(false);
+  const [buttonLoading, setButtonLoading] = useState<string | null>(null);
+  const [modalTemplate, setModalTemplate] = useState<any | null>(null);
+  const [modalCompanies, setModalCompanies] = useState<Array<{ id: string | number; name: string }> | null>(null);
   const [note, setNote] = useState("");
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [selectedRowData, setSelectedRowData] = useState<EnquiryRow[] | null>(
-    null,
-  );
-  const [clickedBtn, setClickedBtn] = useState<
-    "brochure" | "quote" | "invoice"
-  >("invoice");
+  const [selectedRowData, setSelectedRowData] = useState<EnquiryRow[] | null>(null);
+  const [clickedBtn, setClickedBtn] = useState<"brochure" | "quote" | "invoice">("invoice");
 
   const { data: enquiryData, isLoading } = useOpenEnquiryList(params);
   const { data: companyNameOptions } = useCompanyDropdown();
 
   const { mutate: addNoteMutation } = useAddNote();
-  const { mutate: confirmEventMutation, isPending: confirmingEvent } =
-    useConfirmEvent();
+  const { mutate: confirmEventMutation, isPending: confirmingEvent } = useConfirmEvent();
+
+  // Memoize options to prevent unnecessary re-renders and fix TS mapping
+  const companyOptions = useMemo(() => {
+    const dynamicOptions = companyNameOptions?.data?.map((opt: CompanyOption) => ({
+      label: opt.name,
+      value: String(opt.id),
+    })) || [];
+
+    return [
+      { label: "Select company", value: "" },
+      ...dynamicOptions,
+    ];
+  }, [companyNameOptions]);
 
   const formik = useFormik({
     initialValues: {
@@ -93,20 +106,19 @@ const OpenEnquiryPage = () => {
 
   const onSelectChange = (
     newSelectedRowKeys: React.Key[],
-    rows: Record<string, unknown>[],
+    rows: any[],
   ) => {
     setSelectedRowKeys(newSelectedRowKeys);
-    setSelectedRowData((rows as unknown as EnquiryRow[]) ?? null);
+    setSelectedRowData(rows as EnquiryRow[]);
   };
-  console.log(selectedRowData);
 
-  const rowSelection: TableRowSelection = {
+  const rowSelection: TableRowSelection<any> = {
     type: "radio",
     selectedRowKeys,
     onChange: onSelectChange,
   };
 
-  const columns: TableColumnsType = [
+  const columns: TableColumnsType<any> = [
     {
       title: "Name",
       dataIndex: ["users_events_user_idTousers", "name"],
@@ -130,6 +142,7 @@ const OpenEnquiryPage = () => {
   ];
 
   const hanldeAddNote = () => {
+    if (!note.trim()) return;
     addNoteMutation(
       { id: selectedRowKeys[0] as number, note },
       {
@@ -140,6 +153,7 @@ const OpenEnquiryPage = () => {
       },
     );
   };
+
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -151,14 +165,13 @@ const OpenEnquiryPage = () => {
       if (prev.search === displayValue) return prev;
       return { ...prev, search: displayValue, page: 1 };
     });
-  }, [searchParams?.toString()]);
+  }, [searchParams]);
 
   return (
     <div className="mt-8 space-y-6">
       <div className="grid grid-cols-12 gap-6">
-        {/* Main content */}
-        <div className="col-span-12 xl:col-span-12 space-y-6">
-          {/* Title bar with actions */}
+        {/* Main content wrapper */}
+        <div className="col-span-12 space-y-6">
           <div className="flex flex-col gap-3 justify-between lg:flex-row lg:items-center">
             <div className="flex items-center gap-3">
               <Link href="/dashboard" className="shrink-0">
@@ -167,52 +180,96 @@ const OpenEnquiryPage = () => {
               <h2 className="themeH1">Open Enquiry</h2>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outlined" color="danger">
-                Delete
-              </Button>
-              <Button type="default" className="themeDefaultButton">
+              {/* <Button variant="outlined" disabled={!selectedRowKeys.length} color="danger">Delete</Button> */}
+                <Button
+                type="default"
+                disabled={!selectedRowKeys.length || Boolean(buttonLoading)}
+                className="themeDefaultButton"
+                loading={buttonLoading === "emailUpdate"}
+                onClick={async () => {
+                  if (!selectedRowKeys.length) return;
+                  setButtonLoading("emailUpdate");
+                  try {
+                      const data = await fetchEmailTemplate(String(selectedRowKeys[0]), "EMAIL FOR UPDATE");
+                      setModalTemplate(data?.email ?? null);
+                      setModalCompanies(data?.companies ?? null);
+                      setClickedBtn("brochure"); // use brochure API for now
+                      setModalOpen(true);
+                  } catch (err) {
+                    console.error(err);
+                    toast.error("Failed to load email template");
+                  } finally {
+                    setButtonLoading(null);
+                  }
+                }}
+              >
                 Email Update
               </Button>
-              <Button
+                <Button
                 type="default"
                 className="themeDefaultButton"
-                onClick={() => {
-                  setModalOpen(true);
-                  setClickedBtn("brochure");
+                loading={buttonLoading === "brochure"}
+                onClick={async () => {
+                  if (!selectedRowKeys.length) return;
+                  setButtonLoading("brochure");
+                  try {
+                      const data = await fetchEmailTemplate(String(selectedRowKeys[0]), "EMAIL BROCHURE");
+                      setModalTemplate(data?.email ?? null);
+                      setModalCompanies(data?.companies ?? null);
+                      setClickedBtn("brochure");
+                      setModalOpen(true);
+                  } catch (err) {
+                    console.error(err);
+                    toast.error("Failed to load email template");
+                  } finally {
+                    setButtonLoading(null);
+                  }
                 }}
-                disabled={!selectedRowKeys.length}
+                disabled={!selectedRowKeys.length || Boolean(buttonLoading)}
               >
                 Send Brochure
               </Button>
               <Button
                 type="primary"
                 className="themeDefaultButton"
-                disabled={!selectedRowKeys.length}
-                onClick={() => {
-                  setModalOpen(true);
-                  setClickedBtn("quote");
+                disabled={!selectedRowKeys.length || Boolean(buttonLoading)}
+                loading={buttonLoading === "quote"}
+                onClick={async () => {
+                  if (!selectedRowKeys.length) return;
+                  setButtonLoading("quote");
+                  try {
+                    const data = await fetchEmailTemplate(String(selectedRowKeys[0]), "SEND QUOTE-OPEN");
+                    setModalTemplate(data?.email ?? null);
+                    setModalCompanies(data?.companies ?? null);
+                    setClickedBtn("quote");
+                    setModalOpen(true);
+                  } catch (err) {
+                    console.error(err);
+                    toast.error("Failed to load email template");
+                  } finally {
+                    setButtonLoading(null);
+                  }
                 }}
               >
                 Send Quote
               </Button>
-              <button className=" size-9 flex items-center justify-center rounded-lg bg-secondary-100 hover:bg-secondary-200 transition-colors">
+              <button className="size-9 flex items-center justify-center rounded-lg bg-secondary-100 hover:bg-secondary-200 transition-colors">
                 <MoreVertical size={18} />
               </button>
             </div>
           </div>
         </div>
 
+        {/* Left Section: Table */}
         <div className="col-span-12 xl:col-span-9 space-y-6">
-          {/* Left side Enquiry table */}
-          <Card variant="white" className="p-0 overflow-hidden">
-            {/* Enquiry search bar */}
+          <Card variant="white" className="p-0 overflow-hidden shadow-sm">
             <div className="bg-primary p-5">
               <div className="flex max-w-[385px] items-center gap-2 rounded-lg bg-white px-4 py-3">
                 <MagnifyingGlass w={18} h={18} />
                 <input
                   type="text"
-                  placeholder="Search by name, mobile, or event details..."
-                  className="w-full bg-transparent! text-sm placeholder:text-gray-500"
+                  placeholder="Search by name, mobile..."
+                  className="w-full bg-transparent outline-none text-sm placeholder:text-gray-400"
                   value={params.search}
                   onChange={(e) => setParams((prev) => ({ ...prev, search: e.target.value, page: 1 }))}
                 />
@@ -226,116 +283,132 @@ const OpenEnquiryPage = () => {
               pagination={{
                 pageSize: params.limit,
                 current: params.page,
-                total: enquiryData?.meta.total,
-                onChange: (page, pageSize) =>
-                  setParams({ ...params, page, limit: pageSize }),
+                total: enquiryData?.meta?.total,
+                onChange: (page, pageSize) => setParams({ ...params, page, limit: pageSize }),
               }}
               rowSelection={rowSelection}
             />
           </Card>
-          {/* Left side Enquiry table */}
         </div>
-        <div className="col-span-12 xl:col-span-3 space-y-6">
-          {/* Add input + Add button */}
-          <div className="flex gap-2 h-[88px]">
-            <input
-              type="text"
-              placeholder="Enter Note"
-              className="rounded-xl w-full border border-gray-200 px-3 text-sm outline-none bg-white!"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
-            <Button
-              type="primary"
-              className="h-auto! w-[89px] shrink-0"
-              onClick={hanldeAddNote}
-              disabled={!selectedRowKeys.length}
-            >
-              Add
-            </Button>
-          </div>
 
-          {/* Recent activities */}
-          <Card variant="white" className="overflow-hidden">
-            <div className="">
-              <h3 className="text-sm font-semibold text-gray-900">
-                Recent activities
-              </h3>
+        {/* Right Section: Sidebar Actions */}
+        <div className="col-span-12 xl:col-span-3 space-y-6">
+
+          {/* Notes Card */}
+          <Card variant="white" className="flex flex-col shadow-sm overflow-hidden p-0 border border-gray-100">
+            <div className="flex items-center justify-between bg-primary px-6 py-4 text-white">
+              <h3 className="font-medium">Recent Activities</h3>
             </div>
-            <div className="min-h-[120px] px-5 py-4 text-sm text-gray-500">
-              {/* Empty state - list will populate here */}
-              <ul className="list-disc">
-                {selectedRowData?.[0].event_notes?.map(
-                  (note: { id: number; notes: string }) => (
-                    <li key={note.id}>{note.notes}</li>
-                  ),
-                )}
-              </ul>
+
+            <div className="p-4">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Add a note..."
+                  className="flex-1 rounded-lg border border-gray-200 p-2 text-xs outline-none bg-gray-50 focus:bg-white focus:border-primary transition-all"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                />
+                <Button
+                  type="primary"
+                  className="h-9 w-16 shrink-0 rounded-lg text-xs"
+                  onClick={hanldeAddNote}
+                  disabled={!selectedRowKeys.length || !note.trim()}
+                >
+                  Add
+                </Button>
+              </div>
+            </div>
+
+            <div className="p-4 min-h-[150px] max-h-[250px] overflow-y-auto">
+              {selectedRowData?.[0]?.event_notes?.length ? (
+                <ul className="space-y-3">
+                  {selectedRowData[0].event_notes.map((item) => (
+                    <li key={item.id} className="text-xs text-gray-600 bg-gray-50 p-2.5 rounded-lg border-l-4 border-primary">
+                      {item.notes}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="h-full flex items-center justify-center text-xs text-gray-400 italic">
+                  Select an enquiry to see notes
+                </div>
+              )}
             </div>
           </Card>
 
-          {/* Deposit Received */}
-          <div className="p-5">
-            <form className="space-y-4" onSubmit={formik.handleSubmit}>
-              <div className="grid grid-cols-2 gap-3">
-                <Select
-                  className="w-full"
-                  placeholder="Select company"
-                  options={companyNameOptions?.data?.map((opt: CompanyOption) => ({
-                    label: opt.name,
-                    value: opt.id,
-                  }))}
-                  value={formik.values.company_name}
-                  onChange={(value) =>
-                    formik.setFieldValue("company_name", value)
-                  }
-                />
-                <Input
-                  name="event_date"
-                  type="date"
-                  value={formik.values.event_date}
-                  onChange={formik.handleChange}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Input
-                  name="deposit_amount"
-                  type="number"
-                  placeholder="Deposit Amount"
-                  value={formik.values.deposit_amount}
-                  onChange={formik.handleChange}
-                />
-                <select
-                  name="payment_method_id"
-                  className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-xs outline-none"
-                  value={formik.values.payment_method_id}
-                  onChange={formik.handleChange}
+          {/* Deposit Form Card */}
+          <Card variant="white" className="p-0 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between bg-primary px-6 py-4 text-white">
+              <h3 className="font-medium">Confirm Deposit</h3>
+            </div>
+            <div className="px-6 py-5">
+              <form className="space-y-3" onSubmit={formik.handleSubmit}>
+                <div className="grid grid-cols-1 gap-3">
+                  <Select
+                    className="w-full custom-select"
+                    placeholder="Select company"
+                    options={companyOptions}
+                    value={formik.values.company_name || undefined}
+                    onChange={(value) => formik.setFieldValue("company_name", value)}
+                  />
+                  <Input
+                    name="event_date"
+                    type="date"
+                    className="w-full text-xs"
+                    value={formik.values.event_date}
+                    onChange={formik.handleChange}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    name="deposit_amount"
+                    type="number"
+                    placeholder="Amount"
+                    className="w-full text-xs"
+                    value={formik.values.deposit_amount}
+                    onChange={formik.handleChange}
+                  />
+                  <select
+                    name="payment_method_id"
+                    className="h-10 w-full rounded-xl border border-gray-200 bg-white px-2 text-xs outline-none focus:border-primary"
+                    value={formik.values.payment_method_id}
+                    onChange={formik.handleChange}
+                  >
+                    <option value="" disabled>Method</option>
+                    <option value="1">Cash</option>
+                    <option value="2">Bank Transfer</option>
+                    <option value="3">Card</option>
+                  </select>
+                </div>
+                <Button
+                  type="primary"
+                  className="w-full h-10 mt-2 font-semibold"
+                  htmlType="submit"
+                  loading={confirmingEvent}
+                  disabled={!selectedRowKeys.length}
                 >
-                  <option value="">Payment</option>
-                  <option value="1">Cash</option>
-                  <option value="2">Bank Transfer</option>
-                  <option value="3">Card</option>
-                </select>
-              </div>
-              <Button
-                type="primary"
-                className="w-full"
-                htmlType="submit"
-                loading={confirmingEvent}
-                disabled={!selectedRowKeys.length}
-              >
-                Add Deposit
-              </Button>
-            </form>
-          </div>
+                  Confirm Booking
+                </Button>
+              </form>
+            </div>
+          </Card>
         </div>
       </div>
+
       {modalOpen && (
         <SendBrochureModal
           open={modalOpen}
           sendMode={clickedBtn}
-          eventId={selectedRowKeys[0] as string}
-          onCancel={() => setModalOpen(false)}
+          eventId={String(selectedRowKeys[0])}
+          template={modalTemplate}
+          companies={modalCompanies}
+          onCancel={() => {
+            setModalOpen(false);
+            setButtonLoading(null);
+            setModalTemplate(null);
+            setModalCompanies(null);
+          }}
         />
       )}
     </div>
