@@ -27,6 +27,7 @@ import { ConfirmEventData, EventsDropdownItem } from "@/src/types/types";
 import SendBrochureModal from "../open-enquiry/SendBrochure";
 import { toast } from "react-toastify";
 import { fetchEmailTemplate } from "@/src/api/enquiry";
+import Contracts from "./Contracts";
 
 const ConfirmedEventsPage = () => {
   const [eventId, setEventId] = useState("");
@@ -37,7 +38,10 @@ const ConfirmedEventsPage = () => {
   const [showNotes, setShowNotes] = useState(false);
   const [buttonLoading, setButtonLoading] = useState<string | null>(null);
   const [modalTemplate, setModalTemplate] = useState<any | null>(null);
-  const [modalCompanies, setModalCompanies] = useState<Array<{ id: string | number; name: string }> | null>(null);
+  const [modalCompanies, setModalCompanies] = useState<Array<{
+    id: string | number;
+    name: string;
+  }> | null>(null);
 
   const { mutate: updateEventMutation, isPending } = useUpdateConfirmEvent();
   const { mutate: downloadInvoiceMutation, isPending: isDownloadingInvoice } =
@@ -53,6 +57,10 @@ const ConfirmedEventsPage = () => {
     label: `${dayjs(item.date).format("DD/MM/YYYY")} - ${item.venues?.venue} (${item.users_events_user_idTousers?.name})`,
     value: item.id,
   }));
+
+  useEffect(() => {
+    setEventId(eventsDropdown?.data?.[0].id);
+  }, [eventsDropdown?.data]);
 
   // Form fields with initial values.
   const getInitialValues = (data?: ConfirmEventData) => ({
@@ -139,7 +147,7 @@ const ConfirmedEventsPage = () => {
           Contracts
         </div>
       ),
-      children: <p>{"text"}</p>,
+      children: <Contracts data={selectedEventData?.data} />,
       style: panelStyle,
     },
     {
@@ -225,7 +233,10 @@ const ConfirmedEventsPage = () => {
                     if (!eventId) return;
                     setButtonLoading("quote");
                     try {
-                      const data = await fetchEmailTemplate(String(eventId), "SEND QUOTE-CONFIRMED");
+                      const data = await fetchEmailTemplate(
+                        String(eventId),
+                        "SEND QUOTE-CONFIRMED",
+                      );
                       setModalTemplate(data?.email ?? null);
                       setModalCompanies(data?.companies ?? null);
                       setSendMode("quote");
@@ -252,7 +263,10 @@ const ConfirmedEventsPage = () => {
                     if (!eventId) return;
                     setButtonLoading("invoice");
                     try {
-                      const data = await fetchEmailTemplate(String(eventId), "SEND INVOICE-OPEN");
+                      const data = await fetchEmailTemplate(
+                        String(eventId),
+                        "SEND INVOICE-OPEN",
+                      );
                       setModalTemplate(data?.email ?? null);
                       setModalCompanies(data?.companies ?? null);
                       setSendMode("invoice");

@@ -10,7 +10,6 @@ export type ApiResponse<T> = {
   meta: Meta;
 };
 
-
 export type EventsDropdownItem = {
   id: string | number;
   date: string;
@@ -28,6 +27,7 @@ export type ConfirmEventData = {
     email?: string;
     contact_number?: string;
   };
+  venues: { venue: string };
   dj_name?: string;
   videography?: string;
   caterer?: string;
