@@ -1,20 +1,19 @@
 "use client";
-import { useUploadList, useDownloadUpload, useDeleteUpload, useUpdateUpload, useUploadFile } from "@/src/api/upload";
+import {
+  useUploadList,
+  useDownloadUpload,
+  useDeleteUpload,
+  useUpdateUpload,
+  useUploadFile,
+} from "@/src/api/upload";
 import { Modal, message } from "antd";
-import { useQueryClient } from "@tanstack/react-query";
 import Button from "@/src/components/Button";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, Export, MagnifyingGlass } from "@/src/components/Icons";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import { TableColumnsType } from "antd";
 import dayjs from "dayjs";
-import {
-  Copy,
-  Download,
-  FileUp,
-  MoreVertical,
-  Trash2,
-} from "lucide-react";
+import { Copy, Download, FileUp, MoreVertical, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -32,7 +31,6 @@ const FileUploadPage = () => {
     ...params,
     search: debouncedSearch,
   });
-  const queryClient = useQueryClient();
   const downloadMutation = useDownloadUpload();
   const deleteMutation = useDeleteUpload();
   const updateMutation = useUpdateUpload();
@@ -40,7 +38,7 @@ const FileUploadPage = () => {
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [editingFile, setEditingFile] = useState<any | null>(null);
+  const [editingFile, setEditingFile] = useState<null>(null);
 
   const columns: TableColumnsType = [
     {
@@ -66,67 +64,72 @@ const FileUploadPage = () => {
     },
     {
       title: "Actions",
-      dataIndex: "actions",
       key: "actions",
-      render: () => (
-        <div className="flex gap-2">
-          {/* <Button size="small" type="text" showShadow={false}>
+      render: (upload) => {
+        return (
+          <div className="flex gap-2">
+            {/* <Button size="small" type="text" showShadow={false}>
             <Eye size={14} color="#6A7282" />
           </Button> */}
-          <Button
-            size="small"
-            type="text"
-            showShadow={false}
-            onClick={async () => {
-              try {
-                const res = await downloadMutation.mutateAsync(upload.id);
-                const url = res?.url || res?.download_url || res?.data?.download_url || res;
-                if (!url) return message.error("No download URL");
-                // trigger download
-                const a = document.createElement("a");
-                a.href = url;
-                a.target = "_blank";
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-              } catch (e) {
-                console.error(e);
-              }
-            }}
-          >
-            <Download size={14} color="#6A7282" />
-          </Button>
-          <Button
-            size="small"
-            type="text"
-            showShadow={false}
-            onClick={() => {
-              setEditingFile(upload);
-              setShowEditModal(true);
-            }}
-          >
-            <Copy size={14} color="#6A7282" />
-          </Button>
-          <Button
-            size="small"
-            type="text"
-            showShadow={false}
-            color="danger"
-            onClick={() => {
-              Modal.confirm({
-                title: "Delete file",
-                content: "Are you sure you want to delete this file?",
-                onOk: async () => {
-                  if (!upload || !upload.id) return;
-                  await deleteMutation.mutateAsync(upload.id);
-                },
-              });
-            }}
-          >
-            <Trash2 size={14} color="#6A7282" />
-          </Button>
-        </div>
-      ),
+            <Button
+              size="small"
+              type="text"
+              showShadow={false}
+              onClick={async () => {
+                try {
+                  const res = await downloadMutation.mutateAsync(upload.id);
+                  const url =
+                    res?.url ||
+                    res?.download_url ||
+                    res?.data?.download_url ||
+                    res;
+                  if (!url) return message.error("No download URL");
+                  // trigger download
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.target = "_blank";
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                } catch (e) {
+                  console.error(e);
+                }
+              }}
+            >
+              <Download size={14} color="#6A7282" />
+            </Button>
+            <Button
+              size="small"
+              type="text"
+              showShadow={false}
+              onClick={() => {
+                setEditingFile(upload);
+                setShowEditModal(true);
+              }}
+            >
+              <Copy size={14} color="#6A7282" />
+            </Button>
+            <Button
+              size="small"
+              type="text"
+              showShadow={false}
+              color="danger"
+              onClick={() => {
+                Modal.confirm({
+                  title: "Delete file",
+                  content: "Are you sure you want to delete this file?",
+                  onOk: async () => {
+                    if (!upload || !upload.id) return;
+                    await deleteMutation.mutateAsync(upload.id);
+                  },
+                });
+              }}
+            >
+              <Trash2 size={14} color="#6A7282" />
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 
@@ -140,7 +143,12 @@ const FileUploadPage = () => {
           <h2 className="themeH1">File Upload</h2>
         </div>
         <div className="flex gap-3">
-          <Button icon={<FileUp size={14} />} onClick={() => setShowUploadModal(true)}>Upload File</Button>
+          <Button
+            icon={<FileUp size={14} />}
+            onClick={() => setShowUploadModal(true)}
+          >
+            Upload File
+          </Button>
           <Button icon={<Export w={16} h={16} />}>Export Data</Button>
           <Button icon={<MoreVertical size={18} />}></Button>
         </div>
@@ -186,14 +194,23 @@ const FileUploadPage = () => {
               const form = new FormData(e.currentTarget as HTMLFormElement);
               const file_name = form.get("display_name");
               if (!file_name) return message.error("Name required");
-              await updateMutation.mutateAsync({ id: editingFile.id, data: { file_name } });
+              await updateMutation.mutateAsync({
+                id: editingFile.id,
+                data: { file_name },
+              });
               setShowEditModal(false);
             }}
           >
             <label className="block text-xs mb-2">File name</label>
-            <input name="display_name" defaultValue={editingFile.display_name} className="w-full mb-3 p-2 border" />
+            <input
+              name="display_name"
+              defaultValue={editingFile.display_name}
+              className="w-full mb-3 p-2 border"
+            />
             <div className="text-right">
-              <Button htmlType="submit" type="primary">Save</Button>
+              <Button htmlType="submit" type="primary">
+                Save
+              </Button>
             </div>
           </form>
         )}
@@ -223,7 +240,9 @@ const FileUploadPage = () => {
           <label className="block text-xs mb-2">Event ID (optional)</label>
           <input name="event_id" className="w-full mb-3 p-2 border" />
           <div className="text-right">
-            <Button htmlType="submit" type="primary">Upload</Button>
+            <Button htmlType="submit" type="primary">
+              Upload
+            </Button>
           </div>
         </form>
       </Modal>

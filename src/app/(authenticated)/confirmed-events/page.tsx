@@ -37,7 +37,7 @@ const ConfirmedEventsPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   const [buttonLoading, setButtonLoading] = useState<string | null>(null);
-  const [modalTemplate, setModalTemplate] = useState<any | null>(null);
+  const [modalTemplate, setModalTemplate] = useState<null>(null);
   const [modalCompanies, setModalCompanies] = useState<Array<{
     id: string | number;
     name: string;
