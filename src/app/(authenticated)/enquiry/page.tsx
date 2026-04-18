@@ -804,9 +804,9 @@ const NewEnquiryPage = () => {
                       rigList.map((r, i) => (
                         <div key={i}>
                           <p className="font-medium text-gray-900">{r.name}</p>
-                          {r.notes && (
+                          {/* {r.notes && (
                             <p className="text-[11px] text-gray-500">{r.notes}</p>
-                          )}
+                          )} */}
                         </div>
                       ))
                     ) : (
