@@ -6,8 +6,8 @@ import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
 import { useFormik } from "formik";
-import { Select, DatePicker, InputNumber, TableColumnsType } from "antd";
-import { TableRowSelection } from "antd/es/table/interface";
+import { Select, DatePicker, TableColumnsType } from "antd";
+import type { TableRowSelection } from "antd/es/table/interface";
 import dayjs from "dayjs";
 import { MoreVertical, Check } from "lucide-react";
 import Link from "next/link";
@@ -28,16 +28,8 @@ const initialParams = {
   search: "",
 };
 
-interface EventNote {
-  id: number;
-  notes: string;
-}
 
-interface EnquiryRow {
-  id: number | string;
-  event_notes?: EventNote[];
-  [key: string]: any; // For dynamic data indices in Table
-}
+import type { OpenEnquiryList } from "@/src/api/enquiry";
 
 interface CompanyOption {
   id: number | string;
@@ -48,12 +40,12 @@ const OpenEnquiryPage = () => {
   const [params, setParams] = useState(initialParams);
   const [modalOpen, setModalOpen] = useState(false);
   const [buttonLoading, setButtonLoading] = useState<string | null>(null);
-  const [modalTemplate, setModalTemplate] = useState<any | null>(null);
+  const [modalTemplate, setModalTemplate] = useState<unknown | null>(null);
   const [modalCompanies, setModalCompanies] = useState<Array<{ id: string | number; name: string }> | null>(null);
   const [note, setNote] = useState("");
   const [flagLoading, setFlagLoading] = useState<Record<string, boolean>>({});
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [selectedRowData, setSelectedRowData] = useState<EnquiryRow[] | null>(null);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
+  const [selectedRowData, setSelectedRowData] = useState<OpenEnquiryList[] | null>(null);
   const [clickedBtn, setClickedBtn] = useState<"brochure" | "quote" | "invoice">("invoice");
 
   const { data: enquiryData, isLoading } = useOpenEnquiryList(params);
@@ -118,19 +110,19 @@ const OpenEnquiryPage = () => {
 
   const onSelectChange = (
     newSelectedRowKeys: React.Key[],
-    rows: any[],
+    rows: OpenEnquiryList[],
   ) => {
-    setSelectedRowKeys(newSelectedRowKeys);
-    setSelectedRowData(rows as EnquiryRow[]);
+    setSelectedRowKeys(newSelectedRowKeys.map((key) => String(key)));
+    setSelectedRowData(rows);
   };
 
-  const rowSelection: TableRowSelection<any> = {
+  const rowSelection: TableRowSelection<OpenEnquiryList> = {
     type: "radio",
     selectedRowKeys,
     onChange: onSelectChange,
   };
 
-  const columns: TableColumnsType<any> = [
+  const columns: TableColumnsType<OpenEnquiryList> = [
     {
       title: "Name",
       dataIndex: ["users_events_user_idTousers", "name"],
@@ -145,6 +137,7 @@ const OpenEnquiryPage = () => {
       title: "Event Date",
       dataIndex: "date",
       key: "date",
+      render: (value: string) => value ? dayjs(value).format("MM/DD/YYYY") : "-",
     },
     {
       title: "Tell Us More",
@@ -156,7 +149,7 @@ const OpenEnquiryPage = () => {
   const hanldeAddNote = () => {
     if (!note.trim()) return;
     addNoteMutation(
-      { id: selectedRowKeys[0] as number, note },
+      { id: Number(selectedRowKeys[0]), note },
       {
         onSuccess: () => {
           toast.success("Note Added Successfully");
@@ -170,7 +163,7 @@ const OpenEnquiryPage = () => {
   useEffect(() => {
     if (!selectedRowKeys?.length) return;
     const id = String(selectedRowKeys[0]);
-    const found = enquiryData?.data?.find((d: any) => String(d.id) === id) || null;
+    const found = enquiryData?.data?.find((d) => String(d.id) === id) || null;
     if (found) setSelectedRowData([found]);
   }, [enquiryData, selectedRowKeys]);
 
@@ -184,7 +177,7 @@ const OpenEnquiryPage = () => {
     // optimistic UI update
     setSelectedRowData((prev) => {
       if (!prev || !prev.length) return prev;
-      return [{ ...prev[0], [flag]: !current } as EnquiryRow];
+      return [{ ...prev[0], [flag]: !current } as OpenEnquiryList];
     });
 
     updateEnquiry.mutate(
@@ -199,7 +192,7 @@ const OpenEnquiryPage = () => {
           // revert optimistic update on error
           setSelectedRowData((prev) => {
             if (!prev || !prev.length) return prev;
-            return [{ ...prev[0], [flag]: current } as EnquiryRow];
+            return [{ ...prev[0], [flag]: current } as OpenEnquiryList];
           });
           setFlagLoading((s) => ({ ...s, [flag]: false }));
         },
@@ -372,22 +365,22 @@ const OpenEnquiryPage = () => {
         <div className="col-span-12 xl:col-span-9 space-y-6">
           <Card variant="white" className="p-0 overflow-hidden shadow-sm">
             <div className="bg-primary p-5">
-              <div className="flex max-w-[385px] items-center gap-2 rounded-lg bg-white px-4 py-3">
+              <div className="flex max-w-full items-center gap-2 rounded-lg bg-white px-4 py-3">
                 <MagnifyingGlass w={18} h={18} />
                 <input
                   type="text"
                   placeholder="Search by name, mobile..."
-                  className="w-full bg-transparent outline-none text-sm placeholder:text-gray-400"
+                  className="w-full bg-[#ffffff] outline-none text-sm placeholder:text-gray-400"
                   value={params.search}
                   onChange={(e) => setParams((prev) => ({ ...prev, search: e.target.value, page: 1 }))}
                 />
               </div>
             </div>
-            <DataTable
+            <DataTable<OpenEnquiryList>
               columns={columns}
               dataSource={enquiryData?.data}
               loading={isLoading}
-              rowKey={(data) => data.id}
+              rowKey={(data) => String(data.id)}
               pagination={{
                 pageSize: params.limit,
                 current: params.page,
@@ -395,6 +388,16 @@ const OpenEnquiryPage = () => {
                 onChange: (page, pageSize) => setParams({ ...params, page, limit: pageSize }),
               }}
               rowSelection={rowSelection}
+              onRow={(record) => ({
+                onClick: () => {
+                  try {
+                    const id = record?.id;
+                    if (!id) return;
+                    setSelectedRowKeys([String(id)]);
+                    setSelectedRowData([record]);
+                  } catch {}
+                },
+              })}
             />
           </Card>
         </div>
@@ -431,7 +434,7 @@ const OpenEnquiryPage = () => {
             <div className="p-4 min-h-[150px] max-h-[250px] overflow-y-auto">
               {selectedRowData?.[0]?.event_notes?.length ? (
                 <ul className="space-y-3">
-                  {selectedRowData[0].event_notes.map((item) => (
+                  {selectedRowData[0].event_notes?.map((item) => (
                     <li key={item.id} className="text-xs text-gray-600 bg-gray-50 p-2.5 rounded-lg border-l-4 border-primary">
                       {item.notes}
                     </li>
@@ -549,7 +552,7 @@ const OpenEnquiryPage = () => {
           open={modalOpen}
           sendMode={clickedBtn}
           eventId={String(selectedRowKeys[0])}
-          template={modalTemplate}
+          template={modalTemplate as { id?: string; email_name?: string; subject?: string; body?: string } | null}
           companies={modalCompanies}
           onCancel={() => {
             setModalOpen(false);

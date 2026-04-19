@@ -3,10 +3,11 @@ import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import Input from "@/src/components/Input";
 import { BackButton } from "@/src/components/Icons";
-import { PlusIcon, Save, SquareCheckBig } from "lucide-react";
+import { PlusIcon, Save, SquareCheckBig, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { Modal } from "antd";
 import { Formik, Form, Field, FormikProps } from "formik";
@@ -29,7 +30,7 @@ type EnquiryFormValues = {
   eventDate: string;
   endTime: string;
   startTime: string;
-  guestCount: string | number;
+  no_of_guests: string | number;
   dj: { id: string | number; name: string };
   depositAmount: string | number;
   notes: string;
@@ -86,7 +87,7 @@ const validationSchema = Yup.object({
   eventDate: Yup.date().required("Event date is required"),
   endTime: Yup.string().required("End time is required"),
   startTime: Yup.string().required("Start time is required"),
-  guestCount: Yup.number()
+  no_of_guests: Yup.number()
     .min(1, "At least 1 guest required")
     .required("Guest count is required"),
   dj: Yup.object()
@@ -114,6 +115,7 @@ const NewEnquiryPage = () => {
   const [selectedExtras, setSelectedExtras] = useState<Record<string, boolean>>(
     {},
   );
+  const [restoredEditSelections, setRestoredEditSelections] = useState(false);
   const { data: clientDropdownName } = useClientDropdown();
   const { data: venueDropdownName } = useVenueDropdown();
   const { data: djDropdownData } = useUsersDropdown();
@@ -124,9 +126,11 @@ const NewEnquiryPage = () => {
   const formikRef = useRef<FormikProps<EnquiryFormValues>>(null);
   const [notesModalOpen, setNotesModalOpen] = useState(false);
   const [notesItem, setNotesItem] = useState<ExtraItem | null>(null);
+  const [showRigListCard, setShowRigListCard] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
   const editId = searchParams?.get("select") ?? null;
+  const queryClient = useQueryClient();
   // debug: log editId to ensure query is enabled
   console.debug("NewEnquiryPage editId:", editId);
   const { data: enquiryItem } = useGetEnquiry(editId ?? undefined);
@@ -176,7 +180,7 @@ const NewEnquiryPage = () => {
       // input[type=time] expects HH:mm
       endTime: enquiryItem.end_time ? dayjs(enquiryItem.end_time).format("HH:mm") : (enquiryItem.end_time ?? ""),
       startTime: enquiryItem.start_time ? dayjs(enquiryItem.start_time).format("HH:mm") : (enquiryItem.start_time ?? ""),
-      guestCount: enquiryItem.guestCount ?? enquiryItem.guest_count ?? "",
+      no_of_guests: enquiryItem.no_of_guests ?? enquiryItem.guest_count ?? enquiryItem.no_of_guests ?? "",
       dj: {
         id: enquiryItem.dj_id ?? enquiryItem.dj?.id ?? "",
         name: enquiryItem.dj_name ?? enquiryItem.dj?.name ?? "",
@@ -221,15 +225,40 @@ const NewEnquiryPage = () => {
       const extrasMap: Record<string, boolean> = {};
       if (Array.isArray(enquiryItem.event_packages)) {
         for (const p of enquiryItem.event_packages) {
-          const eqId = p?.equipment?.id ?? p?.equipment_id ?? null;
-          if (eqId != null) pkgMap[String(eqId)] = true;
+          // Use equipment identity consistently for both package and extras restore.
+          const eqId = p?.equipment_id ?? p?.equipment?.id ?? null;
+          if (eqId != null) {
+            const key = String(eqId);
+            pkgMap[key] = true;
+            extrasMap[key] = true;
+          }
         }
       }
-      // set selected state only if we found something
-      if (Object.keys(pkgMap).length) Promise.resolve().then(() => setSelectedPackageEquipments(pkgMap));
-      if (Object.keys(extrasMap).length) Promise.resolve().then(() => setSelectedExtras(extrasMap));
+      Promise.resolve().then(() => {
+        setSelectedPackageEquipments(pkgMap);
+        setSelectedExtras(extrasMap);
+        setRestoredEditSelections(true);
+      });
     } catch {}
   }, [enquiryItem]);
+
+  // When navigating to a different enquiry (or clicking from sidebar), clear previous state
+  useEffect(() => {
+    // Clear restored selections so packageData effect won't merge into stale values
+    setRestoredEditSelections(false);
+    setSelectedPackageEquipments({});
+    setSelectedExtras({});
+    // Reset form to Formik's initialValues while new enquiry loads
+    try {
+      formikRef.current?.resetForm();
+    } catch {}
+    // Ensure we fetch fresh enquiry data when navigating to an editId
+    try {
+      if (editId) {
+        queryClient.invalidateQueries({ queryKey: ["enquiry-item", editId], refetchType: "all" });
+      }
+    } catch {}
+  }, [editId, queryClient]);
 
   useEffect(() => {
     // initialize selection state when package data changes
@@ -237,7 +266,7 @@ const NewEnquiryPage = () => {
       const pkgEquip = (packageData.data.equipments?.package_user_equipments ?? []) as PackageUserEquipment[];
       const initPkg: Record<string, boolean> = {};
       for (const it of pkgEquip) {
-        const id = it.id ?? it.equipment_id ?? it.equipment?.id;
+        const id = it.equipment_id ?? it.equipment?.id ?? it.id;
         if (id != null) initPkg[String(id)] = true;
       }
       const extras = (packageData.data.extras ?? []) as ExtraItem[];
@@ -248,11 +277,31 @@ const NewEnquiryPage = () => {
 
       // Defer state updates to avoid synchronous setState in the effect
       Promise.resolve().then(() => {
+        // In edit mode, preserve restored selections and only register missing keys.
+        if (editId && restoredEditSelections) {
+          setSelectedPackageEquipments((prev) => {
+            const merged = { ...prev };
+            for (const key of Object.keys(initPkg)) {
+              if (!(key in merged)) merged[key] = false;
+            }
+            return merged;
+          });
+          setSelectedExtras((prev) => {
+            const merged = { ...prev };
+            for (const key of Object.keys(initExtras)) {
+              if (!(key in merged)) merged[key] = false;
+            }
+            return merged;
+          });
+          return;
+        }
+
+        // Create mode/default behavior: package selected by default, extras unselected.
         setSelectedPackageEquipments(initPkg);
         setSelectedExtras(initExtras);
       });
     }
-  }, [packageData]);
+  }, [packageData, editId, restoredEditSelections]);
 
   const { rigList, totalPrice } = useMemo(() => {
     const list: Array<{ name: string; notes?: string | null }> = [];
@@ -264,7 +313,7 @@ const NewEnquiryPage = () => {
     const pkgEquip = (packageData?.data?.equipments?.package_user_equipments ?? []) as PackageUserEquipment[];
     for (const it of pkgEquip) {
       const equipment = it.equipment ?? null;
-      const id = it.id ?? it.equipment_id ?? equipment?.id;
+      const id = it.equipment_id ?? equipment?.id ?? it.id;
       const key = id != null ? String(id) : null;
       const qty = it.quantity ?? 1;
       const unit = equipment?.sell_price ?? 0;
@@ -297,7 +346,7 @@ const NewEnquiryPage = () => {
     eventDate: "",
     endTime: "",
     startTime: "",
-    guestCount: "",
+    no_of_guests: "",
     dj: { id: "", name: "" },
     depositAmount: "",
     notes: "",
@@ -319,6 +368,11 @@ const NewEnquiryPage = () => {
             : packageParams.event_date || dayjs().format("DD-MM-YYYY");
 
           const djName = values.dj?.name || "";
+          const parsedDjId =
+            values.dj?.id === "" || values.dj?.id == null
+              ? null
+              : Number(values.dj.id);
+          const djId = Number.isFinite(parsedDjId) ? parsedDjId : null;
           const djPackageName = packageData?.data?.equipments?.package_name || packageParams.package_name || "";
           const djCost = Number(packageData?.data?.equipments?.sell_price ?? 0);
 
@@ -329,7 +383,7 @@ const NewEnquiryPage = () => {
           const pkgEquip = (packageData?.data?.equipments?.package_user_equipments ?? []) as PackageUserEquipment[];
           for (const it of pkgEquip) {
             const equipment = it.equipment ?? null;
-            const id = equipment?.id ?? it.equipment_id ?? it.id;
+            const id = it.equipment_id ?? equipment?.id ?? it.id;
             const key = id != null ? String(id) : null;
             if (key && selectedPackageEquipments[key]) {
               equipment_data.push({
@@ -362,6 +416,8 @@ const NewEnquiryPage = () => {
               clientDropdownName?.find((c) => String(c.id) === String(clientId))
                 ?.name || values.name;
 
+          const guestsValue = values.no_of_guests === "" || values.no_of_guests == null ? null : String(values.no_of_guests);
+
           const payload = {
             name: clientName,
             email: values.email,
@@ -374,6 +430,7 @@ const NewEnquiryPage = () => {
             venue_id: values.venue && String(values.venue).match(/^\d+$/) ? Number(values.venue) : undefined,
             new_venue_name: values.venue && !String(values.venue).match(/^\d+$/) ? String(values.venue) : "",
             event_details: values.tellMeMore || values.notes || "",
+            dj_id: djId,
             dj_name: djName,
             dj_package_name: djPackageName,
             total_cost: Number(totalPrice) || 0,
@@ -381,6 +438,7 @@ const NewEnquiryPage = () => {
             equipment_data,
             extra_data,
             rig_notes_data,
+            no_of_guests: guestsValue,
           };
 
           try {
@@ -399,7 +457,7 @@ const NewEnquiryPage = () => {
           }
         }}
     >
-      {({ values, errors, touched, setFieldValue, setValues, isSubmitting }) => {
+      {({ values, errors, touched, setFieldValue, setValues, isSubmitting, dirty }) => {
         let djError: string | undefined;
         if (typeof errors.dj === "string") {
           djError = errors.dj;
@@ -423,8 +481,14 @@ const NewEnquiryPage = () => {
                     <BackButton />
                   </Link>
                   <div className="flex flex-wrap gap-2">
-                    <Button type="primary" icon={<Save size={14} />} htmlType="submit" loading={isSubmitting}>
-                      Save
+                    <Button
+                      type="primary"
+                      icon={<Save size={14} />}
+                      htmlType="submit"
+                      loading={isSubmitting}
+                      disabled={!dirty || isSubmitting}
+                    >
+                      {editId ? "Update" : "Save"}
                     </Button>
                   </div>
                 </div>
@@ -439,7 +503,7 @@ const NewEnquiryPage = () => {
                 <Card variant="white" className="p-0 overflow-hidden">
                   <div className="flex items-center justify-between bg-primary px-6 py-4 text-white">
                     <h3 className="font-medium">Enquiry Details</h3>
-                    <button type="button" className="text-xs underline">+</button>
+                    {/* <button type="button" className="text-xs underline">+</button> */}
                   </div>
                   <div className="space-y-6 px-6 py-5">
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -690,14 +754,14 @@ const NewEnquiryPage = () => {
                               </div>
                             )}
                           </Field>
-                          <Field name="guestCount">
+                          <Field name="no_of_guests">
                             {(fieldProps: FieldProps) => (
                               <div className="space-y-1">
                                 <Input
                                   {...fieldProps.field}
                                   label="Guest Count"
                                   type="number"
-                                  error={touched.guestCount ? (errors.guestCount as string | undefined) : undefined}
+                                  error={touched.no_of_guests ? (errors.no_of_guests as string | undefined) : undefined}
                                   required
                                 />
                               </div>
@@ -790,7 +854,7 @@ const NewEnquiryPage = () => {
                       {packageData?.data?.equipments?.package_user_equipments?.map(
                         (item: PackageUserEquipment, idx: number) => {
                           const equipment = item.equipment ?? null;
-                          const id = item.id ?? item.equipment_id ?? equipment?.id ?? `pkg-${idx}`;
+                          const id = item.equipment_id ?? equipment?.id ?? item.id ?? `pkg-${idx}`;
                           const key = String(id);
                           const unitPrice = equipment?.sell_price ?? 0;
                           const qty = item.quantity ?? 1;
@@ -916,24 +980,44 @@ const NewEnquiryPage = () => {
                   </div>
                 </Card>
 
-                {/* Rig list card */}
+                {/* Rig list card with animated collapse */}
                 <Card variant="white" className="p-0 overflow-hidden">
                   <div className="flex items-center justify-between bg-primary px-6 py-4 text-white">
                     <h3 className="font-medium">Rig List</h3>
+                    <button
+                      type="button"
+                      className="text-xs"
+                      aria-label={showRigListCard ? "Hide rig list" : "Show rig list"}
+                      onClick={() => setShowRigListCard((v) => !v)}
+                    >
+                      {showRigListCard ? <X size={14} /> : <PlusIcon size={14} />}
+                    </button>
                   </div>
-                  <div className="px-6 py-5 text-xs text-gray-700 space-y-3">
-                    {rigList.length ? (
-                      rigList.map((r, idx) => (
-                        <div key={idx}>
-                          <p className="font-medium text-gray-900">{r.name}</p>
-                          {r.notes && (
-                            <p className="text-[11px] text-gray-500">{r.notes}</p>
-                          )}
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-[11px] text-gray-500">No rig items selected</p>
-                    )}
+
+                  <div
+                    className={`px-6 text-xs text-gray-700 transition-all duration-300 ease-in-out overflow-hidden`}
+                    style={{
+                      maxHeight: showRigListCard ? 600 : 0,
+                      paddingTop: showRigListCard ? 20 : 0,
+                      paddingBottom: showRigListCard ? 20 : 0,
+                      opacity: showRigListCard ? 1 : 0,
+                    }}
+                    aria-hidden={!showRigListCard}
+                  >
+                    <div className="space-y-3">
+                      {rigList.length ? (
+                        rigList.map((r, idx) => (
+                          <div key={idx}>
+                            <p className="font-medium text-gray-900">{r.name}</p>
+                            {r.notes && (
+                              <p className="text-[11px] text-gray-500">{r.notes}</p>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-[11px] text-gray-500">No rig items selected</p>
+                      )}
+                    </div>
                   </div>
                 </Card>
               </div>

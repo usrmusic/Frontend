@@ -15,10 +15,15 @@ interface PackageParams {
   package_name: string;
 }
 
-interface OpenEnquiryList {
+import type { ConfirmEventNote } from "@/src/types/types";
+
+export interface OpenEnquiryList {
+  id: string | number;
   name: string;
   mobile: string;
   event_date: string;
+  event_notes?: ConfirmEventNote[];
+  [key: string]: unknown;
 }
 
 interface SendBrochurePayload {

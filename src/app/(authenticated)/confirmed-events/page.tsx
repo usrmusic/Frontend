@@ -304,6 +304,16 @@ const ConfirmedEventsPage = () => {
             className="w-[430px]"
             placeholder="Select event"
             options={eventsptions}
+            showSearch
+            optionFilterProp="label"
+            filterOption={(input, option) => {
+              const label = (option?.label as string) ?? "";
+              const value = String(option?.value ?? "");
+              return (
+                label.toLowerCase().includes(String(input).toLowerCase()) ||
+                value.toLowerCase().includes(String(input).toLowerCase())
+              );
+            }}
             onChange={(value) => {
               setEventId(value ?? "");
               setIsModifyMode(false);
