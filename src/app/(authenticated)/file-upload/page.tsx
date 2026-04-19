@@ -155,7 +155,6 @@ const FileUploadPage = () => {
                   const url =
                     res?.url ||
                     res?.download_url ||
-                    res?.data?.download_url ||
                     res;
                   if (typeof url !== "string") return message.error("No download URL");
 
