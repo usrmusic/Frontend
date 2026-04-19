@@ -5,11 +5,10 @@ import Card from "@/src/components/Card";
 import AlertModal from "@/src/components/common/AlertModal";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
-import Input from "@/src/components/Input";
 import { useDebounce } from "@/src/hooks/useDebounce";
-import { Modal, notification, TableColumnsType } from "antd";
+import { notification, TableColumnsType } from "antd";
 import { TableRowSelection } from "antd/es/table/interface";
-import { Eye, Pencil, User } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { useState } from "react";
 import PackageModal from "./PackageModal";
 
@@ -95,14 +94,12 @@ const PackagesPage = () => {
       key: "actions",
       render: (data) => (
         <div className="flex gap-2">
-          <span className="cursor-pointer" title="View">
-            {/* Eye Icon (outline) */}
+          {/* <span className="cursor-pointer" title="View">
             <Eye size={14} />
           </span>
           <span className="cursor-pointer" title="User">
-            {/* User Icon */}
             <User size={14} />
-          </span>
+          </span> */}
           <button
             onClick={() => {
               setModalOpen(true);
@@ -139,7 +136,7 @@ const PackagesPage = () => {
             >
               Remove
             </Button>
-            <Button>Export Data</Button>
+            {/* <Button>Export Data</Button> */}
           </div>
         </div>
       </Card>

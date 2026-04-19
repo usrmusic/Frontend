@@ -138,8 +138,8 @@ const UsersPage = () => {
             >
               Remove
             </Button>
-            <Button>Deleted Users</Button>
-            <Button>Export Data</Button>
+            {/* <Button>Deleted Users</Button>
+            <Button>Export Data</Button> */}
           </div>
         </div>
       </Card>
