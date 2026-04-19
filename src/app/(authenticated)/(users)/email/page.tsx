@@ -1,6 +1,5 @@
 "use client";
 import { useEmail } from "@/src/api/usersApi";
-import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";

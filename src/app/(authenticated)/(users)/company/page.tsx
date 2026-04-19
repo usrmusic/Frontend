@@ -8,7 +8,7 @@ import { MagnifyingGlass } from "@/src/components/Icons";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import { notification, TableColumnsType } from "antd";
 import { TableRowSelection } from "antd/es/table/interface";
-import { Eye, Pencil } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { useState } from "react";
 import CompanyModal from "./CompanyModal";
 
