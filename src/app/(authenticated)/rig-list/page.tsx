@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Select, Spin } from "antd";
 import { useRigListEventsDropdown } from "@/src/api/dropdown";
 import dayjs from "dayjs";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useGetRigList, useSaveRigNotes } from "@/src/api/riglist";
 import { toast } from "react-toastify";
 
@@ -16,6 +16,14 @@ const Page = () => {
   const { data: eventsDropdown } = useRigListEventsDropdown();
   const { data: rigNotesData, isLoading } = useGetRigList(eventId);
   const { mutate: saveRigNotesMutation } = useSaveRigNotes();
+
+  useEffect(() => {
+    if (rigNotesData?.event?.rigList_event_notes) {
+      setNote(rigNotesData.event.rigList_event_notes);
+    } else {
+      setNote("");
+    }
+  }, [rigNotesData]);
 
   const eventsptions = eventsDropdown?.data.map((item: any) => ({
     label: `${dayjs(item.date).format("DD/MM/YYYY")} - ${item.venues?.venue} (${item.users_events_user_idTousers?.name})`,
@@ -60,7 +68,7 @@ const Page = () => {
               className="w-[430px]"
               placeholder="Select event"
               options={eventsptions}
-              onChange={(value) => setEventId(value)}
+              onChange={(value) => setEventId(value || "")}
               allowClear
             />
           </div>

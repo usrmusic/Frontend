@@ -1,6 +1,5 @@
 "use client";
 import Button from "@/src/components/Button";
-import { MoreVertical } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -45,9 +44,9 @@ const Tabs = () => {
           </Link>
         );
       })}
-      <button className="w-7.5 flex items-center justify-center rounded-lg bg-white hover:bg-secondary-200 transition-colors">
+      {/* <button className="w-7.5 flex items-center justify-center rounded-lg bg-white hover:bg-secondary-200 transition-colors">
         <MoreVertical size={18} />
-      </button>
+      </button> */}
     </div>
   );
 };

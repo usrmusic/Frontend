@@ -28,6 +28,7 @@ import SendBrochureModal from "../open-enquiry/SendBrochure";
 import { toast } from "react-toastify";
 import { fetchEmailTemplate } from "@/src/api/enquiry";
 import Contracts from "./Contracts";
+import Todos from "./_components/Todos";
 
 const ConfirmedEventsPage = () => {
   const [eventId, setEventId] = useState("");
@@ -198,7 +199,12 @@ const ConfirmedEventsPage = () => {
           <span>{`(${selectedEventData?.data?.file_uploads?.length ?? 0})`}</span>
         </div>
       ),
-      children: <Files dataSource={selectedEventData?.data?.file_uploads} isModifyMode={isModifyMode} />,
+      children: (
+        <Files
+          dataSource={selectedEventData?.data?.file_uploads}
+          isModifyMode={isModifyMode}
+        />
+      ),
       style: panelStyle,
     },
     {
@@ -209,7 +215,7 @@ const ConfirmedEventsPage = () => {
           To do List
         </div>
       ),
-      children: <p>No Records Found</p>,
+      children: <Todos isEditMode={isModifyMode} eventId={eventId} />,
       style: panelStyle,
     },
   ];
@@ -326,8 +332,12 @@ const ConfirmedEventsPage = () => {
             options={eventsOptions}
             showSearch
             filterOption={(input, option) =>
-              String(option?.label ?? "").toLowerCase().includes(String(input).toLowerCase()) ||
-              String(option?.value ?? "").toLowerCase().includes(String(input).toLowerCase())
+              String(option?.label ?? "")
+                .toLowerCase()
+                .includes(String(input).toLowerCase()) ||
+              String(option?.value ?? "")
+                .toLowerCase()
+                .includes(String(input).toLowerCase())
             }
             onChange={(value) => {
               setEventId(String(value ?? ""));
@@ -608,68 +618,101 @@ const ConfirmedEventsPage = () => {
           </Button>
         </div>
         <div className="grid grid-cols-2 gap-4 mb-3">
-            <div
-              className={`overflow-hidden rounded-xl bg-white border border-gray-200 transition-all duration-300 ease-in-out ${
-                showNotes ? "max-h-[800px] opacity-100 p-4" : "max-h-0 opacity-0 p-0"
-              }`}
-              aria-hidden={!showNotes}
-            >
-              <div className="space-y-3">
-                {showNotes && (
-                  <>
-                    {eventNotes.length === 0 ? (
-                      <div className="text-sm text-gray-500">No notes found.</div>
-                    ) : (
-                      eventNotes.map((n: any) => (
-                        <div key={n.id ?? n.note ?? Math.random()} className="rounded-lg bg-gray-50 px-3 py-2">
-                          <div className="text-sm font-medium text-gray-800">{n.note ?? n.notes ?? "Note"}</div>
-                          <div className="text-xs text-gray-500">
-                            Created on {n.created_at ? dayjs(n.created_at).format("DD-MM-YYYY HH:mm") : "—"}
-                          </div>
+          <div
+            className={`overflow-hidden rounded-xl bg-white border border-gray-200 transition-all duration-300 ease-in-out ${
+              showNotes
+                ? "max-h-[800px] opacity-100 p-4"
+                : "max-h-0 opacity-0 p-0"
+            }`}
+            aria-hidden={!showNotes}
+          >
+            <div className="space-y-3">
+              {showNotes && (
+                <>
+                  {eventNotes.length === 0 ? (
+                    <div className="text-sm text-gray-500">No notes found.</div>
+                  ) : (
+                    eventNotes.map((n: any) => (
+                      <div
+                        key={n.id ?? n.note ?? Math.random()}
+                        className="rounded-lg bg-gray-50 px-3 py-2"
+                      >
+                        <div className="text-sm font-medium text-gray-800">
+                          {n.note ?? n.notes ?? "Note"}
                         </div>
-                      ))
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div
-              className={`overflow-hidden bg-white rounded-xl border border-gray-200 transition-all duration-300 ease-in-out ${
-                showPayments ? "max-h-[800px] opacity-100 p-4" : "max-h-0 opacity-0 p-0"
-              }`}
-              aria-hidden={!showPayments}
-            >
-              {showPayments && (
-                <div className="p-4">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-2 text-left font-medium text-gray-700">Date</th>
-                        <th className="px-4 py-2 text-left font-medium text-gray-700">Amount</th>
-                        <th className="px-4 py-2 text-left font-medium text-gray-700">Reference</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {payments.length === 0 ? (
-                        <tr>
-                          <td colSpan={3} className="px-4 py-2 text-sm text-gray-500">No payments found.</td>
-                        </tr>
-                      ) : (
-                        payments.map((p: any) => (
-                          <tr key={p.id ?? p.payment_reference ?? Math.random()}>
-                            <td className="px-4 py-2">{p.payment_date ? dayjs(p.payment_date).format("DD/MM/YYYY") : p.date ? dayjs(p.date).format("DD/MM/YYYY") : "-"}</td>
-                            <td className="px-4 py-2">£{p.amount ?? p.payment_amount ?? p.payment ?? 0}</td>
-                            <td className="px-4 py-2">{p.payment_reference ?? p.reference ?? "-"}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                        <div className="text-xs text-gray-500">
+                          Created on{" "}
+                          {n.created_at
+                            ? dayjs(n.created_at).format("DD-MM-YYYY HH:mm")
+                            : "—"}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </>
               )}
             </div>
           </div>
+
+          <div
+            className={`overflow-hidden bg-white rounded-xl border border-gray-200 transition-all duration-300 ease-in-out ${
+              showPayments
+                ? "max-h-[800px] opacity-100 p-4"
+                : "max-h-0 opacity-0 p-0"
+            }`}
+            aria-hidden={!showPayments}
+          >
+            {showPayments && (
+              <div className="p-4">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left font-medium text-gray-700">
+                        Date
+                      </th>
+                      <th className="px-4 py-2 text-left font-medium text-gray-700">
+                        Amount
+                      </th>
+                      <th className="px-4 py-2 text-left font-medium text-gray-700">
+                        Reference
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {payments.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={3}
+                          className="px-4 py-2 text-sm text-gray-500"
+                        >
+                          No payments found.
+                        </td>
+                      </tr>
+                    ) : (
+                      payments.map((p: any) => (
+                        <tr key={p.id ?? p.payment_reference ?? Math.random()}>
+                          <td className="px-4 py-2">
+                            {p.payment_date
+                              ? dayjs(p.payment_date).format("DD/MM/YYYY")
+                              : p.date
+                                ? dayjs(p.date).format("DD/MM/YYYY")
+                                : "-"}
+                          </td>
+                          <td className="px-4 py-2">
+                            £{p.amount ?? p.payment_amount ?? p.payment ?? 0}
+                          </td>
+                          <td className="px-4 py-2">
+                            {p.payment_reference ?? p.reference ?? "-"}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
       </form>
       <Collapse
         bordered={false}

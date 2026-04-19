@@ -1,6 +1,5 @@
 "use client";
 import { useEmail } from "@/src/api/usersApi";
-import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
@@ -57,7 +56,7 @@ const EmailPage = () => {
             />
           </div>
           <div className="flex gap-2">
-            <Button>Export Data</Button>
+            {/* <Button>Export Data</Button> */}
           </div>
         </div>
       </Card>

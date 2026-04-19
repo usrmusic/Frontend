@@ -8,7 +8,7 @@ import { MagnifyingGlass } from "@/src/components/Icons";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import { notification, TableColumnsType } from "antd";
 import { TableRowSelection } from "antd/es/table/interface";
-import { Eye, Pencil } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { useState } from "react";
 import CompanyModal from "./CompanyModal";
 
@@ -104,7 +104,7 @@ const CompanyPage = () => {
       fixed: "right",
       render: (data) => (
         <div className="flex gap-3">
-          <Eye size={14} />
+          {/* <Eye size={14} /> */}
           <button
             onClick={() => {
               setModalOpen(true);
@@ -141,7 +141,7 @@ const CompanyPage = () => {
             >
               Remove
             </Button>
-            <Button>Export Data</Button>
+            {/* <Button>Export Data</Button> */}
           </div>
         </div>
       </Card>

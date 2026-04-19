@@ -64,7 +64,7 @@ export const useDeleteUpload = () => {
       return response.data;
     },
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["downloads-list"] }),
+      queryClient.invalidateQueries({ queryKey: ["uploads-list"] }),
     onError: (err) => {
       console.error(err);
       toast.error("Delete failed");

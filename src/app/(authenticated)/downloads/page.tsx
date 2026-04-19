@@ -1,12 +1,13 @@
 "use client";
-import { useDeleteFile, useDownloadsList } from "@/src/api/downloads";
+import { useDeleteFile, useDownloadsList, useUploadMedia, useDownloadMedia } from "@/src/api/downloads";
+import { Modal, message } from "antd";
 import Button from "@/src/components/Button";
 import AlertModal from "@/src/components/common/AlertModal";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import { TableColumnsType } from "antd";
-import { FileUp, Pen, Trash2 } from "lucide-react";
+import { FileUp, Download, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -29,6 +30,10 @@ const DownloadsPage = () => {
   });
 
   const deleteFile = useDeleteFile();
+  const uploadMedia = useUploadMedia();
+  const { mutateAsync: getMediaUrl, isPending: isDownloading } = useDownloadMedia();
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const columns: TableColumnsType = [
     {
       title: "File Name",
@@ -49,10 +54,31 @@ const DownloadsPage = () => {
     {
       title: "Actions",
       key: "actions",
-      render: (data) => (
+      render: (row) => (
         <div className="flex gap-2">
-          <Button size="small" type="text" showShadow={false}>
-            <Pen size={14} color="#719984" />
+          <Button
+            size="small"
+            type="text"
+            showShadow={false}
+            loading={isDownloading}
+            onClick={async () => {
+              try {
+                const resp = await getMediaUrl(row.id);
+                const url = resp?.url || resp?.download_url;
+                if (!url) return message.error("Could not get download URL");
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = row?.display_name || `file-${row.id}`;
+                a.target = '_blank';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+              } catch {
+                message.error("Download failed");
+              }
+            }}
+          >
+            <Download size={14} color="#719984" />
           </Button>
           <Button
             size="small"
@@ -60,7 +86,7 @@ const DownloadsPage = () => {
             showShadow={false}
             onClick={() => {
               setModalOpen(true);
-              setFileId(data.id);
+              setFileId(row.id);
             }}
           >
             <Trash2 size={14} color="#E74C6C" />
@@ -97,11 +123,9 @@ const DownloadsPage = () => {
             />
           </div>
           <div className="flex items-center gap-2">
-            <Link href={"/file-upload"}>
-              <Button type="primary" icon={<FileUp size={14} />}>
-                Upload File
-              </Button>
-            </Link>
+            <Button type="primary" icon={<FileUp size={14} />} onClick={() => setShowUploadModal(true)}>
+              Upload File
+            </Button>
           </div>
         </div>
       </div>
@@ -130,6 +154,46 @@ const DownloadsPage = () => {
         title="Delete File"
         loading={deleteFile.isPending}
       />
+
+      <Modal
+        title="Upload Media"
+        open={showUploadModal}
+        onCancel={() => {
+          setShowUploadModal(false);
+          setSelectedFile(null);
+        }}
+        footer={null}
+      >
+        <div className="space-y-3">
+          <input
+            type="file"
+            accept="*/*"
+            onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+          />
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => { setShowUploadModal(false); setSelectedFile(null); }}>Cancel</Button>
+            <Button
+              type="primary"
+              onClick={async () => {
+                if (!selectedFile) return message.error("Please select a file");
+                const fd = new FormData();
+                fd.append("media", selectedFile);
+                try {
+                  await uploadMedia.mutateAsync(fd);
+                  message.success("Uploaded");
+                  setShowUploadModal(false);
+                  setSelectedFile(null);
+                } catch {
+                  // error handled by hook
+                }
+              }}
+              loading={uploadMedia.isPending}
+            >
+              Upload
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

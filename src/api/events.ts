@@ -4,6 +4,7 @@ import axios from "axios";
 import AxiosInstance from "../lib/axios";
 import { toast } from "react-toastify";
 import { ApiResponse } from "../types/types";
+import { TodoFormValues } from "../app/(authenticated)/confirmed-events/_components/TodoModal";
 
 interface EventPayment {
   amount: number;
@@ -45,6 +46,15 @@ interface ConfirmEventPayload {
   deposit_amount: number;
   company_name: string;
   event_date: string;
+}
+
+interface TodoRespI {
+  id: number;
+  assigned_to: string;
+  action: string;
+  deadline: string;
+  comment: string;
+  complete: boolean;
 }
 
 export const useGetConfirmEvent = (id: string) => {
@@ -164,12 +174,20 @@ export const useDownloadInvoice = () => {
             // response.data should be a Blob; validate PDF header before download
             const blobData = response.data as Blob;
             const ab = await blobData.arrayBuffer();
-            const header = String.fromCharCode.apply(null, new Uint8Array(ab.slice(0, 4)) as unknown as number[]);
+            const header = String.fromCharCode.apply(
+              null,
+              new Uint8Array(ab.slice(0, 4)) as unknown as number[],
+            );
             if (!header.includes("%PDF")) {
               // not a valid PDF — surface the body for debugging
               const text = await blobData.text();
-              console.error("downloadInvoice: received non-PDF response:", text);
-              toast.error("Invoice generation failed (server returned non-PDF)");
+              console.error(
+                "downloadInvoice: received non-PDF response:",
+                text,
+              );
+              toast.error(
+                "Invoice generation failed (server returned non-PDF)",
+              );
               return false;
             }
 
@@ -213,7 +231,9 @@ export const useDownloadInvoice = () => {
 
           // Case A: base64 is a string (possibly data URL)
           if (typeof base64 === "string") {
-            const cleaned = base64.replace(/^data:application\/pdf;base64,/, "").trim();
+            const cleaned = base64
+              .replace(/^data:application\/pdf;base64,/, "")
+              .trim();
 
             const isLikelyBase64 = (s: string) => {
               const noWs = s.replace(/\s+/g, "");
@@ -227,7 +247,8 @@ export const useDownloadInvoice = () => {
                 const binary = atob(cleaned.replace(/\s+/g, ""));
                 const len = binary.length;
                 const bytes = new Uint8Array(len);
-                for (let i = 0; i < len; i += 1) bytes[i] = binary.charCodeAt(i);
+                for (let i = 0; i < len; i += 1)
+                  bytes[i] = binary.charCodeAt(i);
                 blob = new Blob([bytes], { type: "application/pdf" });
               } catch (e) {
                 console.warn("atob failed despite base64 check", e);
@@ -237,9 +258,14 @@ export const useDownloadInvoice = () => {
               try {
                 const parsedInner = JSON.parse(cleaned);
                 if (Array.isArray(parsedInner)) {
-                  const bytes = new Uint8Array(parsedInner.map((n: any) => Number(n) || 0));
+                  const bytes = new Uint8Array(
+                    parsedInner.map((n: any) => Number(n) || 0),
+                  );
                   blob = new Blob([bytes], { type: "application/pdf" });
-                } else if (typeof parsedInner === "object" && parsedInner !== null) {
+                } else if (
+                  typeof parsedInner === "object" &&
+                  parsedInner !== null
+                ) {
                   const vals = Object.keys(parsedInner)
                     .sort((a, b) => Number(a) - Number(b))
                     .map((k) => Number((parsedInner as any)[k]) || 0);
@@ -252,19 +278,31 @@ export const useDownloadInvoice = () => {
             } else if (/^\s*\d+(?:\s*,\s*\d+)+\s*$/.test(cleaned)) {
               // Format: "37,80,68,70,..." - comma-separated byte values in a string
               try {
-                const vals = cleaned.split(",").map((s) => Number(s.trim()) || 0);
+                const vals = cleaned
+                  .split(",")
+                  .map((s) => Number(s.trim()) || 0);
                 const bytes = new Uint8Array(vals);
                 blob = new Blob([bytes], { type: "application/pdf" });
-                console.info("Parsed comma-separated pdfBuffer into blob (length)", bytes.length);
+                console.info(
+                  "Parsed comma-separated pdfBuffer into blob (length)",
+                  bytes.length,
+                );
               } catch (e) {
-                console.warn("Failed to parse comma-separated pdfBuffer string", e);
+                console.warn(
+                  "Failed to parse comma-separated pdfBuffer string",
+                  e,
+                );
               }
             } else {
-              console.warn("Unrecognized pdfBuffer string format; not base64 or JSON array/object");
+              console.warn(
+                "Unrecognized pdfBuffer string format; not base64 or JSON array/object",
+              );
             }
           } else if (Array.isArray(base64)) {
             // Case B: backend returned array of byte values
-            const bytes = new Uint8Array(base64.map((n: any) => Number(n) || 0));
+            const bytes = new Uint8Array(
+              base64.map((n: any) => Number(n) || 0),
+            );
             blob = new Blob([bytes], { type: "application/pdf" });
           } else if (typeof base64 === "object") {
             // Case C: backend returned an object with numeric keys {0:37,1:80,...}
@@ -341,6 +379,88 @@ export const useConfirmEvent = () => {
         }
         throw error;
       }
+    },
+  });
+};
+
+export const useGetTodos = (eventId: number = 423) => {
+  return useQuery({
+    queryKey: ["todos-list", eventId],
+    queryFn: async (): Promise<TodoRespI[]> => {
+      try {
+        const resp = await AxiosInstance.get(`/todos/${eventId}`);
+        return resp.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+
+          toast.error(msg?.error || "API Error");
+        } else {
+          toast.error("Something went wrong");
+        }
+
+        throw error;
+      }
+    },
+  });
+};
+export const useAddTodo = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      eventId,
+      payload,
+    }: {
+      eventId: number;
+      payload: TodoFormValues;
+    }) => {
+      try {
+        const resp = await AxiosInstance.post(`/todos/${eventId}`, payload);
+        return resp.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "API Error");
+        } else {
+          toast.error("Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["todos-list"] });
+    },
+  });
+};
+export const useDeleteTodo = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      eventId,
+      todoId,
+    }: {
+      eventId: number;
+      todoId: number;
+    }) => {
+      try {
+        const resp = await AxiosInstance.post(
+          `/todos/${eventId}/${todoId}?force=false`,
+        );
+        return resp.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "API Error");
+        } else {
+          toast.error("Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["todos-list"] });
     },
   });
 };
