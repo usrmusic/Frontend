@@ -4,7 +4,6 @@ import Button from "@/src/components/Button";
 import AlertModal from "@/src/components/common/AlertModal";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
-import Input from "@/src/components/Input";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import { TableColumnsType } from "antd";
 import { FileUp, Pen, Trash2 } from "lucide-react";
@@ -97,11 +96,12 @@ const DownloadsPage = () => {
               className="w-full bg-transparent! text-sm placeholder:text-gray-500"
             />
           </div>
-          <div className="max-w-[365px] w-full flex items-center gap-2">
-            <Input type="file" className="bg-white!" />
-            <Button type="primary" icon={<FileUp size={14} />}>
-              Upload File
-            </Button>
+          <div className="flex items-center gap-2">
+            <Link href={"/file-upload"}>
+              <Button type="primary" icon={<FileUp size={14} />}>
+                Upload File
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
