@@ -25,6 +25,7 @@ type QueryParams = {
   page: number;
   perPage: number;
   search: string;
+  paymentStatus?: string;
 };
 
 export interface CompletedEvent {

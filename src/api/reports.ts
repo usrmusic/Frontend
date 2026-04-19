@@ -16,12 +16,19 @@ export const useSuppliersReport = (params: QueryParams) => {
     Object.entries(params).filter(([, value]) => !!value),
   );
 
+  // Normalize any camelCase keys to snake_case expected by the API
+  const normalizedSuppliersParams: Record<string, any> = { ...filteredParams };
+  if (Object.prototype.hasOwnProperty.call(normalizedSuppliersParams, 'eventStatus')) {
+    normalizedSuppliersParams.event_status = normalizedSuppliersParams.eventStatus;
+    delete normalizedSuppliersParams.eventStatus;
+  }
+
   return useQuery({
-    queryKey: ["suppliers-report", filteredParams],
+    queryKey: ["suppliers-report", normalizedSuppliersParams],
     queryFn: async () => {
       try {
         const response = await AxiosInstance.get(`/reports/suppliers`, {
-          params: filteredParams,
+          params: normalizedSuppliersParams,
         });
         return response.data;
       } catch (error: unknown) {
@@ -48,12 +55,19 @@ export const useAdminReport = (params: QueryParams) => {
   const filteredParams = Object.fromEntries(
     Object.entries(params).filter(([, value]) => !!value),
   );
+  // Normalize camelCase -> snake_case for admin report params as well
+  const normalizedAdminParams: Record<string, any> = { ...filteredParams };
+  if (Object.prototype.hasOwnProperty.call(normalizedAdminParams, 'eventStatus')) {
+    normalizedAdminParams.event_status = normalizedAdminParams.eventStatus;
+    delete normalizedAdminParams.eventStatus;
+  }
+
   return useQuery({
-    queryKey: ["admin-report", params],
+    queryKey: ["admin-report", normalizedAdminParams],
     queryFn: async () => {
       try {
         const response = await AxiosInstance.get(`/reports/admin`, {
-          params: filteredParams,
+          params: normalizedAdminParams,
         });
         return response.data;
       } catch (error: unknown) {

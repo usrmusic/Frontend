@@ -236,7 +236,7 @@ const ConfirmedEventsPage = () => {
             <Link href="/dashboard" className="shrink-0">
               <BackButton />
             </Link>
-            <h2 className="themeH1">Confirmed Events</h2>
+            <h2 className="themeH1">{(searchParams?.get("from") ?? "") === "completed" ? "Completed Event" : "Confirmed Events"}</h2>
           </div>
           <div className="flex gap-2">
             {eventId && (

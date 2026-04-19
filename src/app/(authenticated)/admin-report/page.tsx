@@ -4,7 +4,7 @@ import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, Export, MagnifyingGlass } from "@/src/components/Icons";
-import { DatePicker } from "antd";
+import { DatePicker, Select } from "antd";
 import { MoreVertical, RefreshCw } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -30,7 +30,7 @@ export type Filters = {
   company?: string;
   client?: string;
   eventDate?: string;
-  eventStatus?: string;
+  event_status?: string;
   dj?: string;
   venue?: string;
   page: number;
@@ -42,6 +42,7 @@ const Page = () => {
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [selectedEventStatus, setSelectedEventStatus] = useState<string>("");
   const { data: reportData, isLoading } = useAdminReport(filters);
 
   const { columns } = useColumns(filters, setFilters);
@@ -73,16 +74,17 @@ const Page = () => {
     setSearch("");
     setDateFrom("");
     setDateTo("");
+    setSelectedEventStatus("");
   };
 
   const applyFilters = () => {
-    if(!search) return
     setFilters((prev) => ({
       ...prev,
       page: 1,
       search,
       event_start_time: dateFrom,
       event_end_time: dateTo,
+      event_status: selectedEventStatus || undefined,
     }));
   };
 
@@ -99,7 +101,7 @@ const Page = () => {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button icon={<Export />}>Export Data</Button>
+          {/* <Button icon={<Export />}>Export Data</Button> */}
           <Button>
             <MoreVertical size={18} />
           </Button>
@@ -153,12 +155,20 @@ const Page = () => {
             />
       
           </div>
-          <select
-            name="confirmedEvent"
-            className="bg-white rounded-lg text-xs px-3"
-          >
-            <option value="">Confirmed and Completed Events</option>
-          </select>
+          <div className="max-w-full">
+            <Select
+              allowClear
+              placeholder="Confirmed and Completed Events"
+              className="w-full bg-white rounded-lg text-xs"
+              value={selectedEventStatus || undefined}
+              onChange={(val) => setSelectedEventStatus(String(val || ""))}
+              options={[
+                { label: "Confirmed and Completed Events", value: "" },
+                { label: "Confirmed Events", value: "confirmed" },
+                { label: "Completed Events", value: "completed" },
+              ]}
+            />
+          </div>
           <DatePicker
             placeholder="Date (From)"
             className="[&_input]:bg-white!"
