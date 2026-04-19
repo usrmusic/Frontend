@@ -157,16 +157,43 @@ const FileUploadPage = () => {
                     res?.download_url ||
                     res?.data?.download_url ||
                     res;
-                  if (!url) return message.error("No download URL");
-                  // trigger download
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.target = "_blank";
-                  document.body.appendChild(a);
-                  a.click();
-                  a.remove();
+                  if (typeof url !== "string") return message.error("No download URL");
+
+                  const fallbackOpenUrl = () => {
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.target = "_blank";
+                    a.rel = "noopener noreferrer";
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                  };
+
+                  try {
+                    const response = await fetch(url, { method: "GET" });
+                    if (!response.ok) {
+                      throw new Error("Download failed");
+                    }
+                    const blob = await response.blob();
+                    const disposition = response.headers.get("content-disposition") || "";
+                    const filename =
+                      disposition?.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)?.[1]?.replace(/['"]/g, "") ||
+                      upload.file_name;
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = downloadUrl;
+                    a.download = filename;
+                    a.style.display = "none";
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 10000);
+                  } catch (e) {
+                    fallbackOpenUrl();
+                  }
                 } catch (e) {
                   console.error(e);
+                  message.error("Download failed");
                 }
               }}
             >

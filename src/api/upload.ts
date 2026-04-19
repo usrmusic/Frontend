@@ -72,23 +72,43 @@ export const useDeleteUpload = () => {
   });
 };
 
+// export const useDownloadUpload = () => {
+//   return useMutation({
+//     mutationFn: async (id: number | string) => {
+//       try {
+//         const response = await AxiosInstance.get(`/files/uploads/${id}/download`);
+//         return response.data;
+//       } catch (error: unknown) {
+//         if (axios.isAxiosError(error)) {
+//           const msg = error.response?.data;
+//           const message = typeof msg === "object" ? msg?.error : msg;
+//           toast.error(message || "API Error");
+//         } else {
+//           toast.error("Something went wrong");
+//         }
+//         throw error;
+//       }
+//     },
+//   });
+// };
+
+
+// src/api/upload.ts
+
+// src/api/upload.ts — update the hook return type
 export const useDownloadUpload = () => {
   return useMutation({
-    mutationFn: async (id: number | string) => {
-      try {
-        const response = await AxiosInstance.get(
-          `/files/uploads/${id}/download`,
-        );
-        return response.data;
-      } catch (error: unknown) {
-        if (axios.isAxiosError(error)) {
-          const msg = error.response?.data;
-          toast.error(msg?.error || "API Error");
-        } else {
-          toast.error("Something went wrong");
-        }
-        throw error;
-      }
+    mutationFn: async (id: number | string): Promise<{
+      url?: string;
+      download_url?: string;
+      filename?: string;       // ← add this
+      storage?: string;
+    }> => {
+      const response = await AxiosInstance.get(`/files/uploads/${id}/download`);
+      return response.data;
+    },
+    onError: () => {
+      toast.error("Download failed");
     },
   });
 };

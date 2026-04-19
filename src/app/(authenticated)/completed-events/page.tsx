@@ -6,7 +6,12 @@ import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
-import { TableColumnsType, TableProps } from "antd";
+import { TableColumnsType, TableProps, Select } from "antd";
+import { useRouter } from "next/navigation";
+import SendBrochureModal from "../open-enquiry/SendBrochure";
+import { fetchEmailTemplate } from "@/src/api/enquiry";
+import { useDownloadInvoice } from "@/src/api/events";
+import { toast } from "react-toastify";
 import dayjs from "dayjs";
 import { MoreVertical } from "lucide-react";
 import Link from "next/link";
@@ -21,6 +26,15 @@ const initialParams = {
 const CompletedEventsPage = () => {
   const [params, setParams] = useState(initialParams);
   const [search, setSearch] = useState("");
+  const [paymentStatus, setPaymentStatus] = useState<string>("");
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [selectedRows, setSelectedRows] = useState<any[]>([]);
+  const [showModal, setShowModal] = useState(false);
+  const [sendMode, setSendMode] = useState<"quote" | "invoice">("quote");
+  const [buttonLoading, setButtonLoading] = useState<string | null>(null);
+  const [modalTemplate, setModalTemplate] = useState<null>(null);
+  const [modalCompanies, setModalCompanies] = useState<Array<{ id: string | number; name: string }> | null>(null);
+  const router = useRouter();
   const debouncedSearch = useDebounce(search, 1000);
 
   const searchParams = useSearchParams();
@@ -37,16 +51,19 @@ const CompletedEventsPage = () => {
   const { data: completedEventsData, isLoading } = useGetCompletedEventsList({
     ...params,
     search: debouncedSearch,
+    paymentStatus: paymentStatus || undefined,
   });
+  const { mutate: downloadInvoiceMutation, isPending: isDownloadingInvoice } = useDownloadInvoice();
   const rowSelection: TableProps["rowSelection"] = {
-    onChange: (selectedRowKeys: React.Key[], selectedRows) => {
-      console.log(
-        `selectedRowKeys: ${selectedRowKeys}`,
-        "selectedRows: ",
-        selectedRows,
-      );
+    type: "radio",
+    selectedRowKeys,
+    onChange: (keys: React.Key[], rows: any[]) => {
+      setSelectedRowKeys(keys.slice(0, 1));
+      setSelectedRows(rows.slice(0, 1));
     },
   };
+
+  const selectedId = selectedRowKeys && selectedRowKeys.length ? String(selectedRowKeys[0]) : null;
 
   const columns: TableColumnsType = [
     {
@@ -99,16 +116,69 @@ const CompletedEventsPage = () => {
             </Link>
             <h2 className="themeH1">Completed Events</h2>
           </div>
-          {/* <div className="flex flex-wrap items-center gap-2">
-            <Button>View</Button>
-            <Button type="primary">Send Email</Button>
-            <Button type="primary">Send Invoice</Button>
-            <Button type="default">Download Invoice</Button>
-            <Button type="default">Export Data</Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              onClick={() => selectedId && router.push(`/confirmed-events?search=${selectedId}&from=completed`)}
+              disabled={!selectedId}
+            >
+              View
+            </Button>
+            <Button
+              type="primary"
+              onClick={async () => {
+                if (!selectedId) return;
+                setButtonLoading("quote");
+                try {
+                  const data = await fetchEmailTemplate(String(selectedId), "SEND QUOTE-CONFIRMED");
+                  setModalTemplate(data?.email ?? null);
+                  setModalCompanies(data?.companies ?? null);
+                  setSendMode("quote");
+                  setShowModal(true);
+                } catch (err) {
+                  toast.error("Failed to load email template");
+                } finally {
+                  setButtonLoading(null);
+                }
+              }}
+              loading={buttonLoading === "quote"}
+              disabled={!selectedId}
+            >
+              Send Email
+            </Button>
+            <Button
+              type="primary"
+              onClick={async () => {
+                if (!selectedId) return;
+                setButtonLoading("invoice");
+                try {
+                  const data = await fetchEmailTemplate(String(selectedId), "SEND INVOICE-OPEN");
+                  setModalTemplate(data?.email ?? null);
+                  setModalCompanies(data?.companies ?? null);
+                  setSendMode("invoice");
+                  setShowModal(true);
+                } catch (err) {
+                  toast.error("Failed to load invoice template");
+                } finally {
+                  setButtonLoading(null);
+                }
+              }}
+              loading={buttonLoading === "invoice"}
+              disabled={!selectedId}
+            >
+              Send Invoice
+            </Button>
+            <Button
+              type="default"
+              onClick={() => selectedId && downloadInvoiceMutation({ id: String(selectedId) })}
+              loading={isDownloadingInvoice}
+              disabled={!selectedId}
+            >
+              Download Invoice
+            </Button>
             <button className=" size-9 flex items-center justify-center rounded-lg bg-white hover:bg-secondary-200 transition-colors">
               <MoreVertical size={18} />
             </button>
-          </div> */}
+          </div>
         </div>
 
         <div className="grid grid-cols-4 gap-2">
@@ -120,7 +190,7 @@ const CompletedEventsPage = () => {
             <option value="">Select Event</option>
             <option value="event one">event one</option>
           </select> */}
-          <div className="flex max-w-[385px] items-center gap-2 rounded-lg bg-white px-4 h-10">
+          <div className="flex max-w-full items-center gap-2 rounded-lg bg-white px-4 h-10">
             <MagnifyingGlass w={18} h={18} />
             <input
               type="text"
@@ -129,12 +199,34 @@ const CompletedEventsPage = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+            
+          </div>
+                    <div className="max-w-full">
+            <Select
+              allowClear
+              placeholder="Payment status"
+              className="w-full bg-white rounded-lg"
+              options={[
+                { label: "All", value: "" },
+                { label: "Completed", value: "completed" },
+                { label: "Pending", value: "pending" },
+              ]}
+              showSearch
+              filterOption={(input, option) =>
+                String(option?.label ?? "").toLowerCase().includes(String(input).toLowerCase())
+              }
+              value={paymentStatus || undefined}
+              onChange={(val) => {
+                setPaymentStatus(String(val || ""));
+                setParams((p) => ({ ...p, page: 1 }));
+              }}
+            />
           </div>
         </div>
         <DataTable
           rowSelection={rowSelection}
           columns={columns}
-          rowKey={(data) => data.id}
+          rowKey={(data) => String((data as any).id)}
           loading={isLoading}
           dataSource={completedEventsData?.data}
           pagination={{
@@ -144,7 +236,29 @@ const CompletedEventsPage = () => {
             onChange: (page, pageSize) =>
               setParams({ ...params, page, perPage: pageSize }),
           }}
+          onRow={(record) => ({
+            onClick: () => {
+              try {
+                const id = (record as any)?.id;
+                if (id === undefined || id === null) return;
+                setSelectedRowKeys([String(id)]);
+                setSelectedRows([record as any]);
+              } catch (err) {
+                // ignore
+              }
+            },
+          })}
         />
+        {showModal && (
+          <SendBrochureModal
+            open={showModal}
+            eventId={selectedId || ""}
+            sendMode={sendMode}
+            template={modalTemplate}
+            companies={modalCompanies}
+            onCancel={() => setShowModal(false)}
+          />
+        )}
       </div>
     </>
   );

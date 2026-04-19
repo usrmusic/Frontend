@@ -1,4 +1,3 @@
-
 "use client";
 
 import DataTable from "@/src/components/DataTable";
@@ -9,10 +8,12 @@ import { Download, Plus } from "lucide-react";
 import Link from "next/link";
 import { useDownloadUpload } from "@/src/api/upload";
 import { toast } from "react-toastify";
+import { useState } from "react";
 
 export type ConfirmedEventFile = {
   id: number | string;
   file_name: string;
+  original_name?: string;
   file_type: string;
   created_at: string;
   event_id: number | null;
@@ -21,74 +22,80 @@ export type ConfirmedEventFile = {
 };
 
 type FilesProps = {
-  dataSource: ConfirmedEventFile[];
+  dataSource: ConfirmedEventFile[] | undefined;
   isModifyMode?: boolean;
 };
 
-const Files = ({
-  dataSource,
-  isModifyMode = false,
-}: FilesProps) => {
-  const { mutate: downloadFile, isPending: isDownloading } = useDownloadUpload();
-  const handleDownload = (row: ConfirmedEventFile) => {
-    downloadFile(row.id, {
-      onSuccess: (data) => {
-        // Assuming the API returns a file or URL
-        if (data?.file_url || data?.url || data?.download_url) {
-          const link = document.createElement("a");
-          link.href = data.file_url || data.url || data.download_url;
-          link.target = "_blank";
-          link.rel = "noopener noreferrer";
-          // `download` may be ignored for cross-origin signed URLs; open in new tab
-          try {
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-          } catch (e) {
-            // fallback: open window
-            window.open(link.href, "_blank", "noopener,noreferrer");
-          }
-        } else {
-          toast.success("Download initiated");
-        }
-      },
-      onError: () => {
-        toast.error("Download failed");
-      },
-    });
-  };
+const Files = ({ dataSource, isModifyMode = false }: FilesProps) => {
+  const { mutateAsync: getDownloadUrl } = useDownloadUpload();
+  const [downloadingId, setDownloadingId] = useState<number | string | null>(
+    null,
+  );
 
-  const columns: TableColumnsType = [
+const handleDownload = async (row: ConfirmedEventFile) => {
+  if (downloadingId === row.id) return;
+  setDownloadingId(row.id);
+
+  try {
+    const data = await getDownloadUrl(row.id);
+
+    const url = (data?.url || data?.download_url) as string | undefined;
+    if (!url) {
+      toast.error("Could not get download URL");
+      return;
+    }
+
+    const filename =
+      (data as any)?.filename ||
+      row.original_name ||
+      row.file_name.split("/").pop() ||
+      "download";
+
+    window.location.href = url;
+
+    toast.success(`Downloading ${filename}`);
+  } catch {
+    toast.error("Download failed");
+  } finally {
+    setDownloadingId(null);
+  }
+};
+
+  const columns: TableColumnsType<ConfirmedEventFile> = [
     {
-      title: "File name",
-      dataIndex: "file_name",
+      title: "File Name",
       key: "file_name",
+      render: (row: ConfirmedEventFile) =>
+        row.original_name || row.file_name.split("/").pop() || row.file_name,
     },
     {
       title: "Type",
       dataIndex: "file_type",
       key: "file_type",
+      render: (type: string) => type || "—",
     },
     {
-      title: "Uploaded at",
+      title: "Uploaded At",
       dataIndex: "created_at",
       key: "created_at",
-      render: (date) => dayjs(date).isValid() ? dayjs(date).format("DD-MM-YYYY") : "—",
+      render: (date: string) =>
+        dayjs(date).isValid() ? dayjs(date).format("DD-MM-YYYY") : "—",
     },
     {
       title: "Event",
       key: "event",
-      render: (row) => (row.event_id ? row.event_id : row.general ? "General" : "—"),
+      render: (row: ConfirmedEventFile) =>
+        row.event_id ? row.event_id : row.general ? "General" : "—",
     },
     {
       title: "Actions",
       key: "actions",
-      render: (row) => (
+      render: (row: ConfirmedEventFile) => (
         <Button
           size="small"
           type="text"
           showShadow={false}
-          loading={isDownloading}
+          loading={downloadingId === row.id}
           onClick={() => handleDownload(row)}
         >
           <Download size={14} color="#6A7282" />
@@ -109,9 +116,9 @@ const Files = ({
       )}
       <DataTable
         columns={columns}
-        dataSource={dataSource}
+        dataSource={dataSource ?? []}
         pagination={false}
-        rowKey={(row) => row.id}
+        rowKey={(row) => String(row.id)}
       />
     </div>
   );
