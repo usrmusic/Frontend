@@ -11,6 +11,10 @@ export const useGetRigList = (id: string) => {
       return response.data;
     },
     enabled: !!id,
+    // Always treat data as stale and refetch on mount so we get fresh API data
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
   });
 };
 
