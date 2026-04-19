@@ -104,7 +104,7 @@ const CompanyPage = () => {
       fixed: "right",
       render: (data) => (
         <div className="flex gap-3">
-          <Eye size={14} />
+          {/* <Eye size={14} /> */}
           <button
             onClick={() => {
               setModalOpen(true);
@@ -141,7 +141,7 @@ const CompanyPage = () => {
             >
               Remove
             </Button>
-            <Button>Export Data</Button>
+            {/* <Button>Export Data</Button> */}
           </div>
         </div>
       </Card>

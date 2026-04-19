@@ -57,7 +57,7 @@ const EmailPage = () => {
             />
           </div>
           <div className="flex gap-2">
-            <Button>Export Data</Button>
+            {/* <Button>Export Data</Button> */}
           </div>
         </div>
       </Card>

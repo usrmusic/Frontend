@@ -95,14 +95,12 @@ const PackagesPage = () => {
       key: "actions",
       render: (data) => (
         <div className="flex gap-2">
-          <span className="cursor-pointer" title="View">
-            {/* Eye Icon (outline) */}
+          {/* <span className="cursor-pointer" title="View">
             <Eye size={14} />
           </span>
           <span className="cursor-pointer" title="User">
-            {/* User Icon */}
             <User size={14} />
-          </span>
+          </span> */}
           <button
             onClick={() => {
               setModalOpen(true);
@@ -139,7 +137,7 @@ const PackagesPage = () => {
             >
               Remove
             </Button>
-            <Button>Export Data</Button>
+            {/* <Button>Export Data</Button> */}
           </div>
         </div>
       </Card>

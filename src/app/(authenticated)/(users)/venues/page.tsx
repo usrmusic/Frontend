@@ -144,7 +144,7 @@ const VenuesPage = () => {
             >
               Remove
             </Button>
-            <Button>Export Data</Button>
+            {/* <Button>Export Data</Button> */}
           </div>
         </div>
       </Card>
