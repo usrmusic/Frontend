@@ -236,28 +236,19 @@ function CalendarWithSidebar({
     const disabled = Boolean(dayProps["disabled"]);
     const iso = toLocalIso(date as Date | undefined);
     const hasDot = dotSet.has(iso);
+    // Render a table cell (<td>) here. DayPicker places CustomDay directly
+    // under a <tr>, so using a <td> ensures valid table markup and avoids
+    // placing a <div> or <button> directly under a <tr> which causes
+    // hydration errors in the browser.
     return (
-      <button
-        type="button"
-        onClick={onClick as unknown as MouseEventHandler}
-        onDoubleClick={(e) => {
-          try {
-            e.stopPropagation();
-            if (!iso) return;
-            router.push(`/calendar?date=${iso}`);
-          } catch (err) {
-            console.error(err);
-          }
-        }}
-        onKeyDown={onKeyDown as unknown as KeyboardEventHandler}
-        disabled={disabled}
-        className={`${className || ""} relative flex items-center justify-center w-full h-full`}
-      >
-        <span>{children}</span>
-        {hasDot && (
-          <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-blue-600" />
-        )}
-      </button>
+      <td className={(className || "") + " align-top p-0"}>
+        <div className="relative flex items-center justify-center w-full h-full">
+          <span>{children}</span>
+          {hasDot && (
+            <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-blue-600" />
+          )}
+        </div>
+      </td>
     );
   };
 

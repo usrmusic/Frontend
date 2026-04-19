@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import AxiosInstance from "../lib/axios";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
+import axios from "axios";
 
 interface QueryParams {
   page: number;
@@ -11,7 +12,7 @@ interface QueryParams {
 
 export const useUploadList = (params: QueryParams) => {
   return useQuery({
-    queryKey: ["downloads-list", params],
+    queryKey: ["uploads-list", params],
     queryFn: async () => {
       const response = await AxiosInstance.get(`/files/uploads`, {
         params,
@@ -30,8 +31,9 @@ export const useUploadFile = () => {
       });
       return response.data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["downloads-list"] }),
-    onError: (err: any) => {
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["uploads-list"] }),
+    onError: (err) => {
       console.error(err);
       toast.error("Upload failed");
     },
@@ -45,8 +47,9 @@ export const useUpdateUpload = () => {
       const response = await AxiosInstance.put(`/files/uploads/${id}`, data);
       return response.data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["downloads-list"] }),
-    onError: (err: any) => {
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["uploads-list"] }),
+    onError: (err) => {
       console.error(err);
       toast.error("Update failed");
     },
@@ -60,8 +63,9 @@ export const useDeleteUpload = () => {
       const response = await AxiosInstance.delete(`/files/uploads/${id}`);
       return response.data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["downloads-list"] }),
-    onError: (err: any) => {
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["downloads-list"] }),
+    onError: (err) => {
       console.error(err);
       toast.error("Delete failed");
     },
@@ -71,12 +75,20 @@ export const useDeleteUpload = () => {
 export const useDownloadUpload = () => {
   return useMutation({
     mutationFn: async (id: number | string) => {
-      const response = await AxiosInstance.get(`/files/uploads/${id}/download`);
-      return response.data;
-    },
-    onError: (err: any) => {
-      console.error(err);
-      toast.error("Failed to get download URL");
+      try {
+        const response = await AxiosInstance.get(
+          `/files/uploads/${id}/download`,
+        );
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "API Error");
+        } else {
+          toast.error("Something went wrong");
+        }
+        throw error;
+      }
     },
   });
 };
