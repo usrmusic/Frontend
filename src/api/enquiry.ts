@@ -15,10 +15,15 @@ interface PackageParams {
   package_name: string;
 }
 
-interface OpenEnquiryList {
+import type { ConfirmEventNote } from "@/src/types/types";
+
+export interface OpenEnquiryList {
+  id: string | number;
   name: string;
   mobile: string;
   event_date: string;
+  event_notes?: ConfirmEventNote[];
+  [key: string]: unknown;
 }
 
 interface SendBrochurePayload {
@@ -130,6 +135,21 @@ export const useSendInvoice = () => {
     },
   });
 };
+
+export const fetchEmailTemplate = async (event_id: string | number, email_name: string) => {
+  try {
+    const response = await AxiosInstance.get(`/enquiry/get-email`, {
+      params: { event_id: String(event_id), email_name },
+    });
+    return response.data?.data ?? null;
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      const msg = error.response?.data;
+      toast.error(msg?.error || "Something went wrong");
+    }
+    throw error;
+  }
+};
 export const useAddNote = () => {
   const queryClient = useQueryClient();
 
@@ -180,6 +200,84 @@ export const useCreateEnquiry = () => {
     },
     onError: (error: any) => {
       console.error("create enquiry failed:", error?.message || error);
+    },
+  });
+};
+
+export const useGetEnquiry = (id?: string | number) => {
+  return useQuery({
+    queryKey: ["enquiry-item", id],
+    queryFn: async () => {
+      if (!id) return null;
+      const response = await AxiosInstance.get(`/enquiry/${String(id)}`);
+      return response.data?.data ?? null;
+    },
+    enabled: Boolean(id),
+  });
+};
+
+export const useUpdateEnquiry = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, body }: { id: number | string; body: Record<string, unknown> }) => {
+      try {
+        const response = await AxiosInstance.put(`/enquiry/${id}`, body);
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["enquiry-list"] });
+    },
+    onError: (error: any) => {
+      console.error("update enquiry failed:", error?.message || error);
+    },
+  });
+};
+
+export const useDeleteEnquiry = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number | string) => {
+      try {
+        const response = await AxiosInstance.delete(`/enquiry/${id}`);
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["enquiry-list"] });
+    },
+  });
+};
+
+export const useEditEnquiry = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, body }: { id: number | string; body: Record<string, unknown> }) => {
+      try {
+        const response = await AxiosInstance.put(`/enquiry/${id}`, body);
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["enquiry-list"] });
     },
   });
 };

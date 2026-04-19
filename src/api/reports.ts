@@ -7,20 +7,33 @@ type QueryParams = {
   page: number;
   perPage: number;
   search?: string;
+  event_start_time?: string;
+  event_end_time?: string;
 };
 export const useSuppliersReport = (params: QueryParams) => {
+  // Only include keys with truthy values (not empty string, undefined, or null)
+  const filteredParams = Object.fromEntries(
+    Object.entries(params).filter(([, value]) => !!value),
+  );
+
+  // Normalize any camelCase keys to snake_case expected by the API
+  const normalizedSuppliersParams: Record<string, any> = { ...filteredParams };
+  if (Object.prototype.hasOwnProperty.call(normalizedSuppliersParams, 'eventStatus')) {
+    normalizedSuppliersParams.event_status = normalizedSuppliersParams.eventStatus;
+    delete normalizedSuppliersParams.eventStatus;
+  }
+
   return useQuery({
-    queryKey: ["suppliers-report", params],
+    queryKey: ["suppliers-report", normalizedSuppliersParams],
     queryFn: async () => {
       try {
         const response = await AxiosInstance.get(`/reports/suppliers`, {
-          params,
+          params: normalizedSuppliersParams,
         });
         return response.data;
       } catch (error: unknown) {
         if (axios.isAxiosError(error)) {
           const msg = error.response?.data;
-
           notification.error({
             message: "API Error",
             description: msg?.error,
@@ -33,18 +46,29 @@ export const useSuppliersReport = (params: QueryParams) => {
             placement: "topRight",
           });
         }
-
         throw error;
       }
     },
   });
 };
 export const useAdminReport = (params: QueryParams) => {
+  const filteredParams = Object.fromEntries(
+    Object.entries(params).filter(([, value]) => !!value),
+  );
+  // Normalize camelCase -> snake_case for admin report params as well
+  const normalizedAdminParams: Record<string, any> = { ...filteredParams };
+  if (Object.prototype.hasOwnProperty.call(normalizedAdminParams, 'eventStatus')) {
+    normalizedAdminParams.event_status = normalizedAdminParams.eventStatus;
+    delete normalizedAdminParams.eventStatus;
+  }
+
   return useQuery({
-    queryKey: ["admin-report", params],
+    queryKey: ["admin-report", normalizedAdminParams],
     queryFn: async () => {
       try {
-        const response = await AxiosInstance.get(`/reports/admin`, { params });
+        const response = await AxiosInstance.get(`/reports/admin`, {
+          params: normalizedAdminParams,
+        });
         return response.data;
       } catch (error: unknown) {
         if (axios.isAxiosError(error)) {

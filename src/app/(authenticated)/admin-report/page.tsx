@@ -4,13 +4,14 @@ import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, Export, MagnifyingGlass } from "@/src/components/Icons";
-import { DatePicker } from "antd";
+import { DatePicker, Select } from "antd";
 import { MoreVertical, RefreshCw } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import useColumns from "./useColumns";
 import { useAdminReport } from "@/src/api/reports";
 import SkeletonInput from "antd/es/skeleton/Input";
+import dayjs from "dayjs";
 
 interface StatItem {
   label: string;
@@ -29,7 +30,7 @@ export type Filters = {
   company?: string;
   client?: string;
   eventDate?: string;
-  eventStatus?: string;
+  event_status?: string;
   dj?: string;
   venue?: string;
   page: number;
@@ -38,6 +39,10 @@ export type Filters = {
 
 const Page = () => {
   const [filters, setFilters] = useState<Filters>(initialParams);
+  const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [selectedEventStatus, setSelectedEventStatus] = useState<string>("");
   const { data: reportData, isLoading } = useAdminReport(filters);
 
   const { columns } = useColumns(filters, setFilters);
@@ -64,6 +69,25 @@ const Page = () => {
     },
   ];
 
+  const resetFilters = () => {
+    setFilters(initialParams);
+    setSearch("");
+    setDateFrom("");
+    setDateTo("");
+    setSelectedEventStatus("");
+  };
+
+  const applyFilters = () => {
+    setFilters((prev) => ({
+      ...prev,
+      page: 1,
+      search,
+      event_start_time: dateFrom,
+      event_end_time: dateTo,
+      event_status: selectedEventStatus || undefined,
+    }));
+  };
+
   return (
     <div className="mt-4 space-y-4">
       <div className="flex items-center justify-between">
@@ -77,7 +101,7 @@ const Page = () => {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button icon={<Export />}>Export Data</Button>
+          {/* <Button icon={<Export />}>Export Data</Button> */}
           <Button>
             <MoreVertical size={18} />
           </Button>
@@ -126,25 +150,47 @@ const Page = () => {
               type="text"
               placeholder="Search event"
               className="w-full bg-transparent! text-sm placeholder:text-gray-500"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+      
+          </div>
+          <div className="max-w-full">
+            <Select
+              allowClear
+              placeholder="Confirmed and Completed Events"
+              className="w-full bg-white rounded-lg text-xs"
+              value={selectedEventStatus || undefined}
+              onChange={(val) => setSelectedEventStatus(String(val || ""))}
+              options={[
+                { label: "Confirmed and Completed Events", value: "" },
+                { label: "Confirmed Events", value: "confirmed" },
+                { label: "Completed Events", value: "completed" },
+              ]}
             />
           </div>
-          <select
-            name="confirmedEvent"
-            className="bg-white rounded-lg text-xs px-3"
-          >
-            <option value="">Confirmed and Completed Events</option>
-          </select>
           <DatePicker
             placeholder="Date (From)"
             className="[&_input]:bg-white!"
+            value={dateFrom ? dayjs(dateFrom) : null}
+            onChange={(_, dateString) =>
+              setDateFrom(Array.isArray(dateString) ? dateString[0] || "" : dateString)
+            }
           />
-          <DatePicker placeholder="Date (To)" className="[&_input]:bg-white!" />
+          <DatePicker
+            placeholder="Date (To)"
+            className="[&_input]:bg-white!"
+            value={dateTo ? dayjs(dateTo) : null}
+            onChange={(_, dateString) =>
+              setDateTo(Array.isArray(dateString) ? dateString[0] || "" : dateString)
+            }
+          />
           <div className="flex gap-2">
-            <Button className="flex-1 h-full!">Apply Filters</Button>
+            <Button className="flex-1 h-full!" onClick={applyFilters}>Apply Filters</Button>
             <Button
               className="flex-1 h-full!"
               icon={<RefreshCw size={14} />}
-              onClick={() => setFilters(initialParams)}
+              onClick={resetFilters}
             >
               Reset Filters
             </Button>

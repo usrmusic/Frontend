@@ -196,9 +196,11 @@ const CalendarPage = () => {
         <div className="bg-white col-span-1 rounded-xl overflow-hidden px-4 py-5">
           <div className="flex justify-between items-center">
             <p>Events</p>
-            <Button icon={<Plus size={14} />} type="primary">
-              Add Event
-            </Button>
+            <Link href="/enquiry" className="shrink-0">
+              <Button icon={<Plus size={14} />} type="primary">
+                Add Event
+              </Button>
+            </Link>
           </div>
           <div className="mt-6">
             <p className="text-sm">Events on {selectedValue.format('dddd, MMMM D, YYYY')}</p>
