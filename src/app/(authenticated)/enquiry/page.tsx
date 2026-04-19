@@ -6,6 +6,8 @@ import { BackButton } from "@/src/components/Icons";
 import { PlusIcon, Save, SquareCheckBig } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, useMemo } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { toast } from "react-toastify";
 import { Modal } from "antd";
 import { Formik, Form, Field, FormikProps } from "formik";
 import type { FieldProps } from "formik";
@@ -15,7 +17,7 @@ import {
   useUsersDropdown,
   useVenueDropdown,
 } from "@/src/api/dropdown";
-import { usePackageData, useSingleClient, useCreateEnquiry } from "@/src/api/enquiry";
+import { usePackageData, useSingleClient, useCreateEnquiry, useGetEnquiry, useUpdateEnquiry } from "@/src/api/enquiry";
 import dayjs from "dayjs";
 
 type EnquiryFormValues = {
@@ -116,11 +118,18 @@ const NewEnquiryPage = () => {
   const { data: venueDropdownName } = useVenueDropdown();
   const { data: djDropdownData } = useUsersDropdown();
   const { data: packageData } = usePackageData(packageParams);
-  const { data: clientDetails } = useSingleClient(clientId ?? null);
+  const { data: clientDetails } = useSingleClient(!showNameInput && clientId ? clientId : null);
   const createEnquiry = useCreateEnquiry();
+  const updateEnquiry = useUpdateEnquiry();
   const formikRef = useRef<FormikProps<EnquiryFormValues>>(null);
   const [notesModalOpen, setNotesModalOpen] = useState(false);
   const [notesItem, setNotesItem] = useState<ExtraItem | null>(null);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const editId = searchParams?.get("select") ?? null;
+  // debug: log editId to ensure query is enabled
+  console.debug("NewEnquiryPage editId:", editId);
+  const { data: enquiryItem } = useGetEnquiry(editId ?? undefined);
 
   useEffect(() => {
     if (!clientDetails || !formikRef.current) return;
@@ -128,9 +137,11 @@ const NewEnquiryPage = () => {
     Promise.resolve().then(() => {
       const cur = formikRef.current?.values;
       if (!cur) return;
+      const currentNameValue = !showNameInput && clientId != null ? String(clientId) : cur.name;
       const newVals = {
         ...cur,
-        name: clientDetails.name ?? String(clientDetails.id ?? ""),
+        // Keep `name` as selected client id in dropdown mode.
+        name: currentNameValue,
         address: clientDetails.address ?? cur.address,
         email: clientDetails.email ?? cur.email,
         number: clientDetails.contact_number ?? cur.number,
@@ -144,7 +155,81 @@ const NewEnquiryPage = () => {
         formikRef.current?.setValues(newVals);
       }
     });
-  }, [clientDetails]);
+  }, [clientDetails, showNameInput, clientId]);
+
+  // When editing an existing enquiry, populate the form with fetched data
+  useEffect(() => {
+    console.debug("NewEnquiryPage enquiryItem changed:", enquiryItem);
+    if (!enquiryItem || !formikRef.current) return;
+
+    const cur = formikRef.current.values;
+    const nameVal = enquiryItem.user_id ? String(enquiryItem.user_id) : enquiryItem.client_id ? String(enquiryItem.client_id) : (enquiryItem.name ?? "");
+    const venueVal = enquiryItem.venue_id ? String(enquiryItem.venue_id) : (enquiryItem.new_venue_name ?? enquiryItem.venue) ?? "";
+    const newVals: EnquiryFormValues = {
+      name: nameVal,
+      address: enquiryItem.address ?? "",
+      email: enquiryItem.email ?? "",
+      number: enquiryItem.contact_number ?? enquiryItem.contact_number ?? "",
+      venue: venueVal,
+      // input[type=date] expects YYYY-MM-DD
+      eventDate: enquiryItem.date ? dayjs(enquiryItem.date).format("YYYY-MM-DD") : (enquiryItem.event_date ?? ""),
+      // input[type=time] expects HH:mm
+      endTime: enquiryItem.end_time ? dayjs(enquiryItem.end_time).format("HH:mm") : (enquiryItem.end_time ?? ""),
+      startTime: enquiryItem.start_time ? dayjs(enquiryItem.start_time).format("HH:mm") : (enquiryItem.start_time ?? ""),
+      guestCount: enquiryItem.guestCount ?? enquiryItem.guest_count ?? "",
+      dj: {
+        id: enquiryItem.dj_id ?? enquiryItem.dj?.id ?? "",
+        name: enquiryItem.dj_name ?? enquiryItem.dj?.name ?? "",
+      },
+      depositAmount: (function (d) {
+        if (d == null) return "";
+        if (typeof d === "object") {
+          if (Array.isArray(d.d) && d.d.length) return d.d[0];
+          if (typeof d === "object" && d.amount != null) return d.amount;
+          return "";
+        }
+        return d;
+      })(enquiryItem.deposit_amount),
+      notes: enquiryItem.notes ?? enquiryItem.details ?? "",
+      tellMeMore: enquiryItem.event_details ?? enquiryItem.details ?? "",
+    };
+
+    if (JSON.stringify(cur) !== JSON.stringify(newVals)) {
+      Promise.resolve().then(() => {
+        formikRef.current?.setValues(newVals);
+        // ensure selects pick up the id-based values
+        try {
+          if (nameVal) formikRef.current?.setFieldValue("name", nameVal, false);
+          if (venueVal) formikRef.current?.setFieldValue("venue", venueVal, false);
+        } catch {}
+      });
+    }
+
+    // also set client id and package params where available
+    if (enquiryItem.client_id) setClientId(Number(enquiryItem.client_id));
+    if (enquiryItem.user_id) setClientId(Number(enquiryItem.user_id));
+    setPackageParams((prev) => ({
+      ...prev,
+      event_date: enquiryItem.date ? dayjs(enquiryItem.date).format("DD-MM-YYYY") : (enquiryItem.event_date ?? prev.event_date),
+      package_name: enquiryItem.dj_package_name ?? prev.package_name,
+      staff: enquiryItem.dj_id ?? enquiryItem.staff_id ?? prev.staff,
+    }));
+
+    // initialize selected package equipments from event_packages if present
+    try {
+      const pkgMap: Record<string, boolean> = {};
+      const extrasMap: Record<string, boolean> = {};
+      if (Array.isArray(enquiryItem.event_packages)) {
+        for (const p of enquiryItem.event_packages) {
+          const eqId = p?.equipment?.id ?? p?.equipment_id ?? null;
+          if (eqId != null) pkgMap[String(eqId)] = true;
+        }
+      }
+      // set selected state only if we found something
+      if (Object.keys(pkgMap).length) Promise.resolve().then(() => setSelectedPackageEquipments(pkgMap));
+      if (Object.keys(extrasMap).length) Promise.resolve().then(() => setSelectedExtras(extrasMap));
+    } catch {}
+  }, [enquiryItem]);
 
   useEffect(() => {
     // initialize selection state when package data changes
@@ -226,84 +311,93 @@ const NewEnquiryPage = () => {
       initialValues={initialValues}
       validationSchema={validationSchema}
       validateOnChange={true}
-      validateOnBlur={true}
-      onSubmit={async (values, { setSubmitting }) => {
-        setSubmitting(true);
-        const eventDate = values.eventDate
-          ? dayjs(values.eventDate).format("DD-MM-YYYY")
-          : packageParams.event_date || dayjs().format("DD-MM-YYYY");
+        validateOnBlur={true}
+        onSubmit={async (values, { setSubmitting }) => {
+          setSubmitting(true);
+          const eventDate = values.eventDate
+            ? dayjs(values.eventDate).format("DD-MM-YYYY")
+            : packageParams.event_date || dayjs().format("DD-MM-YYYY");
 
-        const djName = values.dj?.name || "";
-        const djPackageName = packageData?.data?.equipments?.package_name || packageParams.package_name || "";
-        const djCost = Number(packageData?.data?.equipments?.sell_price ?? 0);
+          const djName = values.dj?.name || "";
+          const djPackageName = packageData?.data?.equipments?.package_name || packageParams.package_name || "";
+          const djCost = Number(packageData?.data?.equipments?.sell_price ?? 0);
 
-        type EquipmentPayloadItem = { equipment_id: number; sell_price: number; quantity: number; notes: string };
-        type RigNotesItem = { equipment_id: number; rig_notes: string };
-        const equipment_data: EquipmentPayloadItem[] = [];
-        const rig_notes_data: RigNotesItem[] = [];
-        const pkgEquip = (packageData?.data?.equipments?.package_user_equipments ?? []) as PackageUserEquipment[];
-        for (const it of pkgEquip) {
-          const equipment = it.equipment ?? null;
-          const id = equipment?.id ?? it.equipment_id ?? it.id;
-          const key = id != null ? String(id) : null;
-          if (key && selectedPackageEquipments[key]) {
-            equipment_data.push({
-              equipment_id: Number(id),
-              sell_price: Number(equipment?.sell_price ?? 0),
-              quantity: Number(it.quantity ?? 1),
-              notes: equipment?.rig_notes ?? "",
-            });
-            rig_notes_data.push({ equipment_id: Number(id), rig_notes: equipment?.rig_notes ?? "" });
+          type EquipmentPayloadItem = { equipment_id: number; sell_price: number; quantity: number; notes: string };
+          type RigNotesItem = { equipment_id: number; rig_notes: string };
+          const equipment_data: EquipmentPayloadItem[] = [];
+          const rig_notes_data: RigNotesItem[] = [];
+          const pkgEquip = (packageData?.data?.equipments?.package_user_equipments ?? []) as PackageUserEquipment[];
+          for (const it of pkgEquip) {
+            const equipment = it.equipment ?? null;
+            const id = equipment?.id ?? it.equipment_id ?? it.id;
+            const key = id != null ? String(id) : null;
+            if (key && selectedPackageEquipments[key]) {
+              equipment_data.push({
+                equipment_id: Number(id),
+                sell_price: Number(equipment?.sell_price ?? 0),
+                quantity: Number(it.quantity ?? 1),
+                notes: equipment?.rig_notes ?? "",
+              });
+              rig_notes_data.push({ equipment_id: Number(id), rig_notes: equipment?.rig_notes ?? "" });
+            }
           }
-        }
 
-        const extra_data: EquipmentPayloadItem[] = [];
-        const extras = (packageData?.data?.extras ?? []) as ExtraItem[];
-        for (const ex of extras) {
-          if (ex.id != null && selectedExtras[String(ex.id)]) {
-            extra_data.push({
-              equipment_id: Number(ex.id),
-              sell_price: Number(ex.sell_price ?? 0),
-              quantity: Number(ex.quantity ?? 1),
-              notes: ex.rig_notes ?? "",
-            });
-            rig_notes_data.push({ equipment_id: Number(ex.id), rig_notes: ex.rig_notes ?? "" });
+          const extra_data: EquipmentPayloadItem[] = [];
+          const extras = (packageData?.data?.extras ?? []) as ExtraItem[];
+          for (const ex of extras) {
+            if (ex.id != null && selectedExtras[String(ex.id)]) {
+              extra_data.push({
+                equipment_id: Number(ex.id),
+                sell_price: Number(ex.sell_price ?? 0),
+                quantity: Number(ex.quantity ?? 1),
+                notes: ex.rig_notes ?? "",
+              });
+              rig_notes_data.push({ equipment_id: Number(ex.id), rig_notes: ex.rig_notes ?? "" });
+            }
           }
-        }
 
-        const clientName =
-          clientDetails?.name ||
-          clientDropdownName?.find((c) => String(c.id) === String(clientId))
-            ?.name || values.name;
+          const clientName = showNameInput
+            ? values.name
+            : clientDetails?.name ||
+              clientDropdownName?.find((c) => String(c.id) === String(clientId))
+                ?.name || values.name;
 
-        const payload = {
-          name: clientName,
-          email: values.email,
-          contact_number: values.number,
-          address: values.address,
-          event_date: eventDate,
-          start_time: values.startTime,
-          end_time: values.endTime,
-          deposit_amount: Number(values.depositAmount) || 0,
-          new_venue_name: typeof values.venue === "string" ? values.venue : "",
-          event_details: values.tellMeMore || values.notes || "",
-          dj_name: djName,
-          dj_package_name: djPackageName,
-          total_cost: Number(totalPrice) || 0,
-          dj_cost: djCost,
-          equipment_data,
-          extra_data,
-          rig_notes_data,
-        };
+          const payload = {
+            name: clientName,
+            email: values.email,
+            contact_number: values.number,
+            address: values.address,
+            event_date: eventDate,
+            start_time: values.startTime,
+            end_time: values.endTime,
+            deposit_amount: Number(values.depositAmount) || 0,
+            venue_id: values.venue && String(values.venue).match(/^\d+$/) ? Number(values.venue) : undefined,
+            new_venue_name: values.venue && !String(values.venue).match(/^\d+$/) ? String(values.venue) : "",
+            event_details: values.tellMeMore || values.notes || "",
+            dj_name: djName,
+            dj_package_name: djPackageName,
+            total_cost: Number(totalPrice) || 0,
+            dj_cost: djCost,
+            equipment_data,
+            extra_data,
+            rig_notes_data,
+          };
 
-        try {
-          await createEnquiry.mutateAsync(payload);
-        } catch (err) {
-          console.error(err);
-        } finally {
-          setSubmitting(false);
-        }
-      }}
+          try {
+            if (editId) {
+              await updateEnquiry.mutateAsync({ id: editId, body: payload });
+              toast.success("Enquiry updated");
+              // stay on page or navigate back
+              router.push(`/open-enquiry?search=${encodeURIComponent(String(editId))}&name=${encodeURIComponent(String(clientName))}`);
+            } else {
+              await createEnquiry.mutateAsync(payload);
+            }
+          } catch (err) {
+            console.error(err);
+          } finally {
+            setSubmitting(false);
+          }
+        }}
     >
       {({ values, errors, touched, setFieldValue, setValues, isSubmitting }) => {
         let djError: string | undefined;
@@ -368,20 +462,17 @@ const NewEnquiryPage = () => {
                               <label className="mb-1 block text-xs">Name</label>
                               <select
                                 className="h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none"
-                                value={values.name}
+                                value={clientId != null ? String(clientId) : String(values.name ?? "")}
                                 onChange={(e) => {
                                   const selectedId = e.target.value;
-                                  const selectedClient = clientDropdownName?.find(
-                                    (opt) => String(opt.id) === String(selectedId),
-                                  );
-                                  setClientId(Number(selectedId));
-                                  // set form name to the client's actual name (not the id)
-                                  setFieldValue("name", selectedClient?.name ?? selectedId);
+                                  setClientId(selectedId ? Number(selectedId) : null);
+                                  // Store selected client id so the dropdown can stay selected reliably.
+                                  setFieldValue("name", String(selectedId));
                                 }}
                               >
                                 <option value="">Select Name</option>
                                 {clientDropdownName?.map((opt) => (
-                                  <option key={opt.name} value={opt.id}>
+                                  <option key={opt.id} value={String(opt.id)}>
                                     {opt.name}
                                   </option>
                                 ))}
@@ -395,19 +486,24 @@ const NewEnquiryPage = () => {
                               onClick={() => {
                               setShowNameInput((v) => !v);
                               if (!showNameInput) {
+                                // entering Add New: clear selected client id and fields
+                                setClientId(null);
                                 setFieldValue("name", "");
                                 setFieldValue("address", "");
                                 setFieldValue("email", "");
                                 setFieldValue("number", "");
                               } else {
+                                // leaving Add New: restore first dropdown option (id) if available
                                 const firstOption = clientDropdownName?.[0];
+                                const id = firstOption ? Number(firstOption.id) : null;
                                 setValues({
                                   ...values,
-                                  name: firstOption?.name ?? values.name,
+                                  name: id ? String(id) : values.name,
                                   address: values.address,
                                   email: values.email,
                                   number: values.number,
                                 });
+                                if (id) setClientId(id);
                               }
                             }}
                           >
@@ -507,15 +603,15 @@ const NewEnquiryPage = () => {
                                     </label>
                                     <select
                                       className="h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none"
-                                      value={fieldProps.field.value}
+                                      value={String(fieldProps.field.value ?? "")}
                                       onChange={(e) => {
                                         const selectedVenue = e.target.value;
-                                        setFieldValue("venue", selectedVenue);
+                                        setFieldValue("venue", String(selectedVenue));
                                       }}
                                     >
                                       <option value="">Select a venue</option>
                                       {venueDropdownName?.map((venue) => (
-                                        <option key={venue.id} value={venue.id}>
+                                        <option key={venue.id} value={String(venue.id)}>
                                           {venue.venue}
                                         </option>
                                       ))}
@@ -536,7 +632,7 @@ const NewEnquiryPage = () => {
                                     if (!showVenueInput) {
                                       setFieldValue("venue", "");
                                     } else {
-                                      setFieldValue("venue", venueDropdownName?.[0]?.id ?? "");
+                                      setFieldValue("venue", venueDropdownName?.[0]?.id != null ? String(venueDropdownName[0].id) : "");
                                     }
                                   }}
                                 >

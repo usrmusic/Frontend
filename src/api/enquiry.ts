@@ -198,3 +198,81 @@ export const useCreateEnquiry = () => {
     },
   });
 };
+
+export const useGetEnquiry = (id?: string | number) => {
+  return useQuery({
+    queryKey: ["enquiry-item", id],
+    queryFn: async () => {
+      if (!id) return null;
+      const response = await AxiosInstance.get(`/enquiry/${String(id)}`);
+      return response.data?.data ?? null;
+    },
+    enabled: Boolean(id),
+  });
+};
+
+export const useUpdateEnquiry = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, body }: { id: number | string; body: Record<string, unknown> }) => {
+      try {
+        const response = await AxiosInstance.put(`/enquiry/${id}`, body);
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["enquiry-list"] });
+    },
+    onError: (error: any) => {
+      console.error("update enquiry failed:", error?.message || error);
+    },
+  });
+};
+
+export const useDeleteEnquiry = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number | string) => {
+      try {
+        const response = await AxiosInstance.delete(`/enquiry/${id}`);
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["enquiry-list"] });
+    },
+  });
+};
+
+export const useEditEnquiry = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, body }: { id: number | string; body: Record<string, unknown> }) => {
+      try {
+        const response = await AxiosInstance.put(`/enquiry/${id}`, body);
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["enquiry-list"] });
+    },
+  });
+};

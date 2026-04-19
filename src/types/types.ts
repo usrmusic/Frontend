@@ -32,6 +32,15 @@ export type ConfirmEventData = {
   videography?: string;
   caterer?: string;
   decor?: string;
+  couple_name?: string;
+  entrance_song_style?: string;
+  cake_cut_song_style?: string;
+  first_dance_song_style?: string;
+  cake_song_who_feeds?: string;
+  stag_songs?: string;
+  access_time: string;
+  brief_itinerary?: string;
+  hen_songs?: string;
   name?: string;
   entrance_song?: string;
   cake_cut_song?: string;

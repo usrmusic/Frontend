@@ -26,10 +26,10 @@ const Contracts = ({ data }: { data: ConfirmEventData }) => {
         </div>
         <div>
           <p>
-            <strong>Venue:</strong> {data.venues.venue}
+            <strong>Venue:</strong> {data?.venues?.venue ?? data?.venue ?? "—"}
           </p>
           <p>
-            <strong>Event Date:</strong> {dayjs(data.date).format("DD/MM/YYYY")}
+            <strong>Event Date:</strong> {data?.date ? dayjs(data.date).format("DD/MM/YYYY") : "—"}
           </p>
           <p>
             {/* <strong>Event Date:</strong> {dayjs(data.date).format("DD/MM/YYYY")} */}

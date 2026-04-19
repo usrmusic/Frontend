@@ -1,23 +1,26 @@
 "use client";
-import { useAddNote, useOpenEnquiryList } from "@/src/api/enquiry";
+import { useAddNote, useOpenEnquiryList, useUpdateEnquiry, useDeleteEnquiry } from "@/src/api/enquiry";
 import { useConfirmEvent } from "@/src/api/events";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
 import { useFormik } from "formik";
-import { Select, TableColumnsType } from "antd";
+import { Select, DatePicker, InputNumber, TableColumnsType } from "antd";
 import { TableRowSelection } from "antd/es/table/interface";
 import dayjs from "dayjs";
-import { MoreVertical } from "lucide-react";
+import { MoreVertical, Check } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { Modal } from "antd";
 import { useSearchParams } from "next/navigation";
 import SendBrochureModal from "./SendBrochure";
 import { toast } from "react-toastify";
 import { fetchEmailTemplate } from "@/src/api/enquiry";
 import { useCompanyDropdown } from "@/src/api/dropdown";
 import Input from "@/src/components/Input";
+// using Ant Design inputs for date/amount
 
 const initialParams = {
   page: 1,
@@ -48,6 +51,7 @@ const OpenEnquiryPage = () => {
   const [modalTemplate, setModalTemplate] = useState<any | null>(null);
   const [modalCompanies, setModalCompanies] = useState<Array<{ id: string | number; name: string }> | null>(null);
   const [note, setNote] = useState("");
+  const [flagLoading, setFlagLoading] = useState<Record<string, boolean>>({});
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [selectedRowData, setSelectedRowData] = useState<EnquiryRow[] | null>(null);
   const [clickedBtn, setClickedBtn] = useState<"brochure" | "quote" | "invoice">("invoice");
@@ -57,6 +61,9 @@ const OpenEnquiryPage = () => {
 
   const { mutate: addNoteMutation } = useAddNote();
   const { mutate: confirmEventMutation, isPending: confirmingEvent } = useConfirmEvent();
+  const updateEnquiry = useUpdateEnquiry();
+  const deleteEnquiry = useDeleteEnquiry();
+  const router = useRouter();
 
   // Memoize options to prevent unnecessary re-renders and fix TS mapping
   const companyOptions = useMemo(() => {
@@ -84,12 +91,17 @@ const OpenEnquiryPage = () => {
         return;
       }
 
+      // ensure event_date is a valid DD-MM-YYYY string (avoid 'Invalid Date')
+      const formattedEventDate = values.event_date
+        ? dayjs(values.event_date, "DD-MM-YYYY").format("DD-MM-YYYY")
+        : "";
+
       confirmEventMutation(
         {
           id: String(selectedRowKeys[0]),
           payload: {
             company_name: String(values.company_name),
-            event_date: dayjs(values.event_date).format("DD-MM-YYYY"),
+            event_date: formattedEventDate,
             deposit_amount: Number(values.deposit_amount),
             payment_method_id: Number(values.payment_method_id),
           },
@@ -149,6 +161,47 @@ const OpenEnquiryPage = () => {
         onSuccess: () => {
           toast.success("Note Added Successfully");
           setNote("");
+        },
+      },
+    );
+  };
+
+  // Keep selectedRowData in sync after data changes (so Recent Activities updates)
+  useEffect(() => {
+    if (!selectedRowKeys?.length) return;
+    const id = String(selectedRowKeys[0]);
+    const found = enquiryData?.data?.find((d: any) => String(d.id) === id) || null;
+    if (found) setSelectedRowData([found]);
+  }, [enquiryData, selectedRowKeys]);
+
+  const toggleFlag = async (flag: string) => {
+    if (!selectedRowKeys.length) return;
+    const id = selectedRowKeys[0];
+    const current = selectedRowData?.[0]?.[flag];
+    // show loader for this flag
+    setFlagLoading((s) => ({ ...s, [flag]: true }));
+
+    // optimistic UI update
+    setSelectedRowData((prev) => {
+      if (!prev || !prev.length) return prev;
+      return [{ ...prev[0], [flag]: !current } as EnquiryRow];
+    });
+
+    updateEnquiry.mutate(
+      { id: String(id), body: { [flag]: !current } },
+      {
+        onSuccess: () => {
+          toast.success("Updated");
+          setFlagLoading((s) => ({ ...s, [flag]: false }));
+        },
+        onError: () => {
+          toast.error("Failed to update");
+          // revert optimistic update on error
+          setSelectedRowData((prev) => {
+            if (!prev || !prev.length) return prev;
+            return [{ ...prev[0], [flag]: current } as EnquiryRow];
+          });
+          setFlagLoading((s) => ({ ...s, [flag]: false }));
         },
       },
     );
@@ -253,6 +306,61 @@ const OpenEnquiryPage = () => {
               >
                 Send Quote
               </Button>
+              <Button
+                type="default"
+                className="themeDefaultButton"
+                disabled={!selectedRowKeys.length || Boolean(buttonLoading)}
+                onClick={() => {
+                  if (!selectedRowKeys.length) return;
+                  router.push(`/enquiry?select=${encodeURIComponent(String(selectedRowKeys[0]))}`);
+                }}
+              >
+                Edit
+              </Button>
+              <Button
+                type="default"
+                className="themeDefaultButton"
+                disabled={!selectedRowKeys.length || Boolean(buttonLoading)}
+                loading={buttonLoading === "delete"}
+                onClick={() => {
+                  if (!selectedRowKeys.length) return;
+                  Modal.confirm({
+                    title: (
+                      <div className="flex items-center gap-3">
+                        <span className="text-red-600 text-xl">⚠️</span>
+                        <span className="font-medium">Delete enquiry</span>
+                      </div>
+                    ),
+                    content: (
+                      <div className="text-sm text-gray-700">
+                        Are you sure you want to delete this enquiry? This action cannot be undone. This will permanently remove the enquiry and related temporary data.
+                      </div>
+                    ),
+                    centered: true,
+                    maskClosable: false,
+                    okText: "Delete",
+                    okButtonProps: { danger: true, className: "!bg-red-600 !border-red-600 hover:!bg-red-700" },
+                    cancelText: "Cancel",
+                    onOk: () => {
+                      const id = String(selectedRowKeys[0]);
+                      setButtonLoading("delete");
+                      deleteEnquiry.mutate(id, {
+                        onSuccess: () => {
+                          toast.success("Enquiry deleted");
+                          setSelectedRowKeys([]);
+                          setSelectedRowData(null);
+                          setButtonLoading(null);
+                        },
+                        onError: () => {
+                          setButtonLoading(null);
+                        },
+                      });
+                    },
+                  });
+                }}
+              >
+                Delete
+              </Button>
               <button className="size-9 flex items-center justify-center rounded-lg bg-secondary-100 hover:bg-secondary-200 transition-colors">
                 <MoreVertical size={18} />
               </button>
@@ -295,7 +403,7 @@ const OpenEnquiryPage = () => {
         <div className="col-span-12 xl:col-span-3 space-y-6">
 
           {/* Notes Card */}
-          <Card variant="white" className="flex flex-col shadow-sm overflow-hidden p-0 border border-gray-100">
+          <Card variant="white" className="flex flex-col shadow-sm overflow-hidden p-0">
             <div className="flex items-center justify-between bg-primary px-6 py-4 text-white">
               <h3 className="font-medium">Recent Activities</h3>
             </div>
@@ -338,7 +446,7 @@ const OpenEnquiryPage = () => {
           </Card>
 
           {/* Deposit Form Card */}
-          <Card variant="white" className="p-0 shadow-sm border border-gray-100">
+          <Card variant="white" className="p-0 shadow-sm overflow-hidden ">
             <div className="flex items-center justify-between bg-primary px-6 py-4 text-white">
               <h3 className="font-medium">Confirm Deposit</h3>
             </div>
@@ -352,12 +460,13 @@ const OpenEnquiryPage = () => {
                     value={formik.values.company_name || undefined}
                     onChange={(value) => formik.setFieldValue("company_name", value)}
                   />
-                  <Input
-                    name="event_date"
-                    type="date"
+                  <DatePicker
+                    placeholder="Payment date"
                     className="w-full text-xs"
-                    value={formik.values.event_date}
-                    onChange={formik.handleChange}
+                    format="DD-MM-YYYY"
+                    value={formik.values.event_date ? dayjs(formik.values.event_date, "DD-MM-YYYY") : undefined}
+                    onChange={(val) => formik.setFieldValue("event_date", val ? dayjs(val).format("DD-MM-YYYY") : "")}
+                    allowClear
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -375,11 +484,50 @@ const OpenEnquiryPage = () => {
                     value={formik.values.payment_method_id}
                     onChange={formik.handleChange}
                   >
-                    <option value="" disabled>Method</option>
+                    <option value="" disabled>Payment method</option>
                     <option value="1">Cash</option>
                     <option value="2">Bank Transfer</option>
                     <option value="3">Card</option>
                   </select>
+                </div>
+                                <div className="grid grid-cols-2 gap-2 mt-3">
+                  {[
+                    { key: "brochure_emailed", label: "Brochure emailed?" },
+                    { key: "called", label: "Called?" },
+                    { key: "send_media", label: "Send media?" },
+                    { key: "quoted", label: "Quoted?" },
+                  ].map((f) => {
+                    const enabled = Boolean(selectedRowData?.[0]?.[f.key]);
+                    const loading = Boolean(flagLoading[f.key]);
+                    return (
+                      <button
+                        key={f.key}
+                        type="button"
+                        onClick={() => toggleFlag(f.key)}
+                        className={`flex items-center justify-between gap-3 px-2 py-2 rounded-lg border transition-colors text-sm ${
+                          enabled
+                            ? "bg-primary text-white border-primary"
+                            : "bg-white text-gray-700 border-gray-200"
+                        }`}
+                        disabled={!selectedRowKeys.length || loading}
+                      >
+                        <span>{f.label}</span>
+                        <span className="flex items-center">
+                          {loading ? (
+                            <span className="w-4 h-4 border-2 border-white/80 border-t-transparent rounded-full animate-spin inline-block" />
+                          ) : enabled ? (
+                            <span className="w-6 h-6 rounded-full flex items-center justify-center bg-primary border border-primary">
+                              <Check size={12} className="text-white" />
+                            </span>
+                          ) : (
+                            <span className="w-6 h-6 rounded-full border border-gray-200 flex items-center justify-center bg-transparent">
+                              <span className="w-2 h-2 rounded-full bg-gray-300" />
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
                 <Button
                   type="primary"

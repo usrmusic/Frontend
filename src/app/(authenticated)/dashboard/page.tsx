@@ -916,6 +916,7 @@ const DashboardPage = () => {
                     }
                     return isMounted ? (
                       <ApexChart
+                        key={`donut-${year}-${labels.join("-")}-${series.join("-")}`}
                         options={{
                           chart: {
                             animations: {
