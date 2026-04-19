@@ -6,7 +6,11 @@ import dynamic from "next/dynamic";
 import { colorPrimaryGradient } from "@/src/config/ThemeConfig";
 
 import { useState, useEffect, useRef } from "react";
-import type { ComponentType } from "react";
+import type {
+  ComponentType,
+  MouseEventHandler,
+  KeyboardEventHandler,
+} from "react";
 import { useRouter } from "next/navigation";
 import { DayPicker, type CustomComponents } from "react-day-picker";
 import "react-day-picker/dist/style.css";
@@ -65,12 +69,40 @@ const sidebarOptions = [
 type OpenEnquiry = {
   id?: number | string;
   couple_name?: string | null;
+  date?: string | null;
   client?: { name?: string | null } | null;
   venue?: string | null;
   subtitle?: string | null;
   created_at?: string | null;
   tag?: string | null;
+  users_events_dj_idTousers?: { id?: number; name?: string | null } | null;
+  users_events_user_idTousers?: { id?: number; name?: string | null } | null;
   [key: string]: unknown;
+};
+
+// Safe date formatter: accepts string|number|Date and returns formatted string or empty
+const formatDate = (v?: string | number | Date | null) => {
+  if (v == null) return "";
+  if (typeof v === "string" || typeof v === "number") {
+    const d = new Date(v as string | number);
+    return Number.isNaN(d.getTime())
+      ? ""
+      : d.toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
+  }
+  if (v instanceof Date) {
+    return Number.isNaN(v.getTime())
+      ? ""
+      : v.toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
+  }
+  return "";
 };
 
 function CalendarWithSidebar({
@@ -82,7 +114,10 @@ function CalendarWithSidebar({
   const [month, setMonth] = useState<Date>(() => startOfToday());
   const [selected, setSelected] = useState<Date>(() => startOfToday());
   const [sidebarIdx, setSidebarIdx] = useState(0);
-  const lastClickRef = useRef<{ time: number; date: string | null }>({ time: 0, date: null });
+  const lastClickRef = useRef<{ time: number; date: string | null }>({
+    time: 0,
+    date: null,
+  });
 
   // Build a fast lookup set of event dates (YYYY-MM-DD) for rendering dots
   const toLocalIso = (d?: Date | string | null) => {
@@ -96,9 +131,7 @@ function CalendarWithSidebar({
   };
 
   const dotSet = new Set(
-    (events || [])
-      .map((e) => toLocalIso((e as any).date))
-      .filter(Boolean) as string[],
+    (events || []).map((e) => toLocalIso(e.date)).filter(Boolean) as string[],
   );
 
   // Also prepare Day objects for DayPicker modifiers (use midday UTC to avoid TZ shifts)
@@ -147,7 +180,9 @@ function CalendarWithSidebar({
         });
         setSelected((prev) => {
           try {
-            return prev && prev.getTime() === firstDate.getTime() ? prev : firstDate;
+            return prev && prev.getTime() === firstDate.getTime()
+              ? prev
+              : firstDate;
           } catch {
             return firstDate;
           }
@@ -172,12 +207,11 @@ function CalendarWithSidebar({
     const isDoubleClick =
       lastClickRef.current.date === isoDate &&
       now - (lastClickRef.current.time || 0) < 400;
-    
+
     setSelected(date);
     lastClickRef.current = { time: now, date: isoDate };
     if (isDoubleClick) {
       try {
-        
         router.push(`/calendar?date=${isoDate}`);
       } catch (e) {
         console.error("Navigation error:", e);
@@ -191,38 +225,38 @@ function CalendarWithSidebar({
     year: "numeric",
   });
   // Custom Day renderer to show a small dot when an event exists on that date.
-  const CustomDay = (dayProps: any) => {
-    const { date, children, className, onClick, onKeyDown, disabled } = dayProps as any;
+  const CustomDay = (dayProps: Record<string, unknown>) => {
+    const date = dayProps["date"] as Date | undefined;
+    const children = dayProps["children"] as React.ReactNode;
+    const className = (dayProps["className"] as string) || "";
+    const onClick = dayProps["onClick"] as ((e: unknown) => void) | undefined;
+    const onKeyDown = dayProps["onKeyDown"] as
+      | ((e: unknown) => void)
+      | undefined;
+    const disabled = Boolean(dayProps["disabled"]);
     const iso = toLocalIso(date as Date | undefined);
     const hasDot = dotSet.has(iso);
+    // Render a table cell (<td>) here. DayPicker places CustomDay directly
+    // under a <tr>, so using a <td> ensures valid table markup and avoids
+    // placing a <div> or <button> directly under a <tr> which causes
+    // hydration errors in the browser.
     return (
-      <button
-        type="button"
-        onClick={onClick}
-        onDoubleClick={(e) => {
-          try {
-            
-            e.stopPropagation();
-            if (!iso) return;
-            router.push(`/calendar?date=${iso}`);
-          } catch (err) {
-            console.error(err);
-          }
-        }}
-        onKeyDown={onKeyDown}
-        disabled={disabled}
-        className={`${className || ""} relative flex items-center justify-center w-full h-full`}
-      >
-        <span>{children}</span>
-        {hasDot && (
-          <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-blue-600" />
-        )}
-      </button>
+      <td className={(className || "") + " align-top p-0"}>
+        <div className="relative flex items-center justify-center w-full h-full">
+          <span>{children}</span>
+          {hasDot && (
+            <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-blue-600" />
+          )}
+        </div>
+      </td>
     );
   };
 
   // suppress DayPicker caption; provide our custom Day component
-  const dayPickerComponents = { Caption: () => null, Day: CustomDay } as unknown as Partial<CustomComponents>;
+  const dayPickerComponents = {
+    Caption: () => null,
+    Day: CustomDay,
+  } as unknown as Partial<CustomComponents>;
 
   return (
     <div className="flex">
@@ -269,7 +303,9 @@ function CalendarWithSidebar({
               />
             </svg>
           </button>
-          <div className="text-lg font-semibold text-gray-900">{monthTitle}</div>
+          <div className="text-lg font-semibold text-gray-900">
+            {monthTitle}
+          </div>
           <button
             aria-label="Next month"
             onClick={handleNext}
@@ -294,13 +330,14 @@ function CalendarWithSidebar({
           onDayClick={(day: Date) => {
             const iso = toLocalIso(day);
             const now = Date.now();
-            const isDouble = lastClickRef.current.date === iso && now - (lastClickRef.current.time || 0) < 400;
-            
+            const isDouble =
+              lastClickRef.current.date === iso &&
+              now - (lastClickRef.current.time || 0) < 400;
+
             setSelected(day);
             lastClickRef.current = { time: now, date: iso };
             if (isDouble) {
               try {
-                
                 router.push(`/calendar?date=${iso}`);
               } catch (err) {
                 console.error(err);
@@ -334,7 +371,6 @@ function CalendarWithSidebar({
           }}
           components={dayPickerComponents}
         />
-        
       </div>
     </div>
   );
@@ -344,11 +380,10 @@ const ReactApexChart = dynamic(() => import("react-apexcharts"), {
   ssr: false,
 });
 // ensure a loosely-typed reference for JSX usage without `any`
-const ApexChart: ComponentType<Record<string, unknown>> = ReactApexChart as unknown as ComponentType<Record<string, unknown>>;
+const ApexChart: ComponentType<Record<string, unknown>> =
+  ReactApexChart as unknown as ComponentType<Record<string, unknown>>;
 
 // NOTE: using API-driven dashboard data; removed local demo events
-
-
 
 // Chart series + options for Event Overview
 const chartSeries = [
@@ -421,17 +456,27 @@ const chartOptions = {
     enabled: true,
     followCursor: true,
     theme: "dark",
-    custom: function (opts: { series: unknown; seriesIndex: number; dataPointIndex: number; w?: Record<string, unknown> }) {
+    custom: function (opts: {
+      series: unknown;
+      seriesIndex: number;
+      dataPointIndex: number;
+      w?: Record<string, unknown>;
+    }) {
       const { series, seriesIndex, dataPointIndex, w } = opts;
       let value: unknown = undefined;
-      if (Array.isArray(series) && Array.isArray((series as unknown[])[seriesIndex as number])) {
+      if (
+        Array.isArray(series) &&
+        Array.isArray((series as unknown[])[seriesIndex as number])
+      ) {
         const row = (series as unknown[])[seriesIndex as number] as unknown[];
         value = row[dataPointIndex as number];
       }
       const wObj = w as Record<string, unknown> | undefined;
       const globals = wObj?.globals as Record<string, unknown> | undefined;
       const labels = globals?.labels as unknown[] | undefined;
-      const category = Array.isArray(labels) ? labels[dataPointIndex as number] : dataPointIndex + 1;
+      const category = Array.isArray(labels)
+        ? labels[dataPointIndex as number]
+        : dataPointIndex + 1;
       const numeric = Number(value as unknown);
       return `
         <div style="position:relative;display:flex;align-items:center;justify-content:center;">
@@ -483,7 +528,6 @@ const DashboardPage = () => {
     year,
   });
 
-  
   const monthlyCounts = dashboard?.monthly?.counts ?? [];
   const monthlyLabels = dashboard?.monthly?.labels ?? [];
   const countsChange =
@@ -589,45 +633,59 @@ const DashboardPage = () => {
             </div>
           ) : (
             <>
-                <Image
-                  src={"/svgs/Icon.svg"}
-                  alt="Open Enquiry"
-                  width={28}
-                  height={28}
-                  className="flex-1"
-                />
-<div className="mt-4 flex-1">
-                    <div className="flex items-center justify-between">
-                      <p className="text-base text-primary">Turn Over</p>
-                      <button
-                        type="button"
-                        onClick={() => setShowOpenEnquiryValue((s) => !s)}
-                        className="text-primary hover:opacity-70 transition-opacity"
-                        title={showOpenEnquiryValue ? "Hide value" : "Show value"}
-                      >
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                          <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </div>
-                    {showOpenEnquiryValue && (
-                      <button
-                        type="button"
-                        onClick={() => router.push('/open-enquiry')}
-                        className="text-2xl font-semibold hover:underline"
-                      >
-                        {dashboard?.totalTurnover ?? 0}
-                      </button>
-                    )}
-                  </div>
-                <Image
-                  src={"/svgs/red-chart.svg"}
-                  alt="Open Enquiry"
-                  width={28}
-                  height={28}
-                  className="flex-1"
-                />
+              <Image
+                src={"/svgs/Icon.svg"}
+                alt="Open Enquiry"
+                width={28}
+                height={28}
+                className="flex-1"
+              />
+              <div className="mt-4 flex-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-base text-primary">Turn Over</p>
+                  <button
+                    type="button"
+                    onClick={() => setShowOpenEnquiryValue((s) => !s)}
+                    className="text-primary hover:opacity-70 transition-opacity"
+                    title={showOpenEnquiryValue ? "Hide value" : "Show value"}
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                      <path
+                        fillRule="evenodd"
+                        d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                {showOpenEnquiryValue && (
+                  <button
+                    type="button"
+                    onClick={() => router.push("/open-enquiry")}
+                    className="text-2xl font-semibold hover:underline"
+                  >
+                    {dashboardLoading
+                      ? "..."
+                      : new Intl.NumberFormat("en-GB", {
+                          style: "currency",
+                          currency: "GBP",
+                          maximumFractionDigits: 0,
+                        }).format(dashboard?.totalTurnover ?? 0)}
+                  </button>
+                )}
+              </div>
+              <Image
+                src={"/svgs/red-chart.svg"}
+                alt="Open Enquiry"
+                width={28}
+                height={28}
+                className="flex-1"
+              />
             </>
           )}
         </Card>
@@ -642,33 +700,41 @@ const DashboardPage = () => {
             </div>
           ) : (
             <>
-<div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <p className="text-base text-white/80 mb-2">Profit</p>
-                    <button
-                      type="button"
-                      onClick={() => setShowProfit((s) => !s)}
-                      className="text-white/80 hover:opacity-70 transition-opacity"
-                      title={showProfit ? "Hide value" : "Show value"}
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-base text-white/80 mb-2">Profit</p>
+                  <button
+                    type="button"
+                    onClick={() => setShowProfit((s) => !s)}
+                    className="text-white/80 hover:opacity-70 transition-opacity"
+                    title={showProfit ? "Hide value" : "Show value"}
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
                     >
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                        <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                  </div>
-                  {showProfit && (
-                    <p className="text-2xl font-semibold text-white">
-                      {dashboardLoading
-                        ? "..."
-                        : new Intl.NumberFormat("en-GB", {
-                            style: "currency",
-                            currency: "GBP",
-                            maximumFractionDigits: 0,
-                          }).format(dashboard?.totalProfit ?? 0)}
-                    </p>
-                  )}
+                      <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                      <path
+                        fillRule="evenodd"
+                        d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </button>
                 </div>
+                {showProfit && (
+                  <p className="text-2xl font-semibold text-white">
+                    {dashboardLoading
+                      ? "..."
+                      : new Intl.NumberFormat("en-GB", {
+                          style: "currency",
+                          currency: "GBP",
+                          maximumFractionDigits: 0,
+                        }).format(dashboard?.totalProfit ?? 0)}
+                  </p>
+                )}
+              </div>
               <Image
                 src={"/svgs/Line-chart.svg"}
                 alt="line chart"
@@ -895,6 +961,7 @@ const DashboardPage = () => {
                     }
                     return isMounted ? (
                       <ApexChart
+                        key={`donut-${year}-${labels.join("-")}-${series.join("-")}`}
                         options={{
                           chart: {
                             animations: {
@@ -964,19 +1031,23 @@ const DashboardPage = () => {
                         className="flex items-center justify-between py-2 cursor-pointer hover:bg-gray-50 transition-colors"
                         title={`Double-click to search in header`}
                         onDoubleClick={() => {
-                            const clientName = p.client_name ?? p.couple_name ?? `Client #${p.id}`;
-                            const eventId = p.id;
-                            const status = Number(p.event_status_id);
-                            let target = "/dashboard";
-                            if (status === 1) target = "/open-enquiry";
-                            else if (status === 2) target = "/confirmed-events";
-                            else if (status === 3 || status === 4) target = "/completed-events";
-                            try {
-                              router.push(`${target}?search=${encodeURIComponent(String(eventId))}&name=${encodeURIComponent(String(clientName))}`);
-                            } catch (e) {
-                              console.error(e);
-                            }
-                          }}
+                          const clientName =
+                            p.client_name ?? p.couple_name ?? `Client #${p.id}`;
+                          const eventId = p.id;
+                          const status = Number(p.event_status_id);
+                          let target = "/dashboard";
+                          if (status === 1) target = "/open-enquiry";
+                          else if (status === 2) target = "/confirmed-events";
+                          else if (status === 3 || status === 4)
+                            target = "/completed-events";
+                          try {
+                            router.push(
+                              `${target}?search=${encodeURIComponent(String(eventId))}&name=${encodeURIComponent(String(clientName))}`,
+                            );
+                          } catch (e) {
+                            console.error(e);
+                          }
+                        }}
                       >
                         <div>
                           <p>{p.client_name ?? `Client #${p.id}`}</p>
@@ -1025,41 +1096,67 @@ const DashboardPage = () => {
           ) : !dashboard?.openEnquiries?.length ? (
             <div className="text-xs text-gray-500">No open enquiries.</div>
           ) : (
-            <ul className="text-xs">
-              {dashboard.openEnquiries.map((enq: OpenEnquiry, idx: number) => (
-                <li
-                  key={String(enq.id ?? enq.couple_name ?? `enq-${idx}`)}
-                  className="flex items-center border-b border-[#636363] last:border-0 justify-between px-3 py-3"
-                >
-                  <div className="flex gap-3">
-                    <Image
-                      src={"/images/avatar.png"}
-                      alt="avatar"
-                      width={30}
-                      height={30}
-                      className="rounded-lg"
-                    />
-                    <div>
-                      <p className="text-gray-900">
-                        {enq.couple_name ?? enq.client?.name ?? "Unknown"}
-                      </p>
-                      <p className="text-[11px] text-gray-400">
-                        {enq.venue ??
-                          enq.subtitle ??
-                          (enq.created_at
-                            ? new Date(enq.created_at).toLocaleDateString()
-                            : "")}
-                      </p>
-                    </div>
-                  </div>
-                  <div
-                    className="rounded-sm w-12 text-center py-1 text-[10px] font-medium text-white"
-                    style={{ background: colorPrimaryGradient }}
+            <ul className="space-y-2 no-scrollbar text-xs max-h-[300px] overflow-auto">
+              {dashboard.openEnquiries.map((enq: OpenEnquiry, idx: number) => {
+                const djName =
+                  enq.users_events_dj_idTousers?.name ??
+                  enq.couple_name ??
+                  "Unknown";
+                const clientName =
+                  enq.users_events_user_idTousers?.name ??
+                  enq.client?.name ??
+                  "";
+                const secondary =
+                  clientName ||
+                  enq.venue ||
+                  enq.subtitle ||
+                  (enq.created_at ? formatDate(enq.created_at) : "");
+                const badgeText = enq.date
+                  ? formatDate(enq.date)
+                  : (enq.tag ?? "New");
+
+                return (
+                  <li
+                    key={String(enq.id ?? enq.couple_name ?? `enq-${idx}`)}
+                    className="flex items-center border-b border-[#636363] last:border-0 justify-between px-3 py-3"
+                    onDoubleClick={() => {
+                      try {
+                        const clientName =
+                          enq.users_events_user_idTousers?.name ??
+                          enq.client?.name ??
+                          enq.couple_name ??
+                          "";
+                        const eventId = enq.id ?? "";
+                        router.push(
+                          `/open-enquiry?search=${encodeURIComponent(String(eventId))}&name=${encodeURIComponent(String(clientName))}&select=${encodeURIComponent(String(eventId))}`,
+                        );
+                      } catch (e) {
+                        console.error(e);
+                      }
+                    }}
                   >
-                    {enq.tag ?? "New"}
-                  </div>
-                </li>
-              ))}
+                    <div className="flex gap-3">
+                      <Image
+                        src={"/images/avatar.png"}
+                        alt="avatar"
+                        width={30}
+                        height={30}
+                        className="rounded-lg"
+                      />
+                      <div>
+                        <p className="text-gray-900">{djName}</p>
+                        <p className="text-[11px] text-gray-400">{secondary}</p>
+                      </div>
+                    </div>
+                    <div
+                      className="rounded-sm px-2 text-center py-1 text-[10px] font-medium text-white min-w-[84px] whitespace-nowrap"
+                      style={{ background: colorPrimaryGradient }}
+                    >
+                      {badgeText}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </Card>

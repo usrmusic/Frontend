@@ -1,9 +1,5 @@
 import { useCompanyDropdown } from "@/src/api/dropdown";
-import {
-  useSendBrochure,
-  useSendInvoice,
-  useSendQuote,
-} from "@/src/api/enquiry";
+import { useSendQuote } from "@/src/api/enquiry";
 import Button from "@/src/components/Button";
 import Input from "@/src/components/Input";
 import { Modal, Select } from "antd";
@@ -15,6 +11,8 @@ interface BrochureProps {
   onCancel: VoidFunction;
   eventId: string;
   sendMode: "brochure" | "quote" | "invoice";
+  template?: { id?: string; email_name?: string; subject?: string; body?: string } | null;
+  companies?: Array<{ id: string | number; name: string }> | null;
 }
 
 const MODAL_TITLES = {
@@ -28,55 +26,51 @@ const SendBrochureModal = ({
   onCancel,
   eventId,
   sendMode,
+  template,
+  companies,
 }: BrochureProps) => {
   const { data: companyNameOptions } = useCompanyDropdown();
-  const { mutateAsync: sendBrochureMutation, isPending: brochureLoading } =
-    useSendBrochure();
   const { mutateAsync: sendQuoteMutation, isPending: quoteLoading } =
     useSendQuote();
-  const { mutateAsync: sendInvoiceMutation, isPending: invoiceLoading } =
-    useSendInvoice();
 
-  const isPending = brochureLoading || quoteLoading || invoiceLoading;
+  const isPending = quoteLoading;
 
+  const companiesList = companies ?? companyNameOptions?.data ?? [];
   const formik = useFormik({
+    enableReinitialize: true,
     initialValues: {
       event_id: Number(eventId),
-      company_name_id: "",
-      subject: "Brochure",
-      body: `Thank you very much for your interest in booking us for your event.
-
-Please find attached a copy of our brochure. This will give you lots of inspiration, creating the perfect look for your big day! 
-
-Please get in touch after browsing the brochure to arrange a more in depth chat. We believe face to face or even a quick chat on the phone allows better understanding of your event so that we can tailor the package based on your requirements and budget! :)
-
-Thank you once again,`,
+      company_name_id: (companiesList && companiesList.length ? String(companiesList[0].id) : ""),
+      subject: template?.subject ?? "Brochure",
+      body:
+        template?.body ?? `Thank you very much for your interest in booking us for your event.\n\nPlease find attached a copy of our brochure. This will give you lots of inspiration, creating the perfect look for your big day! \n\nPlease get in touch after browsing the brochure to arrange a more in depth chat. We believe face to face or even a quick chat on the phone allows better understanding of your event so that we can tailor the package based on your requirements and budget! :)\n\nThank you once again,`,
     },
-    onSubmit: (values) => {
-      // handle form submission, e.g., send API request
-      if (sendMode === "brochure") {
-        sendBrochureMutation(values, {
-          onSuccess: () => {
-            toast.success("Brochure Sent Successfully");
-            onCancel();
-          },
-        });
-      } else if (sendMode === "quote") {
-        sendQuoteMutation(values, {
-          onSuccess: () => {
-            toast.success("Quote Sent Successfully");
-            onCancel();
-          },
-        });
-      } else if (sendMode === "invoice") {
-        sendInvoiceMutation(values, {
-          onSuccess: () => {
-            toast.success("Invoice Sent Successfully");
-            onCancel();
-          },
-        });
+    onSubmit: async (values, { setSubmitting }) => {
+      setSubmitting(true);
+      try {
+        const payload = {
+          event_id: Number(values.event_id) || Number(eventId),
+          subject: values.subject,
+          body: values.body,
+          company_name_id: Number(values.company_name_id) || Number((companiesList[0] && companiesList[0].id) || 0),
+        } as any;
+
+        // Prefix subject with returned email_name when available
+        if (template?.email_name) {
+          payload.subject = `${template.email_name} - ${payload.subject}`;
+        }
+
+        // Use single send (quote) API for all send modes as requested
+        await sendQuoteMutation(payload);
+        toast.success("Email Sent Successfully");
+
+        onCancel();
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to send email");
+      } finally {
+        setSubmitting(false);
       }
-      console.log("Send Brochure form values:", values);
     },
   });
 
@@ -95,11 +89,8 @@ Thank you once again,`,
           <Select
             className="w-full"
             placeholder="Select company"
-            options={companyNameOptions?.data?.map((opt:any) => ({
-              label: opt.name,
-              value: opt.id,
-            }))}
-            value={formik.values.company_name_id}
+            options={(companiesList || []).map((opt: any) => ({ label: opt.name, value: String(opt.id) }))}
+            value={String(formik.values.company_name_id) || undefined}
             onChange={(value) => formik.setFieldValue("company_name_id", value)}
           />
         </div>
@@ -125,10 +116,10 @@ Thank you once again,`,
           ></textarea>
         </div>
         <div className="flex justify-end gap-3">
-          <Button htmlType="submit" onClick={onCancel}>
+          <Button htmlType="button" onClick={onCancel}>
             Cancel
           </Button>
-          <Button htmlType="submit" type="primary" loading={isPending}>
+          <Button htmlType="submit" type="primary" loading={formik.isSubmitting}>
             Send Email
           </Button>
         </div>

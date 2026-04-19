@@ -1,16 +1,15 @@
-import { Table, TableProps } from "antd";
+import { Table } from "antd";
+import type { TableProps } from "antd";
 
-const DataTable = ({ columns, dataSource, ...props }: TableProps) => {
+function DataTable<RecordType extends object = any>(props: TableProps<RecordType>) {
   return (
     <div className="overflow-hidden rounded-xl">
-      <Table
-        columns={columns}
-        dataSource={dataSource}
+      <Table<RecordType>
         {...props}
         className="[&_.ant-table-cell:before]:hidden [&_.ant-table-content]:overflow-auto"
       />
     </div>
   );
-};
+}
 
 export default DataTable;

@@ -4,6 +4,7 @@ import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, Export, MagnifyingGlass } from "@/src/components/Icons";
 import { DatePicker } from "antd";
+import dayjs from "dayjs";
 import { MoreVertical, RefreshCw } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -24,10 +25,18 @@ interface StatItem {
 const initialParams = {
   page: 1,
   perPage: 10,
+  search: "",
+  state: "",
+  event_start_time: "",
+  event_end_time: "",
 };
 
 const SuppliersPage = () => {
   const [params, setParams] = useState(initialParams);
+  const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
   const { data: suppliersReportData, isLoading } = useSuppliersReport(params);
 
   const { columns } = useColumns();
@@ -64,6 +73,23 @@ const SuppliersPage = () => {
       variant: "green",
     },
   ];
+
+  const resetFilters = () => {
+    setParams(initialParams);
+    setSearch("");
+    setDateFrom("");
+    setDateTo("");
+  };
+
+  const applyFilters = () => {
+    setParams((prev) => ({
+      ...prev,
+      page: 1,
+      search,
+      event_start_time: dateFrom,
+      event_end_time: dateTo,
+    }));
+  };
   return (
     <div className="mt-4 space-y-4">
       <div className="flex items-center justify-between">
@@ -126,6 +152,8 @@ const SuppliersPage = () => {
               type="text"
               placeholder="Search"
               className="w-full bg-transparent! text-sm placeholder:text-gray-500"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <select
@@ -137,11 +165,28 @@ const SuppliersPage = () => {
           <DatePicker
             placeholder="Date (From)"
             className="[&_input]:bg-white!"
+            value={dateFrom ? dayjs(dateFrom) : null}
+            onChange={(_, dateString) =>
+              setDateFrom(Array.isArray(dateString) ? dateString[0] || "" : dateString)
+            }
           />
-          <DatePicker placeholder="Date (To)" className="[&_input]:bg-white!" />
+          <DatePicker
+            placeholder="Date (To)"
+            className="[&_input]:bg-white!"
+            value={dateTo ? dayjs(dateTo) : null}
+            onChange={(_, dateString) =>
+              setDateTo(Array.isArray(dateString) ? dateString[0] || "" : dateString)
+            }
+          />
           <div className="flex gap-2">
-            <Button className="flex-1 h-full!">Apply Filters</Button>
-            <Button className="flex-1 h-full!" icon={<RefreshCw size={14} />}>
+            <Button className="flex-1 h-full!" onClick={applyFilters}>
+              Apply Filters
+            </Button>
+            <Button
+              className="flex-1 h-full!"
+              icon={<RefreshCw size={14} />}
+              onClick={resetFilters}
+            >
               Reset Filters
             </Button>
           </div>

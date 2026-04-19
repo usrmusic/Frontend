@@ -11,6 +11,7 @@ import Link from "next/link";
 import useColumns from "./useColumns";
 import { useAdminReport } from "@/src/api/reports";
 import SkeletonInput from "antd/es/skeleton/Input";
+import dayjs from "dayjs";
 
 interface StatItem {
   label: string;
@@ -38,6 +39,9 @@ export type Filters = {
 
 const Page = () => {
   const [filters, setFilters] = useState<Filters>(initialParams);
+  const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const { data: reportData, isLoading } = useAdminReport(filters);
 
   const { columns } = useColumns(filters, setFilters);
@@ -63,6 +67,24 @@ const Page = () => {
       variant: "green",
     },
   ];
+
+  const resetFilters = () => {
+    setFilters(initialParams);
+    setSearch("");
+    setDateFrom("");
+    setDateTo("");
+  };
+
+  const applyFilters = () => {
+    if(!search) return
+    setFilters((prev) => ({
+      ...prev,
+      page: 1,
+      search,
+      event_start_time: dateFrom,
+      event_end_time: dateTo,
+    }));
+  };
 
   return (
     <div className="mt-4 space-y-4">
@@ -126,7 +148,10 @@ const Page = () => {
               type="text"
               placeholder="Search event"
               className="w-full bg-transparent! text-sm placeholder:text-gray-500"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
+      
           </div>
           <select
             name="confirmedEvent"
@@ -137,14 +162,25 @@ const Page = () => {
           <DatePicker
             placeholder="Date (From)"
             className="[&_input]:bg-white!"
+            value={dateFrom ? dayjs(dateFrom) : null}
+            onChange={(_, dateString) =>
+              setDateFrom(Array.isArray(dateString) ? dateString[0] || "" : dateString)
+            }
           />
-          <DatePicker placeholder="Date (To)" className="[&_input]:bg-white!" />
+          <DatePicker
+            placeholder="Date (To)"
+            className="[&_input]:bg-white!"
+            value={dateTo ? dayjs(dateTo) : null}
+            onChange={(_, dateString) =>
+              setDateTo(Array.isArray(dateString) ? dateString[0] || "" : dateString)
+            }
+          />
           <div className="flex gap-2">
-            <Button className="flex-1 h-full!">Apply Filters</Button>
+            <Button className="flex-1 h-full!" onClick={applyFilters}>Apply Filters</Button>
             <Button
               className="flex-1 h-full!"
               icon={<RefreshCw size={14} />}
-              onClick={() => setFilters(initialParams)}
+              onClick={resetFilters}
             >
               Reset Filters
             </Button>

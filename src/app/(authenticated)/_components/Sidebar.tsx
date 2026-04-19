@@ -133,7 +133,7 @@ const Sidebar = () => {
               onMouseEnter={(e) => showTooltip(e, item.label)}
               onMouseMove={(e) => showTooltip(e, item.label)}
               onMouseLeave={hideTooltip}
-              title={!expanded ? item.label : undefined}
+              // title={!expanded ? item.label : undefined}
               className={`group relative flex shrink-0 items-center ${expanded ? 'justify-start w-full gap-3 px-3 py-2 rounded-md' : 'justify-center size-10 rounded-full'} hover:bg-black hover:text-white transition-colors duration-200 ${isActive ? 'bg-black text-white' : ''}`}
             >
               {item.icon}
