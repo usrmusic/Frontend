@@ -26,7 +26,7 @@ export const useDeleteFile = () => {
   return useMutation({
     mutationFn: async (id: string | number) => {
       try {
-        const response = await AxiosInstance.delete(`/uploads/${id}`);
+        const response = await AxiosInstance.delete(`/files/media/${id}`);
         return response.data;
       } catch (error: unknown) {
         if (axios.isAxiosError(error)) {
@@ -40,6 +40,36 @@ export const useDeleteFile = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["downloads-list"] });
+    },
+  });
+};
+
+export const useUploadMedia = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (formData: FormData) => {
+      const response = await AxiosInstance.post(`/files/media`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return response.data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["downloads-list"] }),
+    onError: (err) => {
+      console.error(err);
+      toast.error("Upload failed");
+    },
+  });
+};
+
+export const useDownloadMedia = () => {
+  return useMutation({
+    mutationFn: async (id: string | number) => {
+      const response = await AxiosInstance.get(`/files/media/${id}`);
+      return response.data;
+    },
+    onError: (err) => {
+      console.error(err);
+      toast.error("Download failed");
     },
   });
 };
