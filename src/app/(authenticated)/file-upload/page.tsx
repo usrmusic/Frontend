@@ -6,22 +6,47 @@ import {
   useUpdateUpload,
   useUploadFile,
 } from "@/src/api/upload";
-import { Modal, message } from "antd";
+import { Checkbox, Modal, Select, message } from "antd";
 import Button from "@/src/components/Button";
 import DataTable from "@/src/components/DataTable";
-import { BackButton, Export, MagnifyingGlass } from "@/src/components/Icons";
+import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import { TableColumnsType } from "antd";
 import dayjs from "dayjs";
-import { Copy, Download, FileUp, MoreVertical, Trash2 } from "lucide-react";
+import { Download, FileUp, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { useFormik } from "formik";
+import Input from "@/src/components/Input";
+import { useRigListEventsDropdown } from "@/src/api/dropdown";
+import { EventsDropdownItem } from "@/src/types/types";
 
 const initialParams = {
   page: 1,
   perPage: 10,
   search: "",
 };
+
+type UploadFormValues = {
+  file: File | null;
+  delete_after: string;
+  event_id: number | undefined;
+  general: boolean;
+};
+
+const uploadFormInitialValues: UploadFormValues = {
+  file: null,
+  event_id: undefined,
+  general: false,
+  delete_after: "",
+};
+
+/** Row shape from uploads list — used when editing metadata */
+type UploadListRow = {
+  id: number | string;
+  file_name: string;
+};
+
 const FileUploadPage = () => {
   const [params, setParams] = useState(initialParams);
   const [search, setSearch] = useState("");
@@ -31,6 +56,15 @@ const FileUploadPage = () => {
     ...params,
     search: debouncedSearch,
   });
+  const { data: eventsDropdown } = useRigListEventsDropdown();
+
+  const eventDropdownOptions = (
+    eventsDropdown?.data as EventsDropdownItem[]
+  )?.map((item) => ({
+    label: `${dayjs(item.date).format("DD/MM/YYYY")} - ${item.venues?.venue} (${item.users_events_user_idTousers?.name})`,
+    value: item.id,
+  }));
+
   const downloadMutation = useDownloadUpload();
   const deleteMutation = useDeleteUpload();
   const updateMutation = useUpdateUpload();
@@ -38,17 +72,57 @@ const FileUploadPage = () => {
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [editingFile, setEditingFile] = useState<null>(null);
+  const [editingFile, setEditingFile] = useState<UploadListRow | null>(null);
+  const [uploadFileInputKey, setUploadFileInputKey] = useState(0);
+
+  const uploadFormik = useFormik<UploadFormValues>({
+    initialValues: uploadFormInitialValues,
+    validateOnChange: true,
+    validate: (values) => {
+      const errors: Partial<Record<keyof UploadFormValues, string>> = {};
+      if (!values.file) errors.file = "Please choose a file";
+      if (!values.general && values.event_id == null) {
+        errors.event_id = "Please select an event";
+      }
+      return errors;
+    },
+    onSubmit: async (values, { resetForm }) => {
+      const formData = new FormData();
+      formData.append("file", values.file as File);
+      if (values.event_id !== undefined) {
+        formData.append("event_id", String(values.event_id));
+      }
+      if (values.general) {
+        formData.append("general", "true");
+      }
+      if (values.delete_after) {
+        // API-friendly date (YYYY-MM-DD from native date input)
+        formData.append(
+          "delete_after",
+          dayjs(values.delete_after).format("YYYY-MM-DD"),
+        );
+      }
+      await uploadMutation.mutateAsync(formData);
+      resetForm();
+      setUploadFileInputKey((k) => k + 1);
+      setShowUploadModal(false);
+    },
+  });
+
+  const resetUploadForm = () => {
+    uploadFormik.resetForm();
+    setUploadFileInputKey((k) => k + 1);
+  };
 
   const columns: TableColumnsType = [
     {
       title: "File Name",
-      dataIndex: "display_name",
+      dataIndex: "file_name",
       key: "file_name",
     },
     {
       title: "Type",
-      dataIndex: "extension",
+      dataIndex: "file_type",
       key: "file_type",
     },
     {
@@ -103,11 +177,11 @@ const FileUploadPage = () => {
               type="text"
               showShadow={false}
               onClick={() => {
-                setEditingFile(upload);
+                setEditingFile(upload as UploadListRow);
                 setShowEditModal(true);
               }}
             >
-              <Copy size={14} color="#6A7282" />
+              <Pencil size={14} color="#6A7282" />
             </Button>
             <Button
               size="small"
@@ -145,11 +219,14 @@ const FileUploadPage = () => {
         <div className="flex gap-3">
           <Button
             icon={<FileUp size={14} />}
-            onClick={() => setShowUploadModal(true)}
+            onClick={() => {
+              resetUploadForm();
+              setShowUploadModal(true);
+            }}
           >
             Upload File
           </Button>
-          <Button icon={<Export w={16} h={16} />}>Export Data</Button>
+          {/* <Button icon={<Export w={16} h={16} />}>Export Data</Button> */}
           <Button icon={<MoreVertical size={18} />}></Button>
         </div>
       </div>
@@ -184,31 +261,35 @@ const FileUploadPage = () => {
       <Modal
         title="Edit File"
         open={showEditModal}
-        onCancel={() => setShowEditModal(false)}
+        onCancel={() => {
+          setShowEditModal(false);
+          setEditingFile(null);
+        }}
         footer={null}
       >
         {editingFile && (
           <form
+            key={editingFile.id}
             onSubmit={async (e) => {
               e.preventDefault();
               const form = new FormData(e.currentTarget as HTMLFormElement);
-              const file_name = form.get("display_name");
+              const file_name = form.get("file_name");
               if (!file_name) return message.error("Name required");
               await updateMutation.mutateAsync({
                 id: editingFile.id,
                 data: { file_name },
               });
               setShowEditModal(false);
+              setEditingFile(null);
             }}
           >
-            <label className="block text-xs mb-2">File name</label>
-            <input
-              name="display_name"
-              defaultValue={editingFile.display_name}
-              className="w-full mb-3 p-2 border"
-            />
-            <div className="text-right">
-              <Button htmlType="submit" type="primary">
+            <Input name="file_name" defaultValue={editingFile.file_name} />
+            <div className="text-right mt-3">
+              <Button
+                htmlType="submit"
+                type="primary"
+                loading={updateMutation.isPending}
+              >
                 Save
               </Button>
             </div>
@@ -220,27 +301,93 @@ const FileUploadPage = () => {
       <Modal
         title="Upload File"
         open={showUploadModal}
-        onCancel={() => setShowUploadModal(false)}
+        onCancel={() => {
+          resetUploadForm();
+          setShowUploadModal(false);
+        }}
         footer={null}
       >
-        <form
-          onSubmit={async (e) => {
-            e.preventDefault();
-            const f = new FormData(e.currentTarget as HTMLFormElement);
-            const file = f.get("file") as File | null;
-            if (!file) return message.error("Please choose a file");
-            await uploadMutation.mutateAsync(f);
-            setShowUploadModal(false);
-          }}
-        >
-          <label className="block text-xs mb-2">File</label>
-          <input name="file" type="file" className="mb-3" />
-          <label className="block text-xs mb-2">Display name</label>
-          <input name="display_name" className="w-full mb-3 p-2 border" />
-          <label className="block text-xs mb-2">Event ID (optional)</label>
-          <input name="event_id" className="w-full mb-3 p-2 border" />
-          <div className="text-right">
-            <Button htmlType="submit" type="primary">
+        <form className="space-y-4" onSubmit={uploadFormik.handleSubmit}>
+          <Input
+            key={uploadFileInputKey}
+            name="file"
+            type="file"
+            label="File"
+            onChange={(e) => {
+              const file = e.currentTarget.files?.[0] ?? null;
+              uploadFormik.setFieldValue("file", file);
+            }}
+            onBlur={uploadFormik.handleBlur}
+            error={
+              uploadFormik.touched.file && uploadFormik.errors.file
+                ? uploadFormik.errors.file
+                : undefined
+            }
+          />
+          <div>
+            <label className="mb-1 block text-xs">Event</label>
+            <Select
+              className="w-full"
+              placeholder="Select event"
+              options={eventDropdownOptions}
+              allowClear
+              disabled={uploadFormik.values.general}
+              status={
+                uploadFormik.touched.event_id && uploadFormik.errors.event_id
+                  ? "error"
+                  : undefined
+              }
+              value={uploadFormik.values.event_id}
+              onChange={(value) => {
+                uploadFormik.setFieldValue(
+                  "event_id",
+                  value == null ? undefined : Number(value),
+                );
+              }}
+              onBlur={() => uploadFormik.setFieldTouched("event_id", true)}
+            />
+            {uploadFormik.touched.event_id && uploadFormik.errors.event_id ? (
+              <p className="mt-1 text-xs text-red-500">
+                {uploadFormik.errors.event_id}
+              </p>
+            ) : null}
+          </div>
+          <Input
+            type="date"
+            name="delete_after"
+            label="Delete after"
+            value={uploadFormik.values.delete_after}
+            onChange={(e) =>
+              uploadFormik.setFieldValue("delete_after", e.target.value)
+            }
+            onBlur={uploadFormik.handleBlur}
+          />
+          <Checkbox
+            checked={uploadFormik.values.general}
+            onChange={(e) => {
+              const checked = e.target.checked;
+              uploadFormik.setFieldValue("general", checked);
+              if (checked) {
+                uploadFormik.setFieldValue("event_id", undefined);
+              }
+            }}
+          >
+            General
+          </Checkbox>
+          <div className="flex justify-end gap-3">
+            <Button
+              onClick={() => {
+                resetUploadForm();
+                setShowUploadModal(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              htmlType="submit"
+              type="primary"
+              loading={uploadMutation.isPending || uploadFormik.isSubmitting}
+            >
               Upload
             </Button>
           </div>

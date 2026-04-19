@@ -26,7 +26,6 @@ import Files from "./Files";
 import { ConfirmEventData, EventsDropdownItem } from "@/src/types/types";
 import SendBrochureModal from "../open-enquiry/SendBrochure";
 import { toast } from "react-toastify";
-import axios from "axios";
 import { fetchEmailTemplate } from "@/src/api/enquiry";
 import Contracts from "./Contracts";
 
@@ -52,12 +51,12 @@ const ConfirmedEventsPage = () => {
   const { data: eventsDropdown } = useRigListEventsDropdown();
   const { data: selectedEventData, isLoading } = useGetConfirmEvent(eventId);
 
-  const eventsptions = (
-    eventsDropdown?.data as EventsDropdownItem[] | undefined
-  )?.map((item) => ({
-    label: `${dayjs(item.date).format("DD/MM/YYYY")} - ${item.venues?.venue} (${item.users_events_user_idTousers?.name})`,
-    value: item.id,
-  }));
+  const eventsOptions = (eventsDropdown?.data as EventsDropdownItem[])?.map(
+    (item) => ({
+      label: `${dayjs(item.date).format("DD/MM/YYYY")} - ${item.venues?.venue} (${item.users_events_user_idTousers?.name})`,
+      value: item.id,
+    }),
+  );
 
   useEffect(() => {
     if (eventsDropdown?.data?.[0]?.id && !eventId) {
@@ -99,48 +98,57 @@ const ConfirmedEventsPage = () => {
       selectedEventData?.data as ConfirmEventData | undefined,
     ),
     onSubmit: (values) => {
-      updateEventMutation({
-        values: {
-          // User Info
-          first_name: values.first_name || null,
-          email: values.email || null,
-          phone_number: values.phone_number ? Number(values.phone_number) : null,
+      updateEventMutation(
+        {
+          values: {
+            // User Info
+            first_name: values.first_name || null,
+            email: values.email || null,
+            phone_number: values.phone_number
+              ? Number(values.phone_number)
+              : null,
 
-          // DJ & Vendors
-          dj_name: values.djName || null,
-          videography: values.videography || null,
-          caterer: values.caterer || null,
-          decor: values.decor || null,
+            // DJ & Vendors
+            dj_name: values.djName || null,
+            videography: values.videography || null,
+            caterer: values.caterer || null,
+            decor: values.decor || null,
 
-          // Event Info
-          couple_name: values.name || null,
-          date: values.date ? dayjs(values.date).format("DD-MM-YYYY") : null,
-          start_time: values.start_time || null,
-          end_time: values.end_time || null,
-          access_time: values.accessDate || null,
-          no_of_guests: values.noOfGuests ? Number(values.noOfGuests) : null,
-          deposit_amount: values.depositAmount ? Number(values.depositAmount) : null,
-          
-          // Notes & Itinerary
-          brief_itinerary: values.briefItinerary || null,
-          do: values.dos || null,
-          dont: values.donts || null,
-          entrance_song_style: values.entranceSong || null,
-          cake_song_who_feeds: values.cakeCutSong || null,
-          first_dance: values.firstDance || null,
-          stag_songs: values.stagTuneAndDestination || null,
-          hen_songs: values.henTuneAndDestination || null,
+            // Event Info
+            couple_name: values.name || null,
+            date: values.date ? dayjs(values.date).format("DD-MM-YYYY") : null,
+            start_time: values.start_time || null,
+            end_time: values.end_time || null,
+            access_time: values.accessDate || null,
+            no_of_guests: values.noOfGuests ? Number(values.noOfGuests) : null,
+            deposit_amount: values.depositAmount
+              ? Number(values.depositAmount)
+              : null,
 
-          // Contact String
-          event_date_contact: `${values.everyDayContactName} ${values.everyDayContactNumber}`.trim() || null,
+            // Notes & Itinerary
+            brief_itinerary: values.briefItinerary || null,
+            do: values.dos || null,
+            dont: values.donts || null,
+            entrance_song_style: values.entranceSong || null,
+            cake_song_who_feeds: values.cakeCutSong || null,
+            first_dance: values.firstDance || null,
+            stag_songs: values.stagTuneAndDestination || null,
+            hen_songs: values.henTuneAndDestination || null,
+
+            // Contact String
+            event_date_contact:
+              `${values.everyDayContactName} ${values.everyDayContactNumber}`.trim() ||
+              null,
+          },
+          id: eventId,
         },
-        id: eventId,
-      }, {
-        onSuccess: () => {
-          setIsModifyMode(false);
-          toast.success("Event updated successfully");
-        }
-      });
+        {
+          onSuccess: () => {
+            setIsModifyMode(false);
+            toast.success("Event updated successfully");
+          },
+        },
+      );
     },
   });
 
@@ -154,8 +162,10 @@ const ConfirmedEventsPage = () => {
     }
   }, [searchParams, searchParamsKey, eventId]);
 
-  const payments = (selectedEventData?.data as ConfirmEventData)?.event_payments ?? [];
-  const eventNotes = (selectedEventData?.data as ConfirmEventData)?.event_notes ?? [];
+  const payments =
+    (selectedEventData?.data as ConfirmEventData)?.event_payments ?? [];
+  const eventNotes =
+    (selectedEventData?.data as ConfirmEventData)?.event_notes ?? [];
 
   const panelStyle: CSSProperties = {
     marginBottom: 14,
@@ -253,7 +263,10 @@ const ConfirmedEventsPage = () => {
                     if (!eventId) return;
                     setButtonLoading("quote");
                     try {
-                      const data = await fetchEmailTemplate(String(eventId), "SEND QUOTE-CONFIRMED");
+                      const data = await fetchEmailTemplate(
+                        String(eventId),
+                        "SEND QUOTE-CONFIRMED",
+                      );
                       setModalTemplate(data?.email ?? null);
                       setModalCompanies(data?.companies ?? null);
                       setSendMode("quote");
@@ -268,7 +281,10 @@ const ConfirmedEventsPage = () => {
                 >
                   Send Quote
                 </Button>
-                <Button loading={isDownloadingInvoice} onClick={handleDownloadInvoice}>
+                <Button
+                  loading={isDownloadingInvoice}
+                  onClick={handleDownloadInvoice}
+                >
                   Download Invoice
                 </Button>
                 <Button
@@ -276,7 +292,10 @@ const ConfirmedEventsPage = () => {
                     if (!eventId) return;
                     setButtonLoading("invoice");
                     try {
-                      const data = await fetchEmailTemplate(String(eventId), "SEND INVOICE-OPEN");
+                      const data = await fetchEmailTemplate(
+                        String(eventId),
+                        "SEND INVOICE-OPEN",
+                      );
                       setModalTemplate(data?.email ?? null);
                       setModalCompanies(data?.companies ?? null);
                       setSendMode("invoice");
@@ -303,7 +322,7 @@ const ConfirmedEventsPage = () => {
             value={eventId ? eventId : undefined}
             className="w-[430px]"
             placeholder="Select event"
-            options={eventsptions}
+            options={eventsOptions}
             onChange={(value) => {
               setEventId(value ?? "");
               setIsModifyMode(false);
@@ -314,11 +333,18 @@ const ConfirmedEventsPage = () => {
         <div className="relative">
           {isLoading && (
             <Spin
-              style={{ position: "absolute", left: "50%", top: "10%", zIndex: 999 }}
+              style={{
+                position: "absolute",
+                left: "50%",
+                top: "10%",
+                zIndex: 999,
+              }}
               size="large"
             />
           )}
-          <div className={`bg-white rounded-xl p-5 ${isLoading ? "opacity-60" : ""}`}>
+          <div
+            className={`bg-white rounded-xl p-5 ${isLoading ? "opacity-60" : ""}`}
+          >
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <Input
@@ -558,10 +584,18 @@ const ConfirmedEventsPage = () => {
           </div>
         </div>
         <div className="text-end">
-          <Button type="text" htmlType="button" onClick={() => setShowNotes((v) => !v)}>
+          <Button
+            type="text"
+            htmlType="button"
+            onClick={() => setShowNotes((v) => !v)}
+          >
             {showNotes ? "Hide Notes" : "Show Notes"}
           </Button>
-          <Button type="text" htmlType="button" onClick={() => setShowPayments((v) => !v)}>
+          <Button
+            type="text"
+            htmlType="button"
+            onClick={() => setShowPayments((v) => !v)}
+          >
             {showPayments ? "Hide Payments" : "Show Payments"}
           </Button>
         </div>
@@ -571,7 +605,10 @@ const ConfirmedEventsPage = () => {
         bordered={false}
         expandIconPlacement="end"
         expandIcon={({ isActive }) => (
-          <ChevronDown size={14} className={`transition-transform duration-300 ${isActive ? "rotate-180" : ""}`} />
+          <ChevronDown
+            size={14}
+            className={`transition-transform duration-300 ${isActive ? "rotate-180" : ""}`}
+          />
         )}
         style={{ background: "transparent" }}
         items={getItems(panelStyle)}
