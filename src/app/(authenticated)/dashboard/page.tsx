@@ -6,11 +6,7 @@ import dynamic from "next/dynamic";
 import { colorPrimaryGradient } from "@/src/config/ThemeConfig";
 
 import { useState, useEffect, useRef } from "react";
-import type {
-  ComponentType,
-  MouseEventHandler,
-  KeyboardEventHandler,
-} from "react";
+import type { ComponentType } from "react";
 import { useRouter } from "next/navigation";
 import { DayPicker, type CustomComponents } from "react-day-picker";
 import "react-day-picker/dist/style.css";
@@ -28,6 +24,7 @@ import {
 import { enGB } from "date-fns/locale/en-GB";
 import { useDashboard } from "@/src/api/dasboard";
 import { Spin, Skeleton } from "antd";
+import { Eye, EyeOff } from "lucide-react";
 
 // Sidebar options for calendar (must be outside any component)
 const sidebarOptions = [
@@ -229,17 +226,8 @@ function CalendarWithSidebar({
     const date = dayProps["date"] as Date | undefined;
     const children = dayProps["children"] as React.ReactNode;
     const className = (dayProps["className"] as string) || "";
-    const onClick = dayProps["onClick"] as ((e: unknown) => void) | undefined;
-    const onKeyDown = dayProps["onKeyDown"] as
-      | ((e: unknown) => void)
-      | undefined;
-    const disabled = Boolean(dayProps["disabled"]);
     const iso = toLocalIso(date as Date | undefined);
     const hasDot = dotSet.has(iso);
-    // Render a table cell (<td>) here. DayPicker places CustomDay directly
-    // under a <tr>, so using a <td> ensures valid table markup and avoids
-    // placing a <div> or <button> directly under a <tr> which causes
-    // hydration errors in the browser.
     return (
       <td className={(className || "") + " align-top p-0"}>
         <div className="relative flex items-center justify-center w-full h-full">
@@ -349,7 +337,7 @@ function CalendarWithSidebar({
           showOutsideDays
           weekStartsOn={1}
           locale={enGB}
-          className="!bg-transparent"
+          className="bg-transparent!"
           classNames={{
             table: "w-full table-fixed border-collapse",
             head_row: "table-row",
@@ -494,9 +482,12 @@ const chartOptions = {
 const DashboardPage = () => {
   const router = useRouter();
 
-  // toggles to hide/show sensitive values (default: hidden)
-  const [showProfit, setShowProfit] = useState(false);
-  const [showOpenEnquiryValue, setShowOpenEnquiryValue] = useState(false);
+  const [showStat, setShowStat] = useState({
+    eventStat: true,
+    remainingStat: true,
+    profitStat: true,
+    turnOverStat: true,
+  });
 
   const [year, setYear] = useState<number>(new Date().getFullYear());
   const [isMounted, setIsMounted] = useState(false);
@@ -574,9 +565,27 @@ const DashboardPage = () => {
             <>
               <div className="mt-4 flex-1">
                 <p className="text-base text-primary">Events</p>
-                <p className="text-2xl font-semibold">
-                  {dashboard?.totalEvents ?? 0}
-                </p>
+                <div>
+                  <p
+                    className={`text-2xl font-semibold ${!showStat.eventStat ? "blur-sm" : ""}`}
+                  >
+                    {dashboard?.totalEvents ?? 0}
+                  </p>
+                  <button
+                    onClick={() =>
+                      setShowStat((prev) => ({
+                        ...prev,
+                        eventStat: !prev.eventStat,
+                      }))
+                    }
+                  >
+                    {showStat.eventStat ? (
+                      <EyeOff size={20} />
+                    ) : (
+                      <Eye size={20} />
+                    )}
+                  </button>
+                </div>
               </div>
               <Image
                 src={"/svgs/stat-icon.svg"}
@@ -608,9 +617,25 @@ const DashboardPage = () => {
               />
               <div className="mt-4 flex-1">
                 <p className="text-base text-primary">Remaining</p>
-                <p className="text-2xl font-semibold">
+                <p
+                  className={`text-2xl font-semibold ${!showStat.remainingStat ? "blur-sm" : ""}`}
+                >
                   {dashboard?.pendingPayments?.length ?? 0}
                 </p>
+                <button
+                  onClick={() =>
+                    setShowStat((prev) => ({
+                      ...prev,
+                      remainingStat: !prev.remainingStat,
+                    }))
+                  }
+                >
+                  {showStat.remainingStat ? (
+                    <EyeOff size={20} />
+                  ) : (
+                    <Eye size={20} />
+                  )}
+                </button>
               </div>
               <Image
                 src={"/svgs/red-chart.svg"}
@@ -643,41 +668,34 @@ const DashboardPage = () => {
               <div className="mt-4 flex-1">
                 <div className="flex items-center justify-between">
                   <p className="text-base text-primary">Turn Over</p>
-                  <button
-                    type="button"
-                    onClick={() => setShowOpenEnquiryValue((s) => !s)}
-                    className="text-primary hover:opacity-70 transition-opacity"
-                    title={showOpenEnquiryValue ? "Hide value" : "Show value"}
-                  >
-                    <svg
-                      className="w-4 h-4"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                      <path
-                        fillRule="evenodd"
-                        d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </button>
                 </div>
-                {showOpenEnquiryValue && (
-                  <button
-                    type="button"
-                    onClick={() => router.push("/open-enquiry")}
-                    className="text-2xl font-semibold hover:underline"
-                  >
-                    {dashboardLoading
-                      ? "..."
-                      : new Intl.NumberFormat("en-GB", {
-                          style: "currency",
-                          currency: "GBP",
-                          maximumFractionDigits: 0,
-                        }).format(dashboard?.totalTurnover ?? 0)}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => router.push("/open-enquiry")}
+                  className={`text-2xl font-semibold hover:underline ${!showStat.turnOverStat ? "blur-sm" : ""}`}
+                >
+                  {dashboardLoading
+                    ? "..."
+                    : new Intl.NumberFormat("en-GB", {
+                        style: "currency",
+                        currency: "GBP",
+                        maximumFractionDigits: 0,
+                      }).format(dashboard?.totalTurnover ?? 0)}
+                </button>
+                <button
+                  onClick={() =>
+                    setShowStat((prev) => ({
+                      ...prev,
+                      turnOverStat: !prev.turnOverStat,
+                    }))
+                  }
+                >
+                  {showStat.turnOverStat ? (
+                    <EyeOff size={20} />
+                  ) : (
+                    <Eye size={20} />
+                  )}
+                </button>
               </div>
               <Image
                 src={"/svgs/red-chart.svg"}
@@ -703,37 +721,32 @@ const DashboardPage = () => {
               <div className="flex-1">
                 <div className="flex items-center justify-between">
                   <p className="text-base text-white/80 mb-2">Profit</p>
-                  <button
-                    type="button"
-                    onClick={() => setShowProfit((s) => !s)}
-                    className="text-white/80 hover:opacity-70 transition-opacity"
-                    title={showProfit ? "Hide value" : "Show value"}
-                  >
-                    <svg
-                      className="w-4 h-4"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                      <path
-                        fillRule="evenodd"
-                        d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </button>
                 </div>
-                {showProfit && (
-                  <p className="text-2xl font-semibold text-white">
-                    {dashboardLoading
-                      ? "..."
-                      : new Intl.NumberFormat("en-GB", {
-                          style: "currency",
-                          currency: "GBP",
-                          maximumFractionDigits: 0,
-                        }).format(dashboard?.totalProfit ?? 0)}
-                  </p>
-                )}
+                <p
+                  className={`text-2xl font-semibold text-white ${!showStat.profitStat ? "blur-sm" : ""}`}
+                >
+                  {dashboardLoading
+                    ? "..."
+                    : new Intl.NumberFormat("en-GB", {
+                        style: "currency",
+                        currency: "GBP",
+                        maximumFractionDigits: 0,
+                      }).format(dashboard?.totalProfit ?? 0)}
+                </p>
+                <button
+                  onClick={() =>
+                    setShowStat((prev) => ({
+                      ...prev,
+                      profitStat: !prev.profitStat,
+                    }))
+                  }
+                >
+                  {showStat.profitStat ? (
+                    <EyeOff size={20} color="#fff" />
+                  ) : (
+                    <Eye size={20} color="#fff" />
+                  )}
+                </button>
               </div>
               <Image
                 src={"/svgs/Line-chart.svg"}
@@ -934,7 +947,7 @@ const DashboardPage = () => {
                   )}
                 </div>
 
-                <div className="flex-shrink-0 flex-1 flex items-center justify-center">
+                <div className="shrink-0 flex-1 flex items-center justify-center">
                   {/* Donut chart showing DJ breakdown (top DJs + Other) */}
                   {(() => {
                     const top = djEntries.slice(0, 3);
@@ -1028,7 +1041,7 @@ const DashboardPage = () => {
                     {dashboard.pendingPayments.map((p) => (
                       <li
                         key={p.id}
-                        className="flex items-center justify-between py-2 cursor-pointer hover:bg-gray-50 transition-colors"
+                        className="flex items-center justify-between py-2 border-b border-[#636363] cursor-pointer hover:bg-gray-50 transition-colors"
                         title={`Double-click to search in header`}
                         onDoubleClick={() => {
                           const clientName =
