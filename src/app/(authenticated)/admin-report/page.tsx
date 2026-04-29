@@ -5,7 +5,7 @@ import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, Export, MagnifyingGlass } from "@/src/components/Icons";
 import { DatePicker, Select } from "antd";
-import { MoreVertical, RefreshCw } from "lucide-react";
+import { MoreVertical, RefreshCw, Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import useColumns from "./useColumns";
@@ -88,6 +88,13 @@ const Page = () => {
     }));
   };
 
+  const [showStat, setShowStat] = useState({
+    eventStat: false,
+    remainingStat: false,
+    totalPaidStat: false,
+    totalCostStat: false,
+  });
+
   return (
     <div className="mt-4 space-y-4">
       <div className="flex items-center justify-between">
@@ -107,41 +114,62 @@ const Page = () => {
           </Button>
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((item) => (
-          <Card
-            key={item.label}
-            variant={item.variant || "white"}
-            className={`flex items-center justify-between`}
-          >
-            <div className="flex items-center gap-3">
-              <div>
-                <p
-                  className={`text-sm ${item.variant === "green" ? "text-white" : "text-primary"}`}
-                >
-                  {item.label}
-                </p>
-                {isLoading ? (
-                  <SkeletonInput />
-                ) : (
-                  <p
-                    className={`text-xl font-semibold ${item.variant === "green" ? "text-white" : "text-black"}`}
-                  >
-                    {item.value}
-                  </p>
-                )}
-              </div>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {stats.map((item) => {
+              const keyMap: Record<string, string> = {
+                events: "eventStat",
+                remaining: "remainingStat",
+                "total paid": "totalPaidStat",
+                "total cost": "totalCostStat",
+              };
+              const lookup = (item.label || "").toString().toLowerCase();
+              const statKey = keyMap[lookup] || "eventStat";
+              const isVisible = Boolean((showStat as any)[statKey]);
 
-            <Image
-              src={item.image}
-              alt={item.imageAlt || item.label}
-              width={52}
-              height={39}
-            />
-          </Card>
-        ))}
-      </div>
+              return (
+                <Card
+                  key={item.label}
+                  variant={item.variant || "white"}
+                  className={`flex items-center justify-between`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <p
+                        className={`text-sm ${item.variant === "green" ? "text-white" : "text-primary"}`}
+                      >
+                        {item.label}
+                      </p>
+                      {isLoading ? (
+                        <SkeletonInput />
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <p
+                            className={`text-xl font-semibold ${item.variant === "green" ? "text-white" : "text-black"} ${!isVisible ? "blur-sm" : ""}`}
+                          >
+                            {item.value}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setShowStat((prev) => ({ ...prev, [statKey]: !prev[statKey] }))}
+                            aria-label={isVisible ? `Hide ${item.label}` : `Show ${item.label}`}
+                          >
+                            {isVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <Image
+                    src={item.image}
+                    alt={item.imageAlt || item.label}
+                    width={52}
+                    height={39}
+                  />
+                </Card>
+              );
+            })}
+          </div>
       <div className="rounded-2xl overflow-hidden">
         <div className="bg-primary p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
           <div className="flex items-center gap-2 rounded-lg bg-white px-4 h-10">
