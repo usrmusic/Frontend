@@ -812,3 +812,117 @@ export const useDeleteCompany = () => {
     },
   });
 };
+ 
+// Equipment APIs
+export type Equipment = {
+  id: number;
+  supplier_id?: number | null;
+  name: string;
+  cost_price?: number | null;
+  sell_price?: number | null;
+  status?: string;
+  quantity?: number | null;
+  pricing_guide?: string | null;
+  rig_notes?: string | null;
+};
+
+export const useEquipment = (params: QueryParams) => {
+  return useQuery<ApiResponse<Equipment>>({
+    queryKey: ["equipment", params],
+    queryFn: async (): Promise<ApiResponse<Equipment>> => {
+      const response = await AxiosInstance.get<ApiResponse<Equipment>>(
+        "/equipment",
+        { params },
+      );
+      return response.data;
+    },
+    enabled: !!params,
+  });
+};
+
+export const useGetEquipment = (id?: number | string) => {
+  return useQuery({
+    queryKey: ["equipment", "get", id],
+    queryFn: async () => {
+      if (!id) return null;
+      const response = await AxiosInstance.get(`/equipment/${id}`);
+      return response.data;
+    },
+    enabled: !!id,
+  });
+};
+
+export const useAddEquipment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: Partial<Equipment>) => {
+      try {
+        const response = await AxiosInstance.post("/equipment", payload);
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["equipment"] });
+      // In case adding equipment created a new supplier via supplier_name, refresh supplier dropdown/cache
+      queryClient.invalidateQueries({ queryKey: ["supplier-dropdown"] });
+      queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+    },
+  });
+};
+
+export const useEditEquipment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: Partial<Equipment> & { id: number | string }) => {
+      try {
+        const { id, ...rest } = payload;
+        const response = await AxiosInstance.put(`/equipment/${id}`, rest);
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["equipment"] });
+      // Ensure supplier lists are refreshed if update created a supplier
+      queryClient.invalidateQueries({ queryKey: ["supplier-dropdown"] });
+      queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+    },
+  });
+};
+
+export const useDeleteEquipment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { ids: Key[]; force: boolean }) => {
+      try {
+        // Backend equipment delete-many expects ids in the URL params (route: DELETE /equipment/delete-many/:ids)
+        const ids = Array.isArray(payload.ids) ? payload.ids.map(String).join(",") : String(payload.ids);
+        const response = await AxiosInstance.delete(
+          `/equipment/delete-many/${ids}`,
+          { data: { force: !!payload.force } },
+        );
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["equipment"] });
+    },
+  });
+};

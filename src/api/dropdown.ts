@@ -75,3 +75,12 @@ export const useEquipmentDropdown = () => {
     },
   });
 };
+export const useSupplierDropdown = () => {
+  return useQuery({
+    queryKey: ["supplier-dropdown"],
+    queryFn: async () => {
+      const response = await AxiosInstance.get("/supplier/get-dropdown");
+      return response.data;
+    },
+  });
+};
