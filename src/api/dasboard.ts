@@ -121,3 +121,38 @@ export const useDashboardDropdown = (params?: DashboardDropdownParams) => {
     enabled: !!params,
   });
 };
+
+export type UpcomingEventParams = {
+  search?: string;
+  page?: number;
+  perPage?: number;
+};
+
+export type UpcomingEvent = {
+  id: number;
+  date: string;
+  venue_name?: string | null;
+  couple_name?: string | null;
+  dj_name?: string | null;
+};
+
+export const useUpcomingEvents = (params?: UpcomingEventParams) => {
+  return useQuery<UpcomingEvent[]>({
+    queryKey: ["upcoming-events", params],
+      queryFn: async (): Promise<UpcomingEvent[]> => {
+        try {
+          const response = await AxiosInstance.get<UpcomingEvent[]>('/dashboard/upcoming-events', { params });
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data as any;
+          import('antd').then(({ notification }) => {
+            notification.error({ message: 'API Error', description: msg?.error || msg?.message, placement: 'topRight' });
+          });
+        }
+        throw error;
+      }
+    },
+    enabled: !!params,
+  });
+};
