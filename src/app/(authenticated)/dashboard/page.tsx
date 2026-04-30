@@ -770,7 +770,7 @@ const DashboardPage = () => {
         {/* </div> */}
       </div>
       {/* Top grid: Event Overview + right side stats */}
-      <div className="grid grid-cols-12 gap-6 items-stretch h-full min-h-[340px]">
+      <div className="grid grid-cols-12 gap-6 items-stretch h-full min-h-[300px]">
         {/* Event Overview */}
         <div
           className="col-span-12 xl:col-span-6 p-0! overflow-hidden rounded-3xl bg-white"
@@ -849,7 +849,7 @@ const DashboardPage = () => {
                       <Spin size="large" />
                     </div>
                   ) : (
-                      <div className="max-h-[300px] overflow-auto no-scrollbar">
+                      <div className="max-h-[260px] overflow-auto no-scrollbar">
                         {/* Typed columns for upcoming events */}
                         {/** Columns typed to `UpcomingEvent` so no `any` needed */}
                         {(() => {
@@ -1055,7 +1055,7 @@ const DashboardPage = () => {
                     No pending payments.
                   </div>
                 ) : (
-                  <ul className="space-y-2 no-scrollbar text-xs flex-1 max-h-[300px] overflow-auto">
+                  <ul className="space-y-2 no-scrollbar text-xs flex-1 max-h-[320px] overflow-auto">
                     {dashboard.pendingPayments.map((p) => (
                       <li
                         key={p.id}
