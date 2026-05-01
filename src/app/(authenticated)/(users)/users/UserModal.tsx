@@ -115,6 +115,7 @@ const UserModal = ({
             <Select
               placeholder="Select Role"
               disabled={isLoading}
+              className="bg-[#f1f1f3]!"
               loading={isLoading}
               value={formik.values.role_id || undefined}
               onChange={(value) => formik.setFieldValue("role_id", value)}
@@ -128,6 +129,7 @@ const UserModal = ({
             <label>Send Email</label>
             <Select
               value={formik.values.sendEmail}
+              className="bg-[#f1f1f3]!"
               onChange={(value) => formik.setFieldValue("sendEmail", value)}
               options={[
                 { label: "Yes", value: true },

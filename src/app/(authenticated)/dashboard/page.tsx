@@ -1,5 +1,4 @@
 "use client";
-import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import Image from "next/image";
 import dynamic from "next/dynamic";
@@ -483,10 +482,10 @@ const DashboardPage = () => {
   const router = useRouter();
 
   const [showStat, setShowStat] = useState({
-    eventStat: true,
-    remainingStat: true,
-    profitStat: true,
-    turnOverStat: true,
+    eventStat: false,
+    remainingStat: false,
+    profitStat: false,
+    turnOverStat: false,
   });
 
   const [year, setYear] = useState<number>(new Date().getFullYear());
@@ -776,30 +775,9 @@ const DashboardPage = () => {
                 Active
               </span>
             </div>
-            {/* <div>
-              <select className="text-sm font-medium bg-transparent text-gray-400 pr-6">
-                <option value="monthly" className="text-black">
-                  Monthly
-                </option>
-                <option value="yearly" className="text-black">
-                  Yearly
-                </option>
-              </select>
-            </div> */}
           </div>
 
           <div className="p-4">
-            {/* <div className="relative mb-4">
-              <input
-                type="text"
-                placeholder="Search event"
-                className="w-full rounded-full border border-gray-300 px-4 h-10 text-sm bg-white"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
-              <span className="sr-only">{filteredEvents.length} results</span>
-            </div> */}
-            {/* <h3 className="text-sm">Event Overview</h3> */}
             <div className="overflow-hidden rounded-2xl border border-gray-50 p-3">
               <div className="grid grid-cols-12 items-center gap-4">
                 <div className="col-span-12">
@@ -1220,13 +1198,6 @@ const DashboardPage = () => {
               ))
             )}
           </ul>
-          <Button
-            type="primary"
-            className="h-10! mt-auto w-full"
-            style={{ background: colorPrimaryGradient }}
-          >
-            View All Activities
-          </Button>
         </Card>
       </div>
     </div>
