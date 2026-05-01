@@ -353,7 +353,7 @@ const FileUploadPage = () => {
           <div>
             <label className="mb-1 block text-xs">Event</label>
             <Select
-              className="w-full"
+              className="w-full bg-secondary-100!"
               placeholder="Select event"
               options={eventDropdownOptions}
               allowClear

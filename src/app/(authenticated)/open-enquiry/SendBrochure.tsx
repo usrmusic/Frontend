@@ -11,7 +11,12 @@ interface BrochureProps {
   onCancel: VoidFunction;
   eventId: string;
   sendMode: "brochure" | "quote" | "invoice";
-  template?: { id?: string; email_name?: string; subject?: string; body?: string } | null;
+  template?: {
+    id?: string;
+    email_name?: string;
+    subject?: string;
+    body?: string;
+  } | null;
   companies?: Array<{ id: string | number; name: string }> | null;
 }
 
@@ -40,10 +45,14 @@ const SendBrochureModal = ({
     enableReinitialize: true,
     initialValues: {
       event_id: Number(eventId),
-      company_name_id: (companiesList && companiesList.length ? String(companiesList[0].id) : ""),
+      company_name_id:
+        companiesList && companiesList.length
+          ? String(companiesList[0].id)
+          : "",
       subject: template?.subject ?? "Brochure",
       body:
-        template?.body ?? `Thank you very much for your interest in booking us for your event.\n\nPlease find attached a copy of our brochure. This will give you lots of inspiration, creating the perfect look for your big day! \n\nPlease get in touch after browsing the brochure to arrange a more in depth chat. We believe face to face or even a quick chat on the phone allows better understanding of your event so that we can tailor the package based on your requirements and budget! :)\n\nThank you once again,`,
+        template?.body ??
+        `Thank you very much for your interest in booking us for your event.\n\nPlease find attached a copy of our brochure. This will give you lots of inspiration, creating the perfect look for your big day! \n\nPlease get in touch after browsing the brochure to arrange a more in depth chat. We believe face to face or even a quick chat on the phone allows better understanding of your event so that we can tailor the package based on your requirements and budget! :)\n\nThank you once again,`,
     },
     onSubmit: async (values, { setSubmitting }) => {
       setSubmitting(true);
@@ -52,7 +61,9 @@ const SendBrochureModal = ({
           event_id: Number(values.event_id) || Number(eventId),
           subject: values.subject,
           body: values.body,
-          company_name_id: Number(values.company_name_id) || Number((companiesList[0] && companiesList[0].id) || 0),
+          company_name_id:
+            Number(values.company_name_id) ||
+            Number((companiesList[0] && companiesList[0].id) || 0),
         } as any;
 
         // Prefix subject with returned email_name when available
@@ -87,9 +98,12 @@ const SendBrochureModal = ({
             Company Name
           </label>
           <Select
-            className="w-full"
+            className="w-full bg-secondary-100!"
             placeholder="Select company"
-            options={(companiesList || []).map((opt: any) => ({ label: opt.name, value: String(opt.id) }))}
+            options={(companiesList || []).map((opt: any) => ({
+              label: opt.name,
+              value: String(opt.id),
+            }))}
             value={String(formik.values.company_name_id) || undefined}
             onChange={(value) => formik.setFieldValue("company_name_id", value)}
           />
@@ -119,7 +133,11 @@ const SendBrochureModal = ({
           <Button htmlType="button" onClick={onCancel}>
             Cancel
           </Button>
-          <Button htmlType="submit" type="primary" loading={formik.isSubmitting}>
+          <Button
+            htmlType="submit"
+            type="primary"
+            loading={formik.isSubmitting}
+          >
             Send Email
           </Button>
         </div>
