@@ -33,7 +33,10 @@ const CompletedEventsPage = () => {
   const [sendMode, setSendMode] = useState<"quote" | "invoice">("quote");
   const [buttonLoading, setButtonLoading] = useState<string | null>(null);
   const [modalTemplate, setModalTemplate] = useState<null>(null);
-  const [modalCompanies, setModalCompanies] = useState<Array<{ id: string | number; name: string }> | null>(null);
+  const [modalCompanies, setModalCompanies] = useState<Array<{
+    id: string | number;
+    name: string;
+  }> | null>(null);
   const router = useRouter();
   const debouncedSearch = useDebounce(search, 1000);
 
@@ -53,7 +56,8 @@ const CompletedEventsPage = () => {
     search: debouncedSearch,
     paymentStatus: paymentStatus || undefined,
   });
-  const { mutate: downloadInvoiceMutation, isPending: isDownloadingInvoice } = useDownloadInvoice();
+  const { mutate: downloadInvoiceMutation, isPending: isDownloadingInvoice } =
+    useDownloadInvoice();
   const rowSelection: TableProps["rowSelection"] = {
     type: "radio",
     selectedRowKeys,
@@ -63,7 +67,10 @@ const CompletedEventsPage = () => {
     },
   };
 
-  const selectedId = selectedRowKeys && selectedRowKeys.length ? String(selectedRowKeys[0]) : null;
+  const selectedId =
+    selectedRowKeys && selectedRowKeys.length
+      ? String(selectedRowKeys[0])
+      : null;
 
   const columns: TableColumnsType = [
     {
@@ -118,7 +125,12 @@ const CompletedEventsPage = () => {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button
-              onClick={() => selectedId && router.push(`/confirmed-events?search=${selectedId}&from=completed`)}
+              onClick={() =>
+                selectedId &&
+                router.push(
+                  `/confirmed-events?search=${selectedId}&from=completed`,
+                )
+              }
               disabled={!selectedId}
             >
               View
@@ -129,7 +141,10 @@ const CompletedEventsPage = () => {
                 if (!selectedId) return;
                 setButtonLoading("quote");
                 try {
-                  const data = await fetchEmailTemplate(String(selectedId), "SEND QUOTE-CONFIRMED");
+                  const data = await fetchEmailTemplate(
+                    String(selectedId),
+                    "SEND QUOTE-CONFIRMED",
+                  );
                   setModalTemplate(data?.email ?? null);
                   setModalCompanies(data?.companies ?? null);
                   setSendMode("quote");
@@ -151,7 +166,10 @@ const CompletedEventsPage = () => {
                 if (!selectedId) return;
                 setButtonLoading("invoice");
                 try {
-                  const data = await fetchEmailTemplate(String(selectedId), "SEND INVOICE-OPEN");
+                  const data = await fetchEmailTemplate(
+                    String(selectedId),
+                    "SEND INVOICE-OPEN",
+                  );
                   setModalTemplate(data?.email ?? null);
                   setModalCompanies(data?.companies ?? null);
                   setSendMode("invoice");
@@ -169,7 +187,10 @@ const CompletedEventsPage = () => {
             </Button>
             <Button
               type="default"
-              onClick={() => selectedId && downloadInvoiceMutation({ id: String(selectedId) })}
+              onClick={() =>
+                selectedId &&
+                downloadInvoiceMutation({ id: String(selectedId) })
+              }
               loading={isDownloadingInvoice}
               disabled={!selectedId}
             >
@@ -199,9 +220,8 @@ const CompletedEventsPage = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            
           </div>
-                    <div className="max-w-full">
+          <div className="max-w-full">
             <Select
               allowClear
               placeholder="Payment status"
@@ -213,7 +233,9 @@ const CompletedEventsPage = () => {
               ]}
               showSearch
               filterOption={(input, option) =>
-                String(option?.label ?? "").toLowerCase().includes(String(input).toLowerCase())
+                String(option?.label ?? "")
+                  .toLowerCase()
+                  .includes(String(input).toLowerCase())
               }
               value={paymentStatus || undefined}
               onChange={(val) => {

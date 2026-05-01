@@ -38,7 +38,7 @@ const Input = ({
         type={type}
         disabled={disabled}
         className={twMerge(
-          "h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none",
+          "h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none bg-[#f1f1f3]",
           disabled && "cursor-not-allowed bg-gray-100 opacity-70",
           error && "border-red-500 focus:border-red-500 focus:ring-red-500",
           className,
