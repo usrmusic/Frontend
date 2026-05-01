@@ -477,7 +477,7 @@ const OpenEnquiryPage = () => {
                     name="deposit_amount"
                     type="number"
                     placeholder="Amount"
-                    className="w-full text-xs"
+                    className="w-full text-xs bg-white!"
                     value={formik.values.deposit_amount}
                     onChange={formik.handleChange}
                   />

@@ -525,7 +525,7 @@ const NewEnquiryPage = () => {
                             <div className="flex-1">
                               <label className="mb-1 block text-xs">Name</label>
                               <select
-                                className="h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none"
+                                className="h-10 w-full rounded-xl border bg-secondary-100 border-gray-200 px-3 text-sm outline-none"
                                 value={clientId != null ? String(clientId) : String(values.name ?? "")}
                                 onChange={(e) => {
                                   const selectedId = e.target.value;
@@ -666,7 +666,7 @@ const NewEnquiryPage = () => {
                                       Venue
                                     </label>
                                     <select
-                                      className="h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none"
+                                      className="h-10 w-full rounded-xl border bg-secondary-100 border-gray-200 px-3 text-sm outline-none"
                                       value={String(fieldProps.field.value ?? "")}
                                       onChange={(e) => {
                                         const selectedVenue = e.target.value;
@@ -774,7 +774,7 @@ const NewEnquiryPage = () => {
                                 <div className="space-y-1">
                                   <label className="mb-1 block text-xs">Select DJ</label>
                                   <select
-                                    className="h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none"
+                                    className="h-10 w-full rounded-xl border bg-secondary-100 border-gray-200 px-3 text-sm outline-none"
                                     value={values.dj?.id}
                                     onChange={(e) => {
                                       const value = Number(e.target.value);

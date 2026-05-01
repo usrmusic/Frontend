@@ -50,7 +50,7 @@ button:hover {
 
 input,
 textarea {
-  background-color: #F1F1F3;
+  background-color: var(--color-secondary-100);
 }
 
 .themeH1 {
