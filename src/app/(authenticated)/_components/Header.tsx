@@ -34,7 +34,6 @@ const Header = () => {
   const dropdownParams = debounced.trim().length > 1 ? { search: debounced.trim() } : undefined;
   const { data: dropdownItems, isFetching: dropdownFetching } = useDashboardDropdown(dropdownParams);
 
-  console.log("Dropdown items:", dropdownItems, "with search:", debounced);
   const [user, setUser] = useState<{ name?: string; profile_photo?: string } | null>(null);
   useEffect(() => {
     let mounted = true;

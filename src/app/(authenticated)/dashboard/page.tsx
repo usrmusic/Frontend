@@ -21,8 +21,10 @@ import {
   endOfYear,
 } from "date-fns";
 import { enGB } from "date-fns/locale/en-GB";
-import { useDashboard } from "@/src/api/dasboard";
-import { Spin, Skeleton } from "antd";
+import { useDashboard, useUpcomingEvents, UpcomingEvent } from "@/src/api/dasboard";
+import { Spin, Skeleton, Table, Input } from "antd";
+import type { ColumnsType } from "antd/es/table";
+import { useDebounce } from "@/src/hooks/useDebounce";
 import { Eye, EyeOff } from "lucide-react";
 
 // Sidebar options for calendar (must be outside any component)
@@ -518,6 +520,13 @@ const DashboardPage = () => {
     year,
   });
 
+  // Upcoming events search + data
+  const [upcomingSearch, setUpcomingSearch] = useState("");
+  const debouncedUpcoming = useDebounce(upcomingSearch, 500);
+  const { data: upcomingData, isLoading: upcomingLoading } = useUpcomingEvents(
+    debouncedUpcoming.trim().length > 0 ? { search: debouncedUpcoming.trim() } : {}
+  );
+
   const monthlyCounts = dashboard?.monthly?.counts ?? [];
   const monthlyLabels = dashboard?.monthly?.labels ?? [];
   const countsChange =
@@ -760,7 +769,7 @@ const DashboardPage = () => {
         {/* </div> */}
       </div>
       {/* Top grid: Event Overview + right side stats */}
-      <div className="grid grid-cols-12 gap-6 items-stretch h-full min-h-[340px]">
+      <div className="grid grid-cols-12 gap-6 items-stretch h-full min-h-[300px]">
         {/* Event Overview */}
         <div
           className="col-span-12 xl:col-span-6 p-0! overflow-hidden rounded-3xl bg-white"
@@ -771,9 +780,18 @@ const DashboardPage = () => {
               <h4 className="font-poppins font-medium text-black">
                 Event Overview
               </h4>
-              <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+              {/* <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
                 Active
-              </span>
+              </span> */}
+            </div>
+            <div className="w-72">
+              <Input
+                placeholder="Search upcoming events"
+                allowClear
+                onChange={(e) => setUpcomingSearch(e.target.value)}
+                value={upcomingSearch}
+                size="middle"
+              />
             </div>
           </div>
 
@@ -782,7 +800,7 @@ const DashboardPage = () => {
               <div className="grid grid-cols-12 items-center gap-4">
                 <div className="col-span-12">
                   <div className="flex flex-row gap-3">
-                    <div className="rounded-xl bg-white p-4 shadow-sm flex-1">
+                    {/* <div className="rounded-xl bg-white p-4 shadow-sm flex-1">
                       <p className="text-xs text-gray-400">Total Events</p>
                       <p className="text-lg font-semibold">
                         {dashboardLoading
@@ -809,42 +827,52 @@ const DashboardPage = () => {
                             : `${completedPercent}%`}
                         </span>
                       </p>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
                 <div className="col-span-12">
-                  {dashboardLoading ? (
+                  {/* Replace chart with Upcoming Events table. Show spinner when dashboard or upcoming events are loading. */}
+                  { (dashboardLoading || upcomingLoading) ? (
                     <div className="h-44 flex items-center justify-center">
                       <Spin size="large" />
                     </div>
-                  ) : isMounted ? (
-                    <ApexChart
-                      key={eventOverviewKey}
-                      options={{
-                        ...chartOptions,
-                        xaxis: {
-                          ...chartOptions.xaxis,
-                          categories: monthlyLabels.length
-                            ? monthlyLabels
-                            : chartOptions.xaxis?.categories,
-                        },
-                      }}
-                      series={
-                        dashboard
-                          ? [
-                              { name: "Counts", data: monthlyCounts },
-                              {
-                                name: "Profits",
-                                data: dashboard.monthly.profits ?? [],
-                              },
-                            ]
-                          : chartSeries
-                      }
-                      type="area"
-                      height={180}
-                    />
                   ) : (
-                    <div style={{ height: 180 }} />
+                      <div className="max-h-[260px] overflow-auto no-scrollbar">
+                        {/* Typed columns for upcoming events */}
+                        {/** Columns typed to `UpcomingEvent` so no `any` needed */}
+                        {(() => {
+                          const upcomingColumns: ColumnsType<UpcomingEvent> = [
+                            {
+                              title: "Date",
+                              key: "date",
+                              render: (_text: unknown, record: UpcomingEvent) => {
+                                const d = record?.date || (record as any)?.event_date || (record as any)?.eventDate;
+                                return d ? new Date(d).toLocaleDateString("en-GB") : "";
+                              },
+                            },
+                            {
+                              title: "Venue",
+                              key: "venue",
+                              render: (_text: unknown, record: UpcomingEvent) => record?.venue_name || (record as any)?.venue || "",
+                            },
+                            {
+                              title: "DJ Name",
+                              key: "dj_name",
+                              render: (_text: unknown, record: UpcomingEvent) => record?.dj_name || (record as any)?.dj?.name || "",
+                            },
+                          ];
+
+                          return (
+                            <Table<UpcomingEvent>
+                              size="small"
+                              pagination={false}
+                              dataSource={upcomingData || []}
+                              rowKey={(r) => r.id}
+                              columns={upcomingColumns}
+                            />
+                          );
+                        })()}
+                      </div>
                   )}
                 </div>
               </div>
@@ -1015,7 +1043,7 @@ const DashboardPage = () => {
                     No pending payments.
                   </div>
                 ) : (
-                  <ul className="space-y-2 no-scrollbar text-xs flex-1 max-h-[300px] overflow-auto">
+                  <ul className="space-y-2 no-scrollbar text-xs flex-1 max-h-[320px] overflow-auto">
                     {dashboard.pendingPayments.map((p) => (
                       <li
                         key={p.id}
@@ -1072,11 +1100,17 @@ const DashboardPage = () => {
           <div className="mb-3 flex items-center justify-between">
             <p className="text-base font-semibold text-gray-900">
               Open Enquiry (
-              {dashboardLoading
-                ? "..."
-                : (dashboard?.openEnquiriesCount ??
-                  dashboard?.openEnquiries?.length ??
-                  0)}
+              {dashboardLoading ? (
+                "..."
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => router.push("/open-enquiry")}
+                  className="text-primary underline font-semibold"
+                >
+                  {dashboard?.openEnquiriesCount ?? dashboard?.openEnquiries?.length ?? 0}
+                </button>
+              )}
               )
             </p>
           </div>
@@ -1172,7 +1206,7 @@ const DashboardPage = () => {
               </p>
             </div>
           </div>
-          <ul className="mb-4 no-scrollbar space-y-2 text-xs max-h-[250px] overflow-auto">
+          <ul className="mb-4 no-scrollbar space-y-2 text-xs max-h-[280px] overflow-auto">
             {dashboardLoading ? (
               <li className="flex items-center">
                 <Skeleton active paragraph={false} />

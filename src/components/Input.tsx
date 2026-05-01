@@ -1,4 +1,5 @@
-import React, { Ref, ReactNode } from "react";
+import React, { Ref, ReactNode, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 export interface InputProps extends Omit<
@@ -7,10 +8,11 @@ export interface InputProps extends Omit<
 > {
   ref?: Ref<HTMLInputElement>;
   label?: string;
-  labelIcon?: ReactNode; // Added labelIcon prop with ReactNode type
+  labelIcon?: ReactNode;
   error?: string;
   containerClassName?: string;
   type?: string;
+  showToggle?: boolean;
 }
 
 const Input = ({
@@ -22,8 +24,11 @@ const Input = ({
   className,
   containerClassName,
   disabled,
+  showToggle,
   ...props
 }: InputProps) => {
+  const [show, setShow] = useState(false);
+
   return (
     <div className={twMerge("w-full", containerClassName)}>
       {label && (
@@ -33,18 +38,32 @@ const Input = ({
         </label>
       )}
 
-      <input
-        ref={ref}
-        type={type}
-        disabled={disabled}
-        className={twMerge(
-          "h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none bg-secondary-100",
-          disabled && "cursor-not-allowed bg-gray-100 opacity-70",
-          error && "border-red-500 focus:border-red-500 focus:ring-red-500",
-          className,
+      <div className="relative">
+        <input
+          ref={ref}
+          type={type === "password" && showToggle ? (show ? "text" : "password") : type}
+          disabled={disabled}
+          className={twMerge(
+            "h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none",
+            type === "password" && showToggle ? "pr-10" : "",
+            disabled && "cursor-not-allowed bg-gray-100 opacity-70",
+            error && "border-red-500 focus:border-red-500 focus:ring-red-500",
+            className,
+          )}
+          {...props}
+        />
+
+        {type === "password" && showToggle && (
+          <button
+            type="button"
+            onClick={() => setShow((s) => !s)}
+            aria-label={show ? "Hide password" : "Show password"}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-600"
+          >
+            {show ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
         )}
-        {...props}
-      />
+      </div>
 
       {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
     </div>
