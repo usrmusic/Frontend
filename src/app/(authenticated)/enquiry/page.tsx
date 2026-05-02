@@ -126,7 +126,8 @@ const NewEnquiryPage = () => {
   const formikRef = useRef<FormikProps<EnquiryFormValues>>(null);
   const [notesModalOpen, setNotesModalOpen] = useState(false);
   const [notesItem, setNotesItem] = useState<ExtraItem | null>(null);
-  const [showRigListCard, setShowRigListCard] = useState(false);
+  type CardsOpen = { rigList: boolean; startingPackage: boolean; extras: boolean };
+  const [cardsOpen, setCardsOpen] = useState<CardsOpen>({ rigList: false, startingPackage: true, extras: true });
   const searchParams = useSearchParams();
   const router = useRouter();
   const editId = searchParams?.get("select") ?? null;
@@ -337,6 +338,55 @@ const NewEnquiryPage = () => {
     return { rigList: list, totalPrice: total };
   }, [packageData, selectedPackageEquipments, selectedExtras]);
 
+  // Parse various human-friendly time inputs into 24h `HH:mm` format.
+  const parseTimeTo24 = (input?: string) => {
+    if (!input) return "";
+    let v = String(input).trim().toLowerCase();
+    // Normalize common separators
+    v = v.replace(/\s+/g, "");
+
+    // am/pm formats like 7am, 7:30pm
+    const ampmMatch = v.match(/^(\d{1,2})(?::(\d{2}))?(am|pm)$/i);
+    if (ampmMatch) {
+      let hh = Number(ampmMatch[1]);
+      const mm = ampmMatch[2] ? Number(ampmMatch[2]) : 0;
+      const ampm = ampmMatch[3].toLowerCase();
+      if (ampm === "pm" && hh < 12) hh += 12;
+      if (ampm === "am" && hh === 12) hh = 0;
+      if (hh >= 0 && hh < 24 && mm >= 0 && mm < 60) {
+        return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+      }
+    }
+
+    // 24-hour formats like 14:30 or 7:30
+    const hmMatch = v.match(/^(\d{1,2}):(\d{2})$/);
+    if (hmMatch) {
+      const hh = Number(hmMatch[1]);
+      const mm = Number(hmMatch[2]);
+      if (hh >= 0 && hh < 24 && mm >= 0 && mm < 60) {
+        return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+      }
+    }
+
+    // Numeric shorthand: 7 -> 07:00, 730 or 0730 -> 07:30, 1430 -> 14:30
+    if (/^\d{1,4}$/.test(v)) {
+      if (v.length <= 2) {
+        const hh = Number(v);
+        if (hh >= 0 && hh < 24) return `${String(hh).padStart(2, "0")}:00`;
+      } else {
+        // split last two digits as minutes
+        const mm = Number(v.slice(-2));
+        const hh = Number(v.slice(0, v.length - 2));
+        if (hh >= 0 && hh < 24 && mm >= 0 && mm < 60) {
+          return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+        }
+      }
+    }
+
+    // If nothing matched, return original trimmed value (browser/timepicker will ignore invalids)
+    return input;
+  };
+
   const initialValues: EnquiryFormValues = {
     name: "",
     address: "",
@@ -418,14 +468,14 @@ const NewEnquiryPage = () => {
 
           const guestsValue = values.no_of_guests === "" || values.no_of_guests == null ? null : String(values.no_of_guests);
 
-          const payload = {
+            const payload = {
             name: clientName,
             email: values.email,
             contact_number: values.number,
             address: values.address,
             event_date: eventDate,
-            start_time: values.startTime,
-            end_time: values.endTime,
+            start_time: parseTimeTo24(values.startTime),
+            end_time: parseTimeTo24(values.endTime),
             deposit_amount: Number(values.depositAmount) || 0,
             venue_id: values.venue && String(values.venue).match(/^\d+$/) ? Number(values.venue) : undefined,
             new_venue_name: values.venue && !String(values.venue).match(/^\d+$/) ? String(values.venue) : "",
@@ -545,7 +595,7 @@ const NewEnquiryPage = () => {
                           )}
                           <Button
                             type="primary"
-                            className="w-[90px]! h-10! text-xs!"
+                            className="w-[150px]! h-10! text-xs!"
                             icon={<PlusIcon size={14} />}
                               onClick={() => {
                               setShowNameInput((v) => !v);
@@ -571,7 +621,7 @@ const NewEnquiryPage = () => {
                               }
                             }}
                           >
-                            {showNameInput ? "Cancel" : "Add New"}
+                            {showNameInput ? "Select Client" : "Add New Client"}
                           </Button>
                         </div>
                         <Field name="address">
@@ -650,7 +700,7 @@ const NewEnquiryPage = () => {
                           {(fieldProps: FieldProps) => (
                             <div className="space-y-1">
                               <div
-                                className={`flex gap-2 ${showVenueInput ? "items-center" : "items-end"}`}
+                                className={`flex gap-2 items-end`}
                               >
                                 {showVenueInput ? (
                                     <Input
@@ -732,9 +782,18 @@ const NewEnquiryPage = () => {
                                 <Input
                                   {...fieldProps.field}
                                   label="End Time"
-                                  type="time"
+                                  type="text"
+                                  placeholder="e.g. 7am, 7:30pm or 19:30"
                                   error={touched.endTime ? (errors.endTime as string | undefined) : undefined}
                                   required
+                                  value={fieldProps.field.value}
+                                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                    setFieldValue("endTime", e.target.value);
+                                  }}
+                                  onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
+                                    const parsed = parseTimeTo24(e.target.value);
+                                    setFieldValue("endTime", parsed);
+                                  }}
                                 />
                               </div>
                             )}
@@ -747,9 +806,18 @@ const NewEnquiryPage = () => {
                                 <Input
                                   {...fieldProps.field}
                                   label="Start Time"
-                                  type="time"
+                                  type="text"
+                                  placeholder="e.g. 7am, 7:30pm or 07:00"
                                   error={touched.startTime ? (errors.startTime as string | undefined) : undefined}
                                   required
+                                  value={fieldProps.field.value}
+                                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                    setFieldValue("startTime", e.target.value);
+                                  }}
+                                  onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
+                                    const parsed = parseTimeTo24(e.target.value);
+                                    setFieldValue("startTime", parsed);
+                                  }}
                                 />
                               </div>
                             )}
@@ -841,9 +909,27 @@ const NewEnquiryPage = () => {
                 <Card variant="white" className="p-0 overflow-hidden">
                   <div className="flex items-center justify-between bg-primary px-6 py-4 text-white">
                     <h3 className="font-medium">Starting Package</h3>
-                    <p className="text-xs text-white/80">Basics</p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="text-xs"
+                        aria-label={cardsOpen.startingPackage ? "Hide starting package" : "Show starting package"}
+                        onClick={() => setCardsOpen((s) => ({ ...s, startingPackage: !s.startingPackage }))}
+                      >
+                        {cardsOpen.startingPackage ? <X size={14} /> : <PlusIcon size={14} />}
+                      </button>
+                    </div>
                   </div>
-                  <div className="px-6 py-5">
+                  <div
+                    className={`px-6 text-xs text-gray-700 transition-all duration-300 ease-in-out overflow-hidden`}
+                    style={{
+                      maxHeight: cardsOpen.startingPackage ? 2000 : 0,
+                      paddingTop: cardsOpen.startingPackage ? 20 : 0,
+                      paddingBottom: cardsOpen.startingPackage ? 20 : 0,
+                      opacity: cardsOpen.startingPackage ? 1 : 0,
+                    }}
+                    aria-hidden={!cardsOpen.startingPackage}
+                  >
                     <div className="mb-2 flex items-center justify-between text-[11px] text-gray-500">
                       <span className="w-7/12">Basics</span>
                       <span className="w-1/12 text-center">Unit Price</span>
@@ -893,9 +979,27 @@ const NewEnquiryPage = () => {
                 <Card variant="white" className="p-0 overflow-hidden">
                   <div className="flex items-center justify-between bg-primary px-6 py-4 text-white">
                     <h3 className="font-medium">Extras</h3>
-                    <p className="text-xs text-white/80">Extras</p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="text-xs"
+                        aria-label={cardsOpen.extras ? "Hide extras" : "Show extras"}
+                        onClick={() => setCardsOpen((s) => ({ ...s, extras: !s.extras }))}
+                      >
+                        {cardsOpen.extras ? <X size={14} /> : <PlusIcon size={14} />}
+                      </button>
+                    </div>
                   </div>
-                  <div className="px-6 py-5">
+                  <div
+                    className={`px-6 text-xs text-gray-700 transition-all duration-300 ease-in-out overflow-hidden overflow-y-auto no-scrollbar`}
+                    style={{
+                      maxHeight: cardsOpen.extras ? 2000 : 0,
+                      paddingTop: cardsOpen.extras ? 20 : 0,
+                      paddingBottom: cardsOpen.extras ? 20 : 0,
+                      opacity: cardsOpen.extras ? 1 : 0,
+                    }}
+                    aria-hidden={!cardsOpen.extras}
+                  >
                     <div className="mb-2 flex items-center justify-between text-[11px] text-gray-500">
                       <span className="w-7/12">Extras</span>
                       <span className="w-1/12 text-center">Unit Price</span>
@@ -987,22 +1091,22 @@ const NewEnquiryPage = () => {
                     <button
                       type="button"
                       className="text-xs"
-                      aria-label={showRigListCard ? "Hide rig list" : "Show rig list"}
-                      onClick={() => setShowRigListCard((v) => !v)}
+                      aria-label={cardsOpen.rigList ? "Hide rig list" : "Show rig list"}
+                      onClick={() => setCardsOpen((s) => ({ ...s, rigList: !s.rigList }))}
                     >
-                      {showRigListCard ? <X size={14} /> : <PlusIcon size={14} />}
+                      {cardsOpen.rigList ? <X size={14} /> : <PlusIcon size={14} />}
                     </button>
                   </div>
 
                   <div
                     className={`px-6 text-xs text-gray-700 transition-all duration-300 ease-in-out overflow-hidden`}
                     style={{
-                      maxHeight: showRigListCard ? 600 : 0,
-                      paddingTop: showRigListCard ? 20 : 0,
-                      paddingBottom: showRigListCard ? 20 : 0,
-                      opacity: showRigListCard ? 1 : 0,
+                      maxHeight: cardsOpen.rigList ? 600 : 0,
+                      paddingTop: cardsOpen.rigList ? 20 : 0,
+                      paddingBottom: cardsOpen.rigList ? 20 : 0,
+                      opacity: cardsOpen.rigList ? 1 : 0,
                     }}
-                    aria-hidden={!showRigListCard}
+                    aria-hidden={!cardsOpen.rigList}
                   >
                     <div className="space-y-3">
                       {rigList.length ? (
