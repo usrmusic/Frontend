@@ -15,11 +15,13 @@ export interface PendingPayment {
 interface PendingPaymentsProps {
   payments?: PendingPayment[];
   isLoading?: boolean;
+  scope?: "admin" | "team" | "personal";
 }
 
 export default function PendingPayments({
   payments = [],
   isLoading = false,
+  scope = 'admin',
 }: PendingPaymentsProps) {
   const router = useRouter();
 
@@ -30,10 +32,19 @@ export default function PendingPayments({
       const eventId = payment.id;
       const status = Number(payment.event_status_id);
       let target = "/dashboard";
+      if (scope === 'personal') {
+        // clients can only be redirected to confirmed events (status 2)
+        if (status === 2) {
+          target = "/confirmed-events";
+          router.push(
+            `${target}?search=${encodeURIComponent(String(eventId))}&name=${encodeURIComponent(String(clientName))}`,
+          );
+        }
+        return;
+      }
       if (status === 1) target = "/open-enquiry";
       else if (status === 2) target = "/confirmed-events";
-      else if (status === 3 || status === 4)
-        target = "/completed-events";
+      else if (status === 3 || status === 4) target = "/completed-events";
       router.push(
         `${target}?search=${encodeURIComponent(String(eventId))}&name=${encodeURIComponent(String(clientName))}`,
       );
@@ -59,9 +70,9 @@ export default function PendingPayments({
             {payments.map((p) => (
               <li
                 key={p.id}
-                className="flex items-center justify-between py-2 border-b border-[#636363] cursor-pointer hover:bg-gray-50 transition-colors"
-                title="Double-click to search"
-                onDoubleClick={() => handlePaymentDoubleClick(p)}
+                className={`flex items-center justify-between py-2 border-b border-[#636363] ${scope === 'personal' ? '' : 'cursor-pointer hover:bg-gray-50'} transition-colors`}
+                title={scope === 'personal' ? undefined : 'Double-click to search'}
+                onDoubleClick={() => { if (scope !== 'personal') handlePaymentDoubleClick(p); }}
               >
                 <div>
                   <p>{p.client_name ?? `Client #${p.id}`}</p>

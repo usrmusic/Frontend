@@ -28,7 +28,6 @@ const CompletedEventsPage = () => {
   const [search, setSearch] = useState("");
   const [paymentStatus, setPaymentStatus] = useState<string>("");
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [selectedRows, setSelectedRows] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [sendMode, setSendMode] = useState<"quote" | "invoice">("quote");
   const [buttonLoading, setButtonLoading] = useState<string | null>(null);
@@ -63,7 +62,6 @@ const CompletedEventsPage = () => {
     selectedRowKeys,
     onChange: (keys: React.Key[], rows: any[]) => {
       setSelectedRowKeys(keys.slice(0, 1));
-      setSelectedRows(rows.slice(0, 1));
     },
   };
 
@@ -264,7 +262,6 @@ const CompletedEventsPage = () => {
                 const id = (record as any)?.id;
                 if (id === undefined || id === null) return;
                 setSelectedRowKeys([String(id)]);
-                setSelectedRows([record as any]);
               } catch (err) {
                 // ignore
               }

@@ -12,6 +12,9 @@ export interface UpcomingEventRow {
   venue_name?: string | null;
   dj_name?: string | null;
   dj?: { name?: string | null } | null;
+  event_status_id?: number | null;
+  couple_name?: string | null;
+  client?: { id?: number; name?: string | null } | null;
 }
 
 interface EventOverviewProps {
@@ -31,12 +34,31 @@ export default function EventOverview({
 
   const handleEventRowDoubleClick = (record: UpcomingEventRow) => {
     try {
+      // Prefer venue, then DJ, then couple/client name. Include `name` param for better search.
       const venue = record?.venue_name || record?.venue || "";
       const djName = record?.dj_name || record?.dj?.name || "";
-      const searchQuery = `${djName} ${venue}`.trim();
-      router.push(
-        `/open-enquiry?search=${encodeURIComponent(searchQuery)}`,
-      );
+      // couple_name may be present on event rows; include as label
+      const coupleName = (record as any).couple_name || "";
+      const clientName = (record as any).client?.name || "";
+      // Prefer using the numeric event id when available — the confirmed-events
+      // page expects `search` to be an id string. Fall back to text search when
+      // id is not present.
+      const idValue = typeof record.id === 'number' ? String(record.id) : (record.id ? String(record.id) : null);
+      const searchTerm = idValue || venue || djName || coupleName || clientName || "";
+      const label = coupleName || clientName || djName || venue || "";
+      if (!searchTerm) return;
+      // route based on status text if available, otherwise numeric fallback
+      const statusText = String((record as any).event_status || "").toLowerCase();
+      let target = '/open-enquiry';
+      if (statusText.includes('enquir') || statusText.includes('open')) target = '/open-enquiry';
+      else if (statusText.includes('confirm')) target = '/confirmed-events';
+      else if (statusText.includes('complete')) target = '/completed-events';
+      else {
+        const statusNum = Number((record as any).event_status_id || 0);
+        if (statusNum === 2) target = '/confirmed-events';
+        else if (statusNum === 3 || statusNum === 4) target = '/completed-events';
+      }
+      router.push(`${target}?search=${encodeURIComponent(searchTerm)}&name=${encodeURIComponent(label)}`);
     } catch (e) {
       console.error("Navigation error:", e);
     }

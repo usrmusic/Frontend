@@ -17,6 +17,7 @@ import {
 import { parseISO } from "date-fns";
 import { enGB } from "date-fns/locale/en-GB";
 import { Tooltip } from "antd";
+import { useAuth } from "@/src/hooks/useAuth";
 import { colorPrimaryGradient } from "@/src/config/ThemeConfig";
 
 const sidebarOptions = [
@@ -96,6 +97,7 @@ function CalendarWithSidebar({
 }: {
   events?: CalendarEvent[];
 }) {
+  const { data: auth } = useAuth();
   const router = useRouter();
   const [month, setMonth] = useState<Date>(() => startOfToday());
   const [selected, setSelected] = useState<Date>(() => startOfToday());
@@ -171,6 +173,15 @@ function CalendarWithSidebar({
     setSelected(date);
     lastClickRef.current = { time: now, date: isoDate };
     if (isDoubleClick) {
+      // only navigate to calendar if user has calendar permission
+      const perms = (auth?.permissions || []).map((p) => String(p).toLowerCase());
+      const hasCalendar = perms.includes("calendar") || perms.includes("calendar:view") || perms.includes("access_calendar");
+      if (!hasCalendar) {
+        import("antd").then(({ notification }) => {
+          notification.warning({ message: "Access denied", description: "You don't have permission to view the calendar.", placement: 'topRight' });
+        });
+        return;
+      }
       try {
         router.push(`/calendar?date=${isoDate}`);
       } catch (e) {
@@ -301,6 +312,15 @@ function CalendarWithSidebar({
             setSelected(day);
             lastClickRef.current = { time: now, date: iso };
             if (isDouble) {
+              // only navigate to calendar if user has calendar permission
+              const perms = (auth?.permissions || []).map((p) => String(p).toLowerCase());
+              const hasCalendar = perms.includes("calendar") || perms.includes("calendar:view") || perms.includes("access_calendar");
+              if (!hasCalendar) {
+                import("antd").then(({ notification }) => {
+                  notification.warning({ message: "Access denied", description: "You don't have permission to view the calendar.", placement: 'topRight' });
+                });
+                return;
+              }
               try {
                 router.push(`/calendar?date=${iso}`);
               } catch (err) {

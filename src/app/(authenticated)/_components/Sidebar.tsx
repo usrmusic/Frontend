@@ -156,8 +156,9 @@ const Sidebar = () => {
     },
   ];
 
+  // Dashboard should be visible to all authenticated users
   const standaloneLinks: LinkItem[] = [
-    { href: "/dashboard", icon: <Dashboard />, label: "Dashboard", permission: "dashboard" },
+    { href: "/dashboard", icon: <Dashboard />, label: "Dashboard" },
   ];
 
   const isAllowed = (item: LinkItem) => {
