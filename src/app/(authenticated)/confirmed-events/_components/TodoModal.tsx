@@ -59,7 +59,7 @@ const TodoModal = ({ open, onCancel, eventId }: CompoProps) => {
               Assigned To
             </label>
             <Select
-              className="w-full"
+              className="w-full bg-secondary-100!"
               placeholder="Select User"
               value={formik.values.assigned_to || undefined}
               onChange={(value) =>

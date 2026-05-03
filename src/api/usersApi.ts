@@ -28,8 +28,11 @@ type Client = {
   name: string;
   email: string;
   password: string;
+  password_text: string;
   contact_number: string;
   address: string;
+  status?: string;
+  eventDate?: string;
 };
 
 type Suppliers = {
