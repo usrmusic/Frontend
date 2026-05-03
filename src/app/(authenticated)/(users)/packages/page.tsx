@@ -12,6 +12,7 @@ import { Pencil } from "lucide-react";
 import { useState } from "react";
 import PackageModal from "./PackageModal";
 import EquipmentModal from "./EquipmentModal";
+import { CSVLink } from "react-csv";
 
 const initialParams = {
   page: 1,
@@ -174,13 +175,43 @@ const PackagesPage = () => {
     },
   ];
 
+  const packageCsvHeaders = [
+    { label: "Name", key: "user_name" },
+    { label: "Package Name", key: "package_name" },
+    { label: "Email", key: "user_email" },
+    { label: "Cost Price", key: "cost_price" },
+    { label: "Sell Price", key: "sell_price" },
+  ];
+  const packageCsvData =
+    packagesData?.data.map((row) => ({
+      user_name: row.users?.name,
+      package_name: row.package_name,
+      user_email: row.users?.email,
+      cost_price: row.cost_price,
+      sell_price: row.sell_price,
+    })) ?? [];
+
+  const equipmentCsvHeaders = [
+    { label: "Name", key: "name" },
+    { label: "Quantity", key: "quantity" },
+    { label: "Cost Price", key: "cost_price" },
+    { label: "Sell Price", key: "sell_price" },
+  ];
+  const equipmentCsvData =
+    equipmentDataRes?.data.map((row) => ({
+      name: row.name,
+      quantity: row.quantity,
+      cost_price: row.cost_price,
+      sell_price: row.sell_price,
+    })) ?? [];
+
   return (
     <div className="space-y-4 mt-4">
       {/* Filters Card */}
       <Card variant="green">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex max-w-96.25 items-center gap-2 rounded-lg bg-white px-4 h-10">
+            <div className="flex w-[300px] items-center gap-2 rounded-lg bg-white px-4 h-10">
               <MagnifyingGlass w={18} h={18} />
               <input
                 type="text"
@@ -217,6 +248,19 @@ const PackagesPage = () => {
             >
               Remove
             </Button>
+            <CSVLink
+              data={activeTab === "packages" ? packageCsvData : equipmentCsvData}
+              filename={
+                activeTab === "packages" ? "packages.csv" : "equipment.csv"
+              }
+              headers={
+                activeTab === "packages"
+                  ? packageCsvHeaders
+                  : equipmentCsvHeaders
+              }
+            >
+              <Button>Export Data</Button>
+            </CSVLink>
           </div>
         </div>
       </Card>

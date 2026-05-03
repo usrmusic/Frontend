@@ -9,7 +9,7 @@ import {
 import { Checkbox, Modal, Select, message } from "antd";
 import Button from "@/src/components/Button";
 import DataTable from "@/src/components/DataTable";
-import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
+import { BackButton, Export, MagnifyingGlass } from "@/src/components/Icons";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import { TableColumnsType } from "antd";
 import dayjs from "dayjs";
@@ -20,6 +20,7 @@ import { useFormik } from "formik";
 import Input from "@/src/components/Input";
 import { useRigListEventsDropdown } from "@/src/api/dropdown";
 import { EventsDropdownItem } from "@/src/types/types";
+import { CSVLink } from "react-csv";
 
 const initialParams = {
   page: 1,
@@ -152,11 +153,9 @@ const FileUploadPage = () => {
               onClick={async () => {
                 try {
                   const res = await downloadMutation.mutateAsync(upload.id);
-                  const url =
-                    res?.url ||
-                    res?.download_url ||
-                    res;
-                  if (typeof url !== "string") return message.error("No download URL");
+                  const url = res?.url || res?.download_url || res;
+                  if (typeof url !== "string")
+                    return message.error("No download URL");
 
                   const fallbackOpenUrl = () => {
                     const a = document.createElement("a");
@@ -174,10 +173,12 @@ const FileUploadPage = () => {
                       throw new Error("Download failed");
                     }
                     const blob = await response.blob();
-                    const disposition = response.headers.get("content-disposition") || "";
+                    const disposition =
+                      response.headers.get("content-disposition") || "";
                     const filename =
-                      disposition?.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)?.[1]?.replace(/['"]/g, "") ||
-                      upload.file_name;
+                      disposition
+                        ?.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)?.[1]
+                        ?.replace(/['"]/g, "") || upload.file_name;
                     const downloadUrl = window.URL.createObjectURL(blob);
                     const a = document.createElement("a");
                     a.href = downloadUrl;
@@ -186,13 +187,16 @@ const FileUploadPage = () => {
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
-                    setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 10000);
+                    setTimeout(
+                      () => window.URL.revokeObjectURL(downloadUrl),
+                      10000,
+                    );
                   } catch (e) {
+                    message.error((e as string) ?? "Download failed");
                     fallbackOpenUrl();
                   }
                 } catch (e) {
-                  console.error(e);
-                  message.error("Download failed");
+                  message.error((e as string) ?? "Download failed");
                 }
               }}
             >
@@ -233,6 +237,19 @@ const FileUploadPage = () => {
     },
   ];
 
+  const csvHeaders = [
+    { label: "File Name", key: "file_name" },
+    { label: "Type", key: "file_type" },
+    { label: "Upload At", key: "created_at" },
+    { label: "Event", key: "event" },
+  ];
+  const csvData = uploadListData?.data.map((row) => ({
+    file_name: row.file_name,
+    file_type: row.file_type,
+    created_at: dayjs(row.created_at).format("DD-MM-YYYY"),
+    event: row.event,
+  }));
+
   return (
     <div className="mt-4 space-y-4">
       <div className="flex justify-between items-center">
@@ -252,13 +269,19 @@ const FileUploadPage = () => {
           >
             Upload File
           </Button>
-          {/* <Button icon={<Export w={16} h={16} />}>Export Data</Button> */}
+          <CSVLink
+            data={csvData ?? []}
+            filename="file-upload.csv"
+            headers={csvHeaders}
+          >
+            <Button icon={<Export w={16} h={16} />}>Export Data</Button>
+          </CSVLink>
           <Button icon={<MoreVertical size={18} />}></Button>
         </div>
       </div>
       <div className="flex flex-col gap-3">
         <div className="bg-primary rounded-xl overflow-hidden p-4">
-          <div className="flex items-center gap-2 rounded-lg bg-white px-4 py-3">
+          <div className="flex items-center max-w-[300px] gap-2 rounded-lg bg-white px-4 py-3">
             <MagnifyingGlass w={18} h={18} />
             <input
               type="text"

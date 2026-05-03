@@ -77,7 +77,7 @@ export const useDashboard = (params: DashboardQueryParams) => {
         return response.data;
       } catch (error: unknown) {
         if (axios.isAxiosError(error)) {
-          const msg = error.response?.data as any;
+          const msg = error.response?.data;
           import("antd").then(({ notification }) => {
             notification.error({
               message: "API Error",
@@ -106,7 +106,7 @@ export const useDashboardDropdown = (params?: DashboardDropdownParams) => {
         return response.data;
       } catch (error: unknown) {
         if (axios.isAxiosError(error)) {
-          const msg = error.response?.data as any;
+          const msg = error.response?.data;
           import("antd").then(({ notification }) => {
             notification.error({
               message: "API Error",
@@ -145,7 +145,7 @@ export const useUpcomingEvents = (params?: UpcomingEventParams) => {
         return response.data;
       } catch (error: unknown) {
         if (axios.isAxiosError(error)) {
-          const msg = error.response?.data as any;
+          const msg = error.response?.data;
           import('antd').then(({ notification }) => {
             notification.error({ message: 'API Error', description: msg?.error || msg?.message, placement: 'topRight' });
           });
