@@ -785,6 +785,28 @@ export const useDeleteUser = () => {
     },
   });
 };
+export const useResetUserPassword = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number | string) => {
+      try {
+        const response = await AxiosInstance.post(`/user/${id}/reset-password`);
+        return response.data as { ok: boolean; email?: string };
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Reset failed");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+    },
+  });
+};
+
 export const useDeleteCompany = () => {
   const queryClient = useQueryClient();
 

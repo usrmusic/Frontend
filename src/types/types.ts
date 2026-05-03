@@ -73,6 +73,22 @@ export type ConfirmEventPayment = {
   amount: string | number;
   created_at?: string;
   updated_at?: string;
+  // some API responses use alternate field names
+  payment_amount?: string | number | null;
+  payment_date?: string | null;
+  payment_reference?: string | null;
+};
+
+export type ConfirmEventPackage = {
+  id: string | number;
+  event_id?: string | number | null;
+  equipment?: { id?: string | number; name?: string } | null;
+  package_name?: string;
+  name?: string;
+  sell_price?: string | number | null;
+  total_price?: string | number | null;
+  quantity?: number | null;
+  notes?: string | null;
 };
 
 export type ConfirmEventNote = {

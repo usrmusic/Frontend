@@ -1,5 +1,9 @@
 "use client";
-import { useClients, useDeleteClient } from "@/src/api/usersApi";
+import {
+  useClients,
+  useDeleteClient,
+  useResetUserPassword,
+} from "@/src/api/usersApi";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
@@ -8,7 +12,7 @@ import { useDebounce } from "@/src/hooks/useDebounce";
 import { notification, TableColumnsType } from "antd";
 import { useState, Suspense } from "react";
 import ClientModal from "./ClientModal";
-import { Pencil } from "lucide-react";
+import { KeyRound, Pencil } from "lucide-react";
 import { TableRowSelection } from "antd/es/table/interface";
 import AlertModal from "@/src/components/common/AlertModal";
 
@@ -26,6 +30,9 @@ const ClientsPageContent = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [alertModal, setAlertModal] = useState(false);
   const [clientData, setClientData] = useState(null);
+  const [resetTarget, setResetTarget] = useState<
+    { id: number | string; email: string } | null
+  >(null);
 
   const debouncedSearch = useDebounce(search, 1000);
   const { data: apiData, isLoading } = useClients({
@@ -33,6 +40,21 @@ const ClientsPageContent = () => {
     search: debouncedSearch,
   });
   const deleteClient = useDeleteClient();
+  const resetPassword = useResetUserPassword();
+
+  const handleConfirmReset = () => {
+    if (!resetTarget) return;
+    resetPassword.mutate(resetTarget.id, {
+      onSuccess: () => {
+        notification.success({
+          message: "Password reset",
+          description: `A new password has been emailed to ${resetTarget.email}.`,
+          placement: "topRight",
+        });
+        setResetTarget(null);
+      },
+    });
+  };
 
   const handleCancel = () => {
     setClientData(null);
@@ -115,14 +137,26 @@ const ClientsPageContent = () => {
       title: "Action",
       fixed: "right",
       render: (data) => (
-        <button
-          onClick={() => {
-            setModalOpen(true);
-            setClientData(data);
-          }}
-        >
-          <Pencil size={14} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            title="Edit"
+            onClick={() => {
+              setModalOpen(true);
+              setClientData(data);
+            }}
+          >
+            <Pencil size={14} />
+          </button>
+          <button
+            title="Reset password & email"
+            onClick={() => {
+              const r = data as { id: number | string; email: string };
+              setResetTarget({ id: r.id, email: r.email });
+            }}
+          >
+            <KeyRound size={14} />
+          </button>
+        </div>
       ),
     },
   ];
@@ -184,6 +218,16 @@ const ClientsPageContent = () => {
           handleCancel={() => setAlertModal(false)}
           title="Delete Client"
           text="Are you sure you want to delete client(s)?"
+        />
+      )}
+      {resetTarget && (
+        <AlertModal
+          loading={resetPassword.isPending}
+          onYes={handleConfirmReset}
+          open={!!resetTarget}
+          handleCancel={() => setResetTarget(null)}
+          title="Reset password"
+          text={`This will generate a new password for ${resetTarget.email} and email it to them. Continue?`}
         />
       )}
     </div>

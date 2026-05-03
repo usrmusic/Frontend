@@ -383,6 +383,39 @@ export const useConfirmEvent = () => {
   });
 };
 
+export const useAddConfirmPayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: { payment_method_id?: number; amount: number; date: string; notes?: string };
+    }) => {
+      try {
+        const response = await AxiosInstance.post(
+          `/confirm-event/payment?id=${id}`,
+          payload,
+        );
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "API Error");
+        } else {
+          toast.error("Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ["confirm-event", id] });
+      toast.success("Payment added successfully");
+    },
+  });
+};
+
 export const useGetTodos = (eventId: number = 423) => {
   return useQuery({
     queryKey: ["todos-list", eventId],
@@ -461,6 +494,77 @@ export const useDeleteTodo = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["todos-list"] });
+    },
+  });
+};
+
+export const useSendConfirmInvoice = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: {
+        subject: string;
+        body: string;
+        company_name_id?: number;
+        email?: string;
+      };
+    }) => {
+      try {
+        const response = await AxiosInstance.post(
+          `/confirm-event/send-invoice?id=${id}`,
+          payload,
+        );
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Failed to send invoice");
+        } else {
+          toast.error("Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ["confirm-event", id] });
+      toast.success("Invoice sent successfully");
+    },
+  });
+};
+
+export const useRefundConfirmEvent = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: { refund_amount: number };
+    }) => {
+      try {
+        const response = await AxiosInstance.post(
+          `/confirm-event/refund?id=${id}`,
+          payload,
+        );
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Failed to process refund");
+        } else {
+          toast.error("Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ["confirm-event", id] });
+      toast.success("Refund processed successfully");
     },
   });
 };

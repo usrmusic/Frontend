@@ -20,18 +20,35 @@ import { RiFileListLine } from "react-icons/ri";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { deleteCookie } from "cookies-next";
-import { useEffect, useState, type MouseEvent } from "react";
+import { useState, type MouseEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import AxiosInstance from "@/src/lib/axios";
-import { extractUser } from "@/src/lib/user";
+import { useQueryClient } from "@tanstack/react-query";
 import Avatar from "@/src/components/common/Avatar";
+import { useAuth } from "@/src/hooks/useAuth";
+
+// Sidebar visibility maps to the same permissions used by checkPermission()
+// on the Express backend, which mirror the @hasrole/can: gates from the
+// Laravel reference app. Items the user lacks permission for are not rendered.
+type LinkItem = {
+  href: string;
+  icon: ReactNode;
+  label: string;
+  permission?: string;
+  permissionAny?: string[];
+};
+
+type Group = {
+  key: string;
+  label: string;
+  icon: ReactNode;
+  children: LinkItem[];
+};
 
 const Sidebar = () => {
   const pathname = usePathname();
-  const [user, setUser] = useState<{
-    name?: string;
-    profile_photo?: string;
-  } | null>(null);
+  const queryClient = useQueryClient();
+  const { data: authUser, isLoading } = useAuth();
+
   const [tooltip, setTooltip] = useState<{
     label: string;
     x: number;
@@ -43,6 +60,7 @@ const Sidebar = () => {
     y: 0,
     visible: false,
   });
+
   const [expanded, setExpanded] = useState<boolean>(() => {
     try {
       const raw =
@@ -70,24 +88,6 @@ const Sidebar = () => {
     }
   };
 
-  useEffect(() => {
-    let mounted = true;
-    async function fetchUser() {
-      try {
-        const resp = await AxiosInstance.get<unknown>("/user");
-        const raw = resp?.data as unknown;
-        const parsed = extractUser(raw);
-        if (mounted && parsed) setUser(parsed);
-      } catch {
-        // ignore
-      }
-    }
-    fetchUser();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
   const showTooltip = (event: MouseEvent<HTMLElement>, label: string) => {
     if (expanded) return;
     const rect = event.currentTarget.getBoundingClientRect();
@@ -103,52 +103,85 @@ const Sidebar = () => {
     setTooltip((prev) => ({ ...prev, visible: false }));
   };
 
-  const links = [
-    { href: "/dashboard", icon: <Dashboard />, label: "Dashboard" },
-    { href: "/enquiry", icon: <Enquiry />, label: "Enquiry" },
-    { href: "/open-enquiry", icon: <MailOpen />, label: "Open Enquiry" },
-    { href: "/confirmed-events", icon: <Reports />, label: "Confirmed Events" },
+  // Permission checking functions
+  const can = (permission: string): boolean => {
+    if (!authUser?.permissions) return false;
+    return authUser.permissions.includes(permission);
+  };
+
+  const canAny = (permissions: string[]): boolean => {
+    if (!authUser?.permissions) return false;
+    return permissions.some((p) => authUser.permissions?.includes(p));
+  };
+
+  const groups: Group[] = [
     {
-      href: "/completed-events",
-      icon: <TbReportSearch size={20} />,
-      label: "Completed Events",
-    },
-    { href: "/calendar", icon: <Calendar />, label: "Calendar" },
-    {
-      href: "/suppliers-report",
-      icon: <TbReportMedical size={20} />,
-      label: "Suppliers Report",
-    },
-    {
-      href: "/admin-report",
-      icon: <TbReportAnalytics size={20} />,
-      label: "Admin Report",
-    },
-    { href: "/users?title=Users", icon: <Contacts />, label: "Users" },
-    {
-      href: "/downloads",
-      icon: <TbFileDownload size={20} />,
-      label: "Downloads",
+      key: "enquiries",
+      label: "Enquiries",
+      icon: <Enquiry />,
+      children: [
+        { href: "/enquiry", icon: <Enquiry />, label: "Enquiry", permission: "new enquiry" },
+        { href: "/open-enquiry", icon: <MailOpen />, label: "Open Enquiry", permission: "open enquiry" },
+        { href: "/confirmed-events", icon: <Reports />, label: "Confirmed Events", permission: "confirm event" },
+        { href: "/completed-events", icon: <TbReportSearch size={20} />, label: "Completed Events", permission: "complete event" },
+      ],
     },
     {
-      href: "/file-upload",
-      icon: <TbFileUpload size={20} />,
-      label: "File Upload",
+      key: "files",
+      label: "Files",
+      icon: <RiFileListLine size={18} />,
+      children: [
+        { href: "/file-upload", icon: <TbFileUpload size={20} />, label: "File Upload", permission: "file upload" },
+        { href: "/downloads", icon: <TbFileDownload size={20} />, label: "Downloads", permission: "downloads" },
+      ],
     },
     {
-      href: "/rig-list",
-      icon: <RiFileListLine size={20} />,
-      label: "Rig List",
+      key: "reports",
+      label: "Reports",
+      icon: <Reports />,
+      children: [
+        { href: "/suppliers-report", icon: <TbReportMedical size={20} />, label: "Suppliers Report", permission: "supplier reporting" },
+        { href: "/admin-report", icon: <TbReportAnalytics size={20} />, label: "Admin Report", permission: "admin reporting" },
+      ],
     },
     {
-      href: "/login",
-      icon: <Logout />,
-      label: "Logout",
-      onClick: () => {
-        deleteCookie("token");
-      },
+      key: "extras",
+      label: "Extras",
+      icon: <RiFileListLine size={18} />,
+      children: [
+        { href: "/rig-list", icon: <RiFileListLine size={20} />, label: "Rig List", permission: "rig list" },
+        { href: "/users?title=Users", icon: <Contacts />, label: "Users", permissionAny: ["user", "manage access"] },
+        { href: "/calendar", icon: <Calendar />, label: "Calendar", permission: "calendar" },
+      ],
     },
   ];
+
+  const standaloneLinks: LinkItem[] = [
+    { href: "/dashboard", icon: <Dashboard />, label: "Dashboard", permission: "dashboard" },
+  ];
+
+  const isAllowed = (item: LinkItem) => {
+    if (item.permissionAny) return canAny(item.permissionAny);
+    if (item.permission) return can(item.permission);
+    return true;
+  };
+
+  // While `/auth/me` is loading we render nothing in the gated slots — this
+  // matches the Laravel server-rendered behavior where the menu is computed
+  // before any markup is sent to the browser.
+  const visibleStandalone = isLoading ? [] : standaloneLinks.filter(isAllowed);
+  const visibleGroups = isLoading
+    ? []
+    : groups
+        .map((g) => ({ ...g, children: g.children.filter(isAllowed) }))
+        .filter((g) => g.children.length > 0);
+
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => ({
+    enquiries: true,
+    reports: false,
+    files: false,
+    extras: false,
+  }));
 
   return (
     <>
@@ -156,23 +189,20 @@ const Sidebar = () => {
         className={`fixed no-scrollbar overflow-x-hidden top-12.5 bottom-12.5 left-12 bg-secondary-50 flex flex-col gap-6 py-5 rounded-[50px] transition-all duration-300 ease-in-out ${expanded ? "w-60 items-start px-4" : "w-20  items-center"} z-50`}
         aria-expanded={expanded}
       >
-        {/* apply mt-auto to only the third-last direct child */}
         <div
           className={`flex flex-col ${expanded ? "gap-4 w-full" : "gap-3"} h-full overflow-y-auto overflow-x-hidden no-scrollbar [&>*:nth-last-child(3)]:mt-auto `}
           style={{ msOverflowStyle: "none", scrollbarWidth: "none" }}
         >
-          {links.map((item, index) => {
+          {visibleStandalone.map((item, index) => {
             const isActive = pathname.startsWith(item.href.split("?")[0]);
             return (
               <Link
-                id={`sidebar-link-${index}`}
-                key={index}
+                id={`sidebar-link-standalone-${index}`}
+                key={`standalone-${index}`}
                 href={item.href}
-                onClick={item.onClick ? item.onClick : undefined}
                 onMouseEnter={(e) => showTooltip(e, item.label)}
                 onMouseMove={(e) => showTooltip(e, item.label)}
                 onMouseLeave={hideTooltip}
-                // title={!expanded ? item.label : undefined}
                 className={`group relative flex shrink-0 items-center ${expanded ? "justify-start w-full gap-3 px-3 py-2 rounded-md" : "justify-center size-10 rounded-full"} hover:bg-black hover:text-white transition-colors duration-200 ${isActive ? "bg-black text-white" : ""}`}
               >
                 {item.icon}
@@ -184,15 +214,82 @@ const Sidebar = () => {
               </Link>
             );
           })}
+
+          {visibleGroups.map((g) => {
+            const anyActive = g.children.some((c) => pathname.startsWith(c.href.split("?")[0]));
+            const open = !!openGroups[g.key];
+            return (
+              <div key={g.key} className="w-full">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!expanded) {
+                      setExpanded(true);
+                      handleToggle(true);
+                      setOpenGroups((s) => ({ ...s, [g.key]: true }));
+                      return;
+                    }
+                    setOpenGroups((s) => ({ ...s, [g.key]: !s[g.key] }));
+                  }}
+                  onMouseEnter={(e) => showTooltip(e, g.label)}
+                  onMouseMove={(e) => showTooltip(e, g.label)}
+                  onMouseLeave={hideTooltip}
+                  className={`group relative flex w-full items-center ${expanded ? "justify-start gap-3 px-3 py-2 rounded-md" : "justify-center size-10 rounded-full"} hover:bg-black hover:text-white transition-colors duration-200 ${anyActive ? "bg-black text-white" : ""}`}
+                >
+                  {g.icon}
+                  <span className={`text-sm transition-all duration-300 overflow-hidden whitespace-nowrap ${expanded ? "max-w-[200px] opacity-100 ml-2" : "max-w-0 opacity-0 ml-0"}`}>{g.label}</span>
+                </button>
+
+                <div className={`${open && expanded ? "pl-8 mt-2" : "hidden"}`}>
+                  {g.children.map((c, idx) => {
+                    const isActive = pathname.startsWith(c.href.split("?")[0]);
+                    return (
+                      <Link
+                        key={`${g.key}-child-${idx}`}
+                        href={c.href}
+                        onMouseEnter={(e) => showTooltip(e, c.label)}
+                        onMouseMove={(e) => showTooltip(e, c.label)}
+                        onMouseLeave={hideTooltip}
+                        className={`group relative flex w-full items-center justify-start gap-3 px-3 py-2 rounded-md text-[13px] hover:bg-black hover:text-white transition-colors duration-200 ${isActive ? "bg-black text-white" : "text-gray-600"}`}
+                      >
+                        {c.icon}
+                        <span className="overflow-hidden whitespace-nowrap">{c.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+
+          <div>
+            <Link
+              href="/login"
+              onClick={() => {
+                deleteCookie("token");
+                deleteCookie("refreshToken");
+                // Drop cached permissions/user so the next login starts clean.
+                queryClient.clear();
+              }}
+              onMouseEnter={(e) => showTooltip(e, "Logout")}
+              onMouseMove={(e) => showTooltip(e, "Logout")}
+              onMouseLeave={hideTooltip}
+              className={`group relative flex shrink-0 items-center ${expanded ? "justify-start w-full gap-3 px-3 py-2 rounded-md" : "justify-center size-10 rounded-full"} hover:bg-black hover:text-white transition-colors duration-200`}
+            >
+              <Logout />
+              <span className={`text-sm transition-all duration-300 overflow-hidden whitespace-nowrap ${expanded ? "max-w-[200px] opacity-100 ml-2" : "max-w-0 opacity-0 ml-0"}`}>Logout</span>
+            </Link>
+          </div>
+
           <div>
             <div
               className={`flex items-center ${expanded ? "gap-3" : ""} ${expanded ? "pl-1" : ""}`}
             >
               <Avatar
-                src={getImageSrc(user?.profile_photo)}
+                src={getImageSrc(authUser?.profile_photo || undefined)}
                 initials={
-                  user?.name
-                    ? user.name
+                  authUser?.name
+                    ? authUser.name
                         .split(" ")
                         .map((n) => n[0])
                         .slice(0, 2)
@@ -205,10 +302,11 @@ const Sidebar = () => {
               <span
                 className={`text-sm transition-all duration-300 overflow-hidden whitespace-nowrap ${expanded ? "max-w-[200px] opacity-100" : "max-w-0 opacity-0"}`}
               >
-                {user?.name ?? "User"}
+                {authUser?.name ?? "User"}
               </span>
             </div>
           </div>
+
           <div
             className={`w-full flex ${expanded ? "justify-end pr-1" : "justify-center"}`}
           >

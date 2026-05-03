@@ -2,10 +2,27 @@ import { ConfirmEventData } from "@/src/types/types";
 import dayjs from "dayjs";
 import Image from "next/image";
 import React from "react";
+import ContractActions from "./ContractActions";
+import ContractFiles from "./ContractFiles";
+
+type ContractEventLike = ConfirmEventData & {
+  id?: number | string | null;
+  contract_token?: string | null;
+  contract_signed_at?: string | null;
+  contract_pdf_url?: string | null;
+};
 
 const Contracts = ({ data }: { data: ConfirmEventData }) => {
+  const ev = data as ContractEventLike;
   return (
     <div className="md:mx-[150px] mx-10">
+      <ContractFiles eventId={ev?.id ?? null} />
+      <ContractActions
+        eventId={ev?.id ?? null}
+        contractToken={ev?.contract_token ?? null}
+        contractSignedAt={ev?.contract_signed_at ?? null}
+        contractPdfUrl={ev?.contract_pdf_url ?? null}
+      />
       <Image
         src={"/images/contract_thumb.jpg"}
         alt="contract"
@@ -51,13 +68,37 @@ const Contracts = ({ data }: { data: ConfirmEventData }) => {
 
         {/* Right Section */}
         <div className="md:w-5/12">
-          <div className="border border-gray-300 rounded-md bg-[#f8d7da] p-4 flex items-center justify-center text-center min-h-[120px]">
-            <div>
-              <strong>No signature yet.</strong>
-              <br />
-              This document has not been signed.
+          {ev?.contract_signed_at ? (
+            <div className="border border-green-200 rounded-md bg-green-50 p-4 flex items-center justify-center text-center min-h-[120px]">
+              <div>
+                <strong>Signed</strong>
+                <br />
+                <span className="text-sm">
+                  {dayjs(ev.contract_signed_at).format("DD MMM YYYY HH:mm")}
+                </span>
+                {ev?.contract_pdf_url ? (
+                  <div className="mt-2">
+                    <a
+                      className="underline text-sm"
+                      href={ev.contract_pdf_url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      View signed PDF
+                    </a>
+                  </div>
+                ) : null}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="border border-gray-300 rounded-md bg-[#f8d7da] p-4 flex items-center justify-center text-center min-h-[120px]">
+              <div>
+                <strong>No signature yet.</strong>
+                <br />
+                This document has not been signed.
+              </div>
+            </div>
+          )}
 
           <p className="font-bold mt-2">Client</p>
         </div>

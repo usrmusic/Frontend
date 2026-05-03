@@ -48,6 +48,16 @@ button:hover {
   transition: 0.3s ease-in-out;
 } */
 
+/* Hidden scrollbar while maintaining scroll functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 input,
 textarea {
   background-color: var(--color-secondary-100);
