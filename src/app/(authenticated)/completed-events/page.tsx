@@ -29,7 +29,6 @@ const CompletedEventsPage = () => {
   const [search, setSearch] = useState("");
   const [paymentStatus, setPaymentStatus] = useState<string>("");
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  // const [selectedRows, setSelectedRows] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [sendMode, setSendMode] = useState<"quote" | "invoice">("quote");
   const [buttonLoading, setButtonLoading] = useState<string | null>(null);
@@ -64,7 +63,6 @@ const CompletedEventsPage = () => {
     selectedRowKeys,
     onChange: (keys: React.Key[]) => {
       setSelectedRowKeys(keys.slice(0, 1));
-      // setSelectedRows(rows.slice(0, 1));
     },
   };
 
@@ -219,9 +217,9 @@ const CompletedEventsPage = () => {
             >
               Download Invoice
             </Button>
-            <button className=" size-9 flex items-center justify-center rounded-lg bg-white hover:bg-secondary-200 transition-colors">
+            {/* <button className=" size-9 flex items-center justify-center rounded-lg bg-white hover:bg-secondary-200 transition-colors">
               <MoreVertical size={18} />
-            </button>
+            </button> */}
           </div>
         </div>
 
@@ -287,7 +285,6 @@ const CompletedEventsPage = () => {
                 const id = (record as { id: string | number })?.id;
                 if (id === undefined || id === null) return;
                 setSelectedRowKeys([String(id)]);
-                // setSelectedRows([record as any]);
               } catch (err) {
                 toast.error((err as string) ?? "Failed to load email template");
               }

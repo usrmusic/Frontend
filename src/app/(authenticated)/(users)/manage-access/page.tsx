@@ -1,5 +1,6 @@
 "use client";
 import { useManageAccess } from "@/src/api/usersApi";
+import type { Role as ApiRole } from "@/src/api/usersApi";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
@@ -7,11 +8,11 @@ import { MagnifyingGlass } from "@/src/components/Icons";
 import { TableColumnsType, Select } from "antd";
 import { useState, useEffect } from "react";
 import RoleModal from "./RoleModal";
-import {
-  useAssignPermissions,
-  useRolePermissions,
-} from "@/src/api/permissions";
+import { useRoleDropdown } from "@/src/api/dropdown";
+import { useAssignPermissions, useRolePermissions } from "@/src/api/permissions";
+import type { Permission as ApiPermission } from "@/src/api/permissions";
 import { Spin } from "antd";
+import AccessDenied from "@/src/components/common/AccessDenied";
 
 const ManageAccessPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
@@ -76,7 +77,7 @@ const ManageAccessPage = () => {
 
   useEffect(() => {
     if (rolePermissions) {
-      const ids = new Set(rolePermissions.map((p: any) => String(p.id)));
+      const ids = new Set((rolePermissions as ApiPermission[]).map((p) => String(p.id)));
       setSelectedPermissions(ids);
     }
   }, [rolePermissions]);
@@ -157,10 +158,7 @@ const ManageAccessPage = () => {
                     setSelectedRole(val ? String(val) : undefined)
                   }
                   placeholder="Select role"
-                  options={(manageAccessData?.roles || []).map((r) => ({
-                    label: r.name,
-                    value: String(r.id),
-                  }))}
+                  options={( (manageAccessData?.roles || []) as ApiRole[] ).map((r) => ({ label: r.name, value: String(r.id) }))}
                   style={{ width: 300 }}
                   optionLabelProp="label"
                   disabled={assignLoading}

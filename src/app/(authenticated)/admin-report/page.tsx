@@ -124,7 +124,8 @@ const Page = () => {
               };
               const lookup = (item.label || "").toString().toLowerCase();
               const statKey = keyMap[lookup] || "eventStat";
-              const isVisible = Boolean((showStat as any)[statKey]);
+              const k = statKey as keyof typeof showStat;
+              const isVisible = Boolean(showStat[k]);
 
               return (
                 <Card
@@ -150,7 +151,12 @@ const Page = () => {
                           </p>
                           <button
                             type="button"
-                            onClick={() => setShowStat((prev) => ({ ...prev, [statKey]: !prev[statKey] }))}
+                            onClick={() =>
+                              setShowStat((prev) => {
+                                const k = statKey as keyof typeof prev;
+                                return { ...prev, [k]: !prev[k] };
+                              })
+                            }
                             aria-label={isVisible ? `Hide ${item.label}` : `Show ${item.label}`}
                           >
                             {isVisible ? <EyeOff size={18} /> : <Eye size={18} />}

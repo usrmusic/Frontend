@@ -291,7 +291,7 @@ const FileUploadPage = () => {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-        </div>
+        </div> */}
         <DataTable
           columns={columns}
           dataSource={uploadListData?.data}

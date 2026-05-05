@@ -1,5 +1,6 @@
 "use client";
 import { Company, useCompanies, useDeleteCompany } from "@/src/api/usersApi";
+import AxiosInstance from "@/src/lib/axios";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import AlertModal from "@/src/components/common/AlertModal";
@@ -33,9 +34,11 @@ const CompanyPage = () => {
     search: debouncedSearch,
   });
   const deleteCompany = useDeleteCompany();
+  const [api, contextHolder] = notification.useNotification();
 
   const handleCancel = () => {
     setModalOpen(false);
+    setCompanyItem(null);
   };
 
   const onSelectChange = (newSelectedRowKeys: React.Key[]) => {
@@ -52,13 +55,13 @@ const CompanyPage = () => {
       { ids: selectedRowKeys, force: false },
       {
         onSuccess: () => {
-          setAlertModal(false);
-          notification.success({
-            message: "Success",
-            description: "Package(s) deleted successfully.",
-            placement: "topRight",
-          });
-        },
+              setAlertModal(false);
+              api.success({
+                message: "Success",
+                description: "Company(s) deleted successfully.",
+                placement: "topRight",
+              });
+            },
       },
     );
   };
@@ -74,7 +77,7 @@ const CompanyPage = () => {
       key: "company_logo",
       render: (logo: string) =>
         logo ? (
-          <span className="text-blue-600 underline">{logo}</span>
+          <span className="text-black">{logo}</span>
         ) : (
           <span className="">N/A</span>
         ),
@@ -85,7 +88,7 @@ const CompanyPage = () => {
       key: "brochure",
       render: (brochure: string) =>
         brochure ? (
-          <span className="text-blue-600 underline">{brochure}</span>
+          <span className="text-black">{brochure}</span>
         ) : (
           <span className="">N/A</span>
         ),
@@ -107,9 +110,18 @@ const CompanyPage = () => {
         <div className="flex gap-3">
           {/* <Eye size={14} /> */}
           <button
-            onClick={() => {
-              setModalOpen(true);
-              setCompanyItem(data);
+            onClick={async () => {
+              try {
+                const res = await AxiosInstance.get(`/company/${data.id}`);
+                const item = res?.data?.data || data;
+                setCompanyItem(item);
+                setModalOpen(true);
+              } catch {
+                api.error({ message: 'Error', description: 'Failed to load company details' });
+                // fallback to passing row data
+                setCompanyItem(data);
+                setModalOpen(true);
+              }
             }}
           >
             <Pencil size={14} />
@@ -136,6 +148,7 @@ const CompanyPage = () => {
 
   return (
     <div className="space-y-4 mt-4">
+      {contextHolder}
       {/* Filters Card */}
       <Card variant="green">
         <div className="flex items-center justify-between">
@@ -150,7 +163,10 @@ const CompanyPage = () => {
             />
           </div>
           <div className="flex gap-2">
-            <Button onClick={() => setModalOpen(true)}>Add</Button>
+            <Button onClick={() => {
+              setCompanyItem(null);
+              setModalOpen(true);
+            }}>Add</Button>
             <Button
               disabled={selectedRowKeys.length === 0}
               onClick={() => setAlertModal(true)}

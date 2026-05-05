@@ -61,8 +61,8 @@ const useColumns = () => {
       ),
     },
     {
-      key: "payment",
-      dataIndex: "payment",
+      key: "total_cost",
+      dataIndex: "total_cost",
       title: (
         <div>
           <p className="mb-1">Costs</p>

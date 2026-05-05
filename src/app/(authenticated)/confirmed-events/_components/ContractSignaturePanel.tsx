@@ -1,32 +1,42 @@
-import { ConfirmEventData } from "@/src/types/types";
+"use client";
+
+import SignaturePad, {
+  type SignaturePadHandle,
+} from "@/src/components/common/SignaturePad";
+import { useRole } from "@/src/hooks/useRole";
+import type { ConfirmEventData } from "@/src/types/types";
 import dayjs from "dayjs";
-import SignaturePad, { type SignaturePadHandle } from "@/src/components/common/SignaturePad";
 import { useRef } from "react";
-import Image from "next/image";
 
-
-
-
-type ContractEventLike = ConfirmEventData & {
-  id?: number | string | null;
-  contract_token?: string | null;
-  contract_signed_at?: string | null;
-  contract_pdf_url?: string | null;
+type Props = {
+  data?: ConfirmEventData;
+  isModifyMode: boolean;
+  onSignatureChange: (uri: string | null) => void;
 };
 
-const Contracts = ({ data, isModifyMode, eventId, onSignatureChange }: { data: ConfirmEventData; isModifyMode?: boolean; eventId?: string | number; onSignatureChange?: (uri: string | null) => void }) => {
-  const ev = data as ContractEventLike;
+const ContractSignaturePanel = ({
+  data,
+  isModifyMode,
+  onSignatureChange,
+}: Props) => {
   const padRef = useRef<SignaturePadHandle | null>(null);
+  const { isAdmin, isClient, userId } = useRole();
+
+  const adminSigUrl = data?.company?.admin_signature_url || null;
+  const latestContract = data?.contracts?.[0];
+  const clientSigUrl =
+    latestContract?.signatures?.[0]?.signature_url ||
+    null;
+  const signedAt = data?.contract_signed_at || latestContract?.signed_at || null;
+  const alreadySigned = !!signedAt;
+
+  const ownsEvent =
+    data?.user_id != null && userId != null && Number(data.user_id) === Number(userId);
+  const canSign = isAdmin || (isClient && ownsEvent);
+  const showPad = isModifyMode && canSign && !alreadySigned;
+
   return (
     <div className="md:mx-[150px] mx-10">
-      
-      <Image
-        src={"/images/contract_thumb.jpg"}
-        alt="contract"
-        width={394}
-        height={500}
-        className="max-w-[394px] h-[500px] m-auto object-cover"
-      />
       <div className="text-center text-lg">
         <div className="my-4">
           <p>
@@ -43,95 +53,101 @@ const Contracts = ({ data, isModifyMode, eventId, onSignatureChange }: { data: C
             <strong>Venue:</strong> {data?.venues?.venue ?? data?.venue ?? "—"}
           </p>
           <p>
-            <strong>Event Date:</strong> {data?.date ? dayjs(data.date).format("DD/MM/YYYY") : "—"}
-          </p>
-          <p>
-            {/* <strong>Event Date:</strong> {dayjs(data.date).format("DD/MM/YYYY")} */}
+            <strong>Event Date:</strong>{" "}
+            {data?.date ? dayjs(data.date).format("DD/MM/YYYY") : "—"}
           </p>
         </div>
       </div>
-      {/* Signature header removed — replaced by structured signature blocks below */}
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-        {/* Company / Admin column */}
-        <div>
-          <p className="text-[11pt] font-semibold">
-            Signed by <span className="font-bold">{data?.company_names?.name || "USR Music Ltd"}</span>
-            <br />
-            <span className="text-sm">for and on behalf of Company</span>
-          </p>
 
-          <div className="mt-3 bg-white rounded-md border border-gray-200 p-4 text-center">
-            <div className="h-32 flex items-center justify-center bg-gray-50">
-              {data?.company_names?.admin_signature_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={String(data.company_names.admin_signature_url)}
-                  alt="Company signature"
-                  className="max-h-full max-w-full object-contain"
+      <div className="mt-5 flex flex-col md:flex-row gap-6">
+        <div className="md:w-1/2">
+          <p className="text-[11pt]">
+            Signed by{" "}
+            <span className="font-bold">
+              {data?.users_events_user_idTousers?.name}
+            </span>
+            <br />
+            for and on behalf of Client
+          </p>
+          <div className="mt-3 border border-gray-200 rounded-md p-3 min-h-[160px] flex flex-col items-center justify-center gap-2">
+            {showPad ? (
+              <>
+                <SignaturePad
+                  ref={padRef}
+                  width={420}
+                  height={140}
+                  onChange={(empty) => {
+                    onSignatureChange(empty ? null : padRef.current?.toDataURL() ?? null);
+                  }}
                 />
-              ) : (
-                <div className="text-xs text-gray-500">No company signature image</div>
-              )}
-            </div>
-            <p className="text-xs text-gray-600 mt-2">Signature of company</p>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    className="text-xs text-gray-600 underline"
+                    onClick={() => {
+                      padRef.current?.clear();
+                      onSignatureChange(null);
+                    }}
+                  >
+                    Clear
+                  </button>
+                </div>
+                {isAdmin && !ownsEvent && (
+                  <p className="text-[11px] text-gray-500 italic">
+                    Signing on behalf of the client
+                  </p>
+                )}
+              </>
+            ) : clientSigUrl ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={clientSigUrl}
+                  alt="Client signature"
+                  className="max-h-[120px] object-contain"
+                />
+                {signedAt && (
+                  <p className="text-xs text-gray-500">
+                    Signed {dayjs(signedAt).format("DD MMM YYYY HH:mm")}
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-gray-500">Not signed yet</p>
+            )}
           </div>
+          <p className="font-bold mt-2 text-center">Client</p>
         </div>
 
-        {/* Client column */}
-        <div>
-          <p className="text-[11pt] font-semibold">
-            Signed by <span className="font-bold">{data?.users_events_user_idTousers?.name || "Client"}</span>
-            <br />
-            <span className="text-sm">for and on behalf of Client</span>
+        <div className="md:w-1/2">
+          <p className="text-[11pt]">
+            Signed for and on behalf of{" "}
+            <span className="font-bold">
+              {data?.company?.name || "USR"}
+            </span>
           </p>
-
-          <div className="mt-3 bg-white rounded-md border border-gray-200 p-4 text-center">
-            <div className="min-h-[140px] flex items-center justify-center bg-gray-50 w-full">
-              {/* If in modify mode, show pad */}
-              {isModifyMode ? (
-                <div className="w-full max-w-[420px]">
-                  <SignaturePad
-                    ref={(r) => (padRef.current = r)}
-                    width={360}
-                    height={120}
-                    className="mx-auto"
-                    onChange={(empty) => onSignatureChange?.(empty ? null : padRef.current?.toDataURL() ?? null)}
-                  />
-                  <div className="mt-2 flex justify-end">
-                    <button
-                      type="button"
-                      className="text-xs text-gray-600 underline"
-                      onClick={() => {
-                        padRef.current?.clear();
-                        onSignatureChange?.(null);
-                      }}
-                    >
-                      Clear
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                // show existing client signature image if present
-                (Array.isArray(data?.contracts) && data.contracts[0] && Array.isArray(data.contracts[0].signatures) && data.contracts[0].signatures[0]?.signature_url) ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={String(data.contracts[0].signatures[0].signature_url)}
-                    alt="Client signature"
-                    className="max-h-full max-w-full object-contain"
-                  />
-                ) : (
-                  <div className="text-xs text-gray-500">No client signature image</div>
-                )
-              )}
-            </div>
-            <p className="text-xs text-gray-600 mt-2">Signature of client</p>
+          <div className="mt-3 border border-gray-200 rounded-md p-3 min-h-[160px] flex flex-col items-center justify-center gap-2">
+            {adminSigUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={adminSigUrl}
+                alt="Company signature"
+                className="max-h-[120px] object-contain"
+              />
+            ) : (
+              <p className="text-sm text-gray-500">
+                No company signature on file
+              </p>
+            )}
           </div>
+          <p className="font-bold mt-2 text-center">
+            {data?.company?.name || "USR"}
+          </p>
         </div>
       </div>
 
-      <div className="section text-base text-gray-800 space-y-4 mt-5">
+      <div className="section text-base text-gray-800 space-y-4 mt-8">
         <p className="font-bold">Agreed Terms and Conditions</p>
-        {/* 1.1 */}
         <div className="font-bold flex">
           <span className="w-10 shrink-0">1.1</span>
           <span>Definitions</span>
@@ -151,7 +167,6 @@ const Contracts = ({ data, isModifyMode, eventId, onSignatureChange }: { data: C
             associated services as further described in the Contract Details.
           </p>
         </div>
-        {/* 2 */}
         <div className="font-bold flex">
           <span className="w-10 shrink-0">2.</span>
           <span>Package &amp; Supply of Services</span>
@@ -191,7 +206,6 @@ const Contracts = ({ data, isModifyMode, eventId, onSignatureChange }: { data: C
             </p>
           </div>
         </div>
-        {/* 3 */}
         <div className="font-bold flex">
           <span className="w-10 shrink-0">3.</span>
           <span>Clients Obligations</span>
@@ -216,7 +230,6 @@ const Contracts = ({ data, isModifyMode, eventId, onSignatureChange }: { data: C
             </p>
           </div>
         </div>
-        {/* 4 */}
         <div className="font-bold flex">
           <span className="w-10 shrink-0">4.</span>
           <span>Charges and payment</span>
@@ -238,7 +251,6 @@ const Contracts = ({ data, isModifyMode, eventId, onSignatureChange }: { data: C
             </p>
           </div>
         </div>
-        {/* 5 */}
         <div className="flex">
           <span className="font-bold w-10 shrink-0">5</span>
           <p className="pl-4 font-bold">
@@ -288,7 +300,6 @@ const Contracts = ({ data, isModifyMode, eventId, onSignatureChange }: { data: C
             </p>
           </div>
         </div>
-        {/* Table */}
         <div className="pl-14">
           <table className="w-full border border-gray-300 text-sm">
             <thead>
@@ -315,7 +326,6 @@ const Contracts = ({ data, isModifyMode, eventId, onSignatureChange }: { data: C
             </tbody>
           </table>
         </div>
-        {/* 6 */}
         <div className="font-bold flex">
           <span className="w-10 shrink-0">6.</span>
           <span>General</span>
@@ -394,4 +404,4 @@ const Contracts = ({ data, isModifyMode, eventId, onSignatureChange }: { data: C
   );
 };
 
-export default Contracts;
+export default ContractSignaturePanel;

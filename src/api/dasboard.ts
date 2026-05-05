@@ -61,6 +61,7 @@ export interface DashboardResponse {
   calendarEvents: CalendarEvent[];
   recentNotes: RecentNote[];
   totalTurnover: number;
+  scope?: "admin" | "team" | "personal";
 }
 
 
@@ -141,8 +142,11 @@ export const useUpcomingEvents = (params?: UpcomingEventParams) => {
     queryKey: ["upcoming-events", params],
       queryFn: async (): Promise<UpcomingEvent[]> => {
         try {
-          const response = await AxiosInstance.get<UpcomingEvent[]>('/dashboard/upcoming-events', { params });
-        return response.data;
+          const response = await AxiosInstance.get<any>('/dashboard/upcoming-events', { params });
+          // backend may return either an array or an object { scope, events }
+          if (Array.isArray(response.data)) return response.data as UpcomingEvent[];
+          if (response.data && Array.isArray(response.data.events)) return response.data.events as UpcomingEvent[];
+          return [];
       } catch (error: unknown) {
         if (axios.isAxiosError(error)) {
           const msg = error.response?.data;

@@ -1,5 +1,9 @@
 "use client";
-import { useDeleteUser, useUsers } from "@/src/api/usersApi";
+import {
+  useDeleteUser,
+  useResetUserPassword,
+  useUsers,
+} from "@/src/api/usersApi";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
@@ -8,7 +12,7 @@ import { useDebounce } from "@/src/hooks/useDebounce";
 import { notification, TableColumnsType } from "antd";
 import { useState } from "react";
 import UserModal from "./UserModal";
-import { Pencil } from "lucide-react";
+import { KeyRound, Pencil } from "lucide-react";
 import { TableRowSelection } from "antd/es/table/interface";
 import AlertModal from "@/src/components/common/AlertModal";
 import { CSVLink } from "react-csv";
@@ -26,6 +30,9 @@ const UsersPage = () => {
   const [userDataItem, setUserDataItem] = useState(null);
   const [alertModal, setAlertModal] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [resetTarget, setResetTarget] = useState<
+    { id: number | string; email: string } | null
+  >(null);
   const debouncedSearch = useDebounce(search, 1000);
 
   const { data: usersData, isLoading } = useUsers({
@@ -34,6 +41,21 @@ const UsersPage = () => {
     search: debouncedSearch,
   });
   const deleteUser = useDeleteUser();
+  const resetPassword = useResetUserPassword();
+
+  const handleConfirmReset = () => {
+    if (!resetTarget) return;
+    resetPassword.mutate(resetTarget.id, {
+      onSuccess: () => {
+        notification.success({
+          message: "Password reset",
+          description: `A new password has been emailed to ${resetTarget.email}.`,
+          placement: "topRight",
+        });
+        setResetTarget(null);
+      },
+    });
+  };
 
   const handleCancel = () => {
     setUserDataItem(null);
@@ -86,32 +108,44 @@ const UsersPage = () => {
       key: "password",
     },
     {
-      title: "Reset Password",
-      dataIndex: "resetPassword",
-      key: "resetPassword",
-    },
-    {
       title: "Address",
       dataIndex: "address",
       key: "address",
     },
     {
       title: "Role",
-      dataIndex: "role.name",
       key: "role",
+      render: (_v, record) => {
+        const r = record as { role?: string | null; roles?: { name?: string | null } | null };
+        return r?.roles?.name || r?.role || "—";
+      },
     },
     {
       title: "Action",
       fixed: "right",
       render: (data) => (
-        <button
-          onClick={() => {
-            setModalOpen(true);
-            setUserDataItem(data);
-          }}
-        >
-          <Pencil size={14} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            title="Edit"
+            onClick={() => {
+              setModalOpen(true);
+              setUserDataItem(data);
+            }}
+          >
+            <Pencil size={14} />
+          </button>
+          <button
+            title="Reset password & email"
+            onClick={() => {
+              setResetTarget({
+                id: (data as { id: number | string }).id,
+                email: (data as { email: string }).email,
+              });
+            }}
+          >
+            <KeyRound size={14} />
+          </button>
+        </div>
       ),
     },
   ];
@@ -129,6 +163,7 @@ const UsersPage = () => {
     password: user.password_text,
     address: user.address,
   }));
+
 
   return (
     <div className="space-y-4 mt-4">
@@ -193,6 +228,16 @@ const UsersPage = () => {
           handleCancel={() => setAlertModal(false)}
           title="Delete User"
           text="Are you sure you want to delete user(s)?"
+        />
+      )}
+      {resetTarget && (
+        <AlertModal
+          loading={resetPassword.isPending}
+          onYes={handleConfirmReset}
+          open={!!resetTarget}
+          handleCancel={() => setResetTarget(null)}
+          title="Reset password"
+          text={`This will generate a new password for ${resetTarget.email} and email it to them. Continue?`}
         />
       )}
     </div>
