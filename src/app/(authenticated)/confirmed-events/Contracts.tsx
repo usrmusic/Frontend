@@ -6,16 +6,7 @@ import Image from "next/image";
 
 
 
-
-type ContractEventLike = ConfirmEventData & {
-  id?: number | string | null;
-  contract_token?: string | null;
-  contract_signed_at?: string | null;
-  contract_pdf_url?: string | null;
-};
-
-const Contracts = ({ data, isModifyMode, eventId, onSignatureChange }: { data: ConfirmEventData; isModifyMode?: boolean; eventId?: string | number; onSignatureChange?: (uri: string | null) => void }) => {
-  const ev = data as ContractEventLike;
+const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEventData; isModifyMode?: boolean; onSignatureChange?: (uri: string | null) => void }) => {
   const padRef = useRef<SignaturePadHandle | null>(null);
   return (
     <div className="md:mx-[150px] mx-10">
@@ -55,17 +46,17 @@ const Contracts = ({ data, isModifyMode, eventId, onSignatureChange }: { data: C
         {/* Company / Admin column */}
         <div>
           <p className="text-[11pt] font-semibold">
-            Signed by <span className="font-bold">{data?.company_names?.name || "USR Music Ltd"}</span>
+            Signed by <span className="font-bold">{data?.company?.name || "USR Music Ltd"}</span>
             <br />
             <span className="text-sm">for and on behalf of Company</span>
           </p>
 
           <div className="mt-3 bg-white rounded-md border border-gray-200 p-4 text-center">
             <div className="h-32 flex items-center justify-center bg-gray-50">
-              {data?.company_names?.admin_signature_url ? (
+              {data?.company?.admin_signature_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={String(data.company_names.admin_signature_url)}
+                  src={String(data.company.admin_signature_url)}
                   alt="Company signature"
                   className="max-h-full max-w-full object-contain"
                 />
@@ -91,7 +82,7 @@ const Contracts = ({ data, isModifyMode, eventId, onSignatureChange }: { data: C
               {isModifyMode ? (
                 <div className="w-full max-w-[420px]">
                   <SignaturePad
-                    ref={(r) => (padRef.current = r)}
+                    ref={(r) => { padRef.current = r; }}
                     width={360}
                     height={120}
                     className="mx-auto"

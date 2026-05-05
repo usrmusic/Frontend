@@ -10,7 +10,7 @@ type TodoItem = {
   title?: string;
   detail?: string;
   completed?: boolean;
-  event_id?: number;
+  event_id?: number | null;
 };
 
 export default function DashboardTodos({ eventIds }: { eventIds: number[] }) {
@@ -41,7 +41,7 @@ export default function DashboardTodos({ eventIds }: { eventIds: number[] }) {
       return merged.slice(0, 12);
     },
     staleTime: 1000 * 60 * 2,
-    cacheTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 5,
   });
 
   const todos = todosRaw || [];

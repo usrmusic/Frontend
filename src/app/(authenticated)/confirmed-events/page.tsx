@@ -259,7 +259,7 @@ const ConfirmedEventsPage = () => {
           Contracts
         </div>
       ),
-      children: <Contracts data={selectedEventData?.data} isModifyMode={isModifyMode} eventId={eventId} onSignatureChange={setSignatureImage} />,
+      children: <Contracts data={selectedEventData?.data} isModifyMode={isModifyMode} onSignatureChange={setSignatureImage} />,
       style: panelStyle,
     },
     {
@@ -825,7 +825,7 @@ const ConfirmedEventsPage = () => {
               <div className="p-6 border-b border-gray-200 flex justify-between items-start bg-gradient-to-r from-white to-slate-50">
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Event Payment</p>
-                  <h3 id="drawer-title" className="themeH1 text-lg mt-1">{selectedEventData?.data?.company_names?.name || "USR Music Ltd"}</h3>
+                  <h3 id="drawer-title" className="themeH1 text-lg mt-1">{selectedEventData?.data?.company?.name || "USR Music Ltd"}</h3>
                   <p className="text-sm text-gray-600 mt-1">{selectedEventData?.data?.venues?.venue ?? ""}</p>
                 </div>
                 <button 
