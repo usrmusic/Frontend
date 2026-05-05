@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import AxiosInstance from "../lib/axios";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
-import axios from "axios";
+import { ApiResponse } from "../types/types";
 
 interface QueryParams {
   page: number;
@@ -10,10 +10,17 @@ interface QueryParams {
   search: string;
 }
 
+interface Upload {
+  file_name: string;
+  file_type: string;
+  created_at: string;
+  event: string;
+}
+
 export const useUploadList = (params: QueryParams) => {
   return useQuery({
     queryKey: ["uploads-list", params],
-    queryFn: async () => {
+    queryFn: async (): Promise<ApiResponse<Upload>> => {
       const response = await AxiosInstance.get(`/files/uploads`, {
         params,
       });
@@ -92,16 +99,17 @@ export const useDeleteUpload = () => {
 //   });
 // };
 
-
 // src/api/upload.ts
 
 // src/api/upload.ts — update the hook return type
 export const useDownloadUpload = () => {
   return useMutation({
-    mutationFn: async (id: number | string): Promise<{
+    mutationFn: async (
+      id: number | string,
+    ): Promise<{
       url?: string;
       download_url?: string;
-      filename?: string;       // ← add this
+      filename?: string; // ← add this
       storage?: string;
     }> => {
       const response = await AxiosInstance.get(`/files/uploads/${id}/download`);

@@ -17,11 +17,17 @@ import AccessDenied from "@/src/components/common/AccessDenied";
 const ManageAccessPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"search" | "permission">("search");
-  const { data: manageAccessData, isLoading: manageAccessLoading } = useManageAccess(activeTab === "permission");
-  const { data: roles = [] } = useRoleDropdown();
-  const [selectedRole, setSelectedRole] = useState<string | undefined>(undefined);
-  const [cachedPermissions, setCachedPermissions] = useState<any[] | null>(null);
-  const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(new Set());
+  const { data: manageAccessData, isLoading: manageAccessLoading } =
+    useManageAccess(activeTab === "permission");
+  const [selectedRole, setSelectedRole] = useState<string | undefined>(
+    undefined,
+  );
+  const [cachedPermissions, setCachedPermissions] = useState<any[] | null>(
+    null,
+  );
+  const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(
+    new Set(),
+  );
   const columnsPermissions = [
     {
       title: "Permission",
@@ -64,8 +70,10 @@ const ManageAccessPage = () => {
     }
   }, [manageAccessData, cachedPermissions]);
 
-  const { data: rolePermissions, isLoading: rolePermsLoading } = useRolePermissions(selectedRole);
-  const { mutate: assignMutate, isPending: assignLoading } = useAssignPermissions();
+  const { data: rolePermissions, isLoading: rolePermsLoading } =
+    useRolePermissions(selectedRole);
+  const { mutate: assignMutate, isPending: assignLoading } =
+    useAssignPermissions();
 
   useEffect(() => {
     if (rolePermissions) {
@@ -91,7 +99,7 @@ const ManageAccessPage = () => {
       <Card variant="green">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex max-w-96.25 items-center gap-2 rounded-lg bg-white px-4 h-10">
+            <div className="flex w-[300px] items-center gap-2 rounded-lg bg-white px-4 h-10">
               <MagnifyingGlass w={18} h={18} />
               <input
                 type="text"
@@ -146,29 +154,44 @@ const ManageAccessPage = () => {
                 <Select
                   allowClear
                   value={selectedRole}
-                  onChange={(val) => setSelectedRole(val ? String(val) : undefined)}
+                  onChange={(val) =>
+                    setSelectedRole(val ? String(val) : undefined)
+                  }
                   placeholder="Select role"
                   options={( (manageAccessData?.roles || []) as ApiRole[] ).map((r) => ({ label: r.name, value: String(r.id) }))}
                   style={{ width: 300 }}
                   optionLabelProp="label"
                   disabled={assignLoading}
                 />
-                <Button type="primary" onClick={() => {
-                  if (!selectedRole) return;
-                  assignMutate({ roleId: Number(selectedRole), permissionIds: Array.from(selectedPermissions).map((v) => Number(v)) });
-                }} disabled={!selectedRole || assignLoading}>
-                  {assignLoading ? 'Assigning...' : 'Assign'}
+                <Button
+                  type="primary"
+                  onClick={() => {
+                    if (!selectedRole) return;
+                    assignMutate({
+                      roleId: Number(selectedRole),
+                      permissionIds: Array.from(selectedPermissions).map((v) =>
+                        Number(v),
+                      ),
+                    });
+                  }}
+                  disabled={!selectedRole || assignLoading}
+                >
+                  {assignLoading ? "Assigning..." : "Assign"}
                 </Button>
               </div>
             </div>
 
-            { (manageAccessLoading || rolePermsLoading || assignLoading) ? (
-              <div className="p-6 flex items-center justify-center"><Spin /></div>
+            {manageAccessLoading || rolePermsLoading || assignLoading ? (
+              <div className="p-6 flex items-center justify-center">
+                <Spin />
+              </div>
             ) : (
               <DataTable
                 columns={columnsPermissions}
                 loading={false}
-                dataSource={cachedPermissions || manageAccessData?.permissions || []}
+                dataSource={
+                  cachedPermissions || manageAccessData?.permissions || []
+                }
                 rowKey={(data) => String(data.id)}
                 pagination={false}
               />

@@ -16,6 +16,7 @@ import dayjs from "dayjs";
 import { MoreVertical } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { CSVLink } from "react-csv";
 
 const initialParams = {
   page: 1,
@@ -48,7 +49,7 @@ const CompletedEventsPage = () => {
       setSearch(displayValue);
       setParams((prev) => ({ ...prev, page: 1 }));
     }
-  }, [searchParams?.toString()]);
+  }, [search, searchParams]);
 
   const { data: completedEventsData, isLoading } = useGetCompletedEventsList({
     ...params,
@@ -60,7 +61,7 @@ const CompletedEventsPage = () => {
   const rowSelection: TableProps["rowSelection"] = {
     type: "radio",
     selectedRowKeys,
-    onChange: (keys: React.Key[], rows: any[]) => {
+    onChange: (keys: React.Key[]) => {
       setSelectedRowKeys(keys.slice(0, 1));
     },
   };
@@ -88,7 +89,7 @@ const CompletedEventsPage = () => {
     },
     {
       key: "venue",
-      dataIndex: "venue",
+      dataIndex: ["venues", "venue"],
       title: "Venue",
     },
     {
@@ -110,6 +111,24 @@ const CompletedEventsPage = () => {
       ),
     },
   ];
+
+  const csvHeaders = [
+    { label: "Name", key: "name" },
+    { label: "Email", key: "email" },
+    { label: "Mobile", key: "mobile" },
+    { label: "Venue", key: "venue" },
+    { label: "Event Date", key: "date" },
+    { label: "Payment", key: "payment" },
+  ];
+
+  const csvData = completedEventsData?.data.map((row) => ({
+    name: row.users_events_user_idTousers.name,
+    email: row.users_events_user_idTousers.email,
+    mobile: row.users_events_user_idTousers.contact_number,
+    venue: row.venues.venue,
+    date: row.date,
+    payment: row.is_event_payment_fully_paid ? "Completed" : "Pending",
+  }));
 
   return (
     <>
@@ -148,7 +167,9 @@ const CompletedEventsPage = () => {
                   setSendMode("quote");
                   setShowModal(true);
                 } catch (err) {
-                  toast.error("Failed to load email template");
+                  toast.error(
+                    (err as string) ?? "Failed to load email template",
+                  );
                 } finally {
                   setButtonLoading(null);
                 }
@@ -173,7 +194,9 @@ const CompletedEventsPage = () => {
                   setSendMode("invoice");
                   setShowModal(true);
                 } catch (err) {
-                  toast.error("Failed to load invoice template");
+                  toast.error(
+                    (err as string) ?? "Failed to load invoice template",
+                  );
                 } finally {
                   setButtonLoading(null);
                 }
@@ -201,14 +224,6 @@ const CompletedEventsPage = () => {
         </div>
 
         <div className="grid grid-cols-4 gap-2">
-          {/* <select
-            name="event"
-            id="event"
-            className="bg-white rounded-lg h-10 px-3 text-sm"
-          >
-            <option value="">Select Event</option>
-            <option value="event one">event one</option>
-          </select> */}
           <div className="flex max-w-full items-center gap-2 rounded-lg bg-white px-4 h-10">
             <MagnifyingGlass w={18} h={18} />
             <input
@@ -229,7 +244,6 @@ const CompletedEventsPage = () => {
                 { label: "Completed", value: "completed" },
                 { label: "Pending", value: "pending" },
               ]}
-              showSearch
               filterOption={(input, option) =>
                 String(option?.label ?? "")
                   .toLowerCase()
@@ -242,11 +256,20 @@ const CompletedEventsPage = () => {
               }}
             />
           </div>
+          <div className="col-span-2 text-end">
+            <CSVLink
+              data={csvData ?? []}
+              filename="clients.csv"
+              headers={csvHeaders}
+            >
+              <Button>Export Data</Button>
+            </CSVLink>
+          </div>
         </div>
         <DataTable
           rowSelection={rowSelection}
           columns={columns}
-          rowKey={(data) => String((data as any).id)}
+          rowKey={(data) => String((data).id)}
           loading={isLoading}
           dataSource={completedEventsData?.data}
           pagination={{
@@ -259,11 +282,11 @@ const CompletedEventsPage = () => {
           onRow={(record) => ({
             onClick: () => {
               try {
-                const id = (record as any)?.id;
+                const id = (record as { id: string | number })?.id;
                 if (id === undefined || id === null) return;
                 setSelectedRowKeys([String(id)]);
               } catch (err) {
-                // ignore
+                toast.error((err as string) ?? "Failed to load email template");
               }
             },
           })}

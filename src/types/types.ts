@@ -104,6 +104,7 @@ export type ConfirmEventPayment = {
   payment_method_id: string | number;
   date: string;
   amount: string | number;
+  reference: string;
   created_at?: string;
   updated_at?: string;
   // some API responses use alternate field names
@@ -128,6 +129,7 @@ export type ConfirmEventNote = {
   id: string | number;
   event_id: string | number;
   notes: string;
+  note: string;
   created_at: string;
   created_by?: string | null;
   updated_at?: string;

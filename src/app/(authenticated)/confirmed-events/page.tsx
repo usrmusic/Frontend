@@ -300,7 +300,11 @@ const ConfirmedEventsPage = () => {
             <Link href="/dashboard" className="shrink-0">
               <BackButton />
             </Link>
-            <h2 className="themeH1">{(searchParams?.get("from") ?? "") === "completed" ? "Completed Event" : "Confirmed Events"}</h2>
+            <h2 className="themeH1">
+              {(searchParams?.get("from") ?? "") === "completed"
+                ? "Completed Event"
+                : "Confirmed Events"}
+            </h2>
           </div>
           <div className="flex gap-2">
             {eventId && (
@@ -326,6 +330,9 @@ const ConfirmedEventsPage = () => {
                     Modify
                   </Button>
                 )}
+                <Button htmlType="button" onClick={() => window.print()}>
+                  Print
+                </Button>
                 <Button onClick={handleCancelEvent} loading={isCancelingEvent}>
                   Cancel Event
                 </Button>
@@ -416,143 +423,84 @@ const ConfirmedEventsPage = () => {
             allowClear
           />
         </div>
-        <div className="relative">
-          {isLoading && (
-            <Spin
-              style={{
-                position: "absolute",
-                left: "50%",
-                top: "10%",
-                zIndex: 999,
-              }}
-              size="large"
-            />
-          )}
-          <div
-            className={`bg-white rounded-xl p-5 ${isLoading ? "opacity-60" : ""}`}
-          >
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <Input
-                  name="first_name"
-                  label="Client Name"
-                  placeholder="Enter client name"
-                  value={formik.values.first_name}
-                  onChange={formik.handleChange}
-                  disabled={!isModifyMode}
-                />
-                <div className="grid grid-cols-2 gap-4">
+        <div id="print-section">
+          <div className="relative">
+            {isLoading && (
+              <Spin
+                style={{
+                  position: "absolute",
+                  left: "50%",
+                  top: "10%",
+                  zIndex: 999,
+                }}
+                size="large"
+              />
+            )}
+            <div
+              className={`bg-white rounded-xl p-5 ${isLoading ? "opacity-60" : ""}`}
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-4">
                   <Input
-                    name="email"
-                    label="Email"
-                    type="email"
-                    placeholder="Enter email"
-                    value={formik.values.email}
+                    name="first_name"
+                    label="Client Name"
+                    placeholder="Enter client name"
+                    value={formik.values.first_name}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
                   />
-                  <Input
-                    name="phone_number"
-                    label="Phone Number"
-                    type="number"
-                    placeholder="Enter phone number"
-                    value={formik.values.phone_number}
-                    onChange={formik.handleChange}
-                    disabled={!isModifyMode}
-                  />
-                  <Input
-                    name="djName"
-                    label="Dj Name"
-                    placeholder="Enter DJ name"
-                    value={formik.values.djName}
-                    onChange={formik.handleChange}
-                    disabled={!isModifyMode}
-                  />
-                  <Input
-                    name="videography"
-                    label="Videography"
-                    placeholder="Enter videographer name"
-                    value={formik.values.videography}
-                    onChange={formik.handleChange}
-                    disabled={!isModifyMode}
-                  />
-                  <Input
-                    name="caterer"
-                    label="Caterer"
-                    placeholder="Enter caterer name"
-                    value={formik.values.caterer}
-                    onChange={formik.handleChange}
-                    disabled={!isModifyMode}
-                  />
-                  <Input
-                    name="decor"
-                    label="Decor"
-                    placeholder="Enter decor company"
-                    value={formik.values.decor}
-                    onChange={formik.handleChange}
-                    disabled={!isModifyMode}
-                  />
-                </div>
-                <Input
-                  name="name"
-                  label="Couple Name"
-                  placeholder="Enter couple name"
-                  value={formik.values.name}
-                  onChange={formik.handleChange}
-                  disabled={!isModifyMode}
-                />
-                <Input
-                  name="entranceSong"
-                  label="Entrance Song"
-                  placeholder="Enter entrance song"
-                  value={formik.values.entranceSong}
-                  onChange={formik.handleChange}
-                  disabled={!isModifyMode}
-                />
-                <Input
-                  name="cakeCutSong"
-                  label="Cake cut song"
-                  placeholder="Enter cake cut song"
-                  value={formik.values.cakeCutSong}
-                  onChange={formik.handleChange}
-                  disabled={!isModifyMode}
-                />
-                <Input
-                  name="firstDance"
-                  label="First Dance"
-                  placeholder="Enter first dance song"
-                  value={formik.values.firstDance}
-                  onChange={formik.handleChange}
-                  disabled={!isModifyMode}
-                />
-                <Input
-                  name="dos"
-                  label="Do's"
-                  placeholder="Enter preferences/do's"
-                  value={formik.values.dos}
-                  onChange={formik.handleChange}
-                  disabled={!isModifyMode}
-                />
-                <Input
-                  name="stagTuneAndDestination"
-                  label="Stag Tune and destination"
-                  placeholder="Enter stag tune and destination"
-                  value={formik.values.stagTuneAndDestination}
-                  onChange={formik.handleChange}
-                  disabled={!isModifyMode}
-                />
-              </div>
-              <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-4">
-                  <Input
-                    name="date"
-                    label="Date"
-                    type="date"
-                    placeholder="Select date"
-                    value={formik.values.date}
-                    onChange={formik.handleChange}
-                    disabled={!isModifyMode}
-                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      name="email"
+                      label="Email"
+                      type="email"
+                      placeholder="Enter email"
+                      value={formik.values.email}
+                      onChange={formik.handleChange}
+                      disabled={!isModifyMode}
+                    />
+                    <Input
+                      name="phone_number"
+                      label="Phone Number"
+                      type="number"
+                      placeholder="Enter phone number"
+                      value={formik.values.phone_number}
+                      onChange={formik.handleChange}
+                      disabled={!isModifyMode}
+                    />
+                    <Input
+                      name="djName"
+                      label="Dj Name"
+                      placeholder="Enter DJ name"
+                      value={formik.values.djName}
+                      onChange={formik.handleChange}
+                      disabled={!isModifyMode}
+                    />
+                    <Input
+                      name="videography"
+                      label="Videography"
+                      placeholder="Enter videographer name"
+                      value={formik.values.videography}
+                      onChange={formik.handleChange}
+                      disabled={!isModifyMode}
+                    />
+                    <Input
+                      name="caterer"
+                      label="Caterer"
+                      placeholder="Enter caterer name"
+                      value={formik.values.caterer}
+                      onChange={formik.handleChange}
+                      disabled={!isModifyMode}
+                    />
+                    <Input
+                      name="decor"
+                      label="Decor"
+                      placeholder="Enter decor company"
+                      value={formik.values.decor}
+                      onChange={formik.handleChange}
+                      disabled={!isModifyMode}
+                    />
+                  </div>
                   <Input
                     name="start_time"
                     label="Start Time"
@@ -579,100 +527,163 @@ const ConfirmedEventsPage = () => {
                     }}
                     disabled={!isModifyMode}
                   />
-                </div>
-                <div className="grid grid-cols-3 gap-4">
                   <Input
-                    name="accessDate"
-                    label="Access Time/Date"
-                    containerClassName="col-span-1"
-                    placeholder="Enter access info"
-                    value={formik.values.accessDate}
+                    name="cakeCutSong"
+                    label="Cake cut song"
+                    placeholder="Enter cake cut song"
+                    value={formik.values.cakeCutSong}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
                   />
                   <Input
-                    name="everyDayContactName"
-                    label="Every Day Contact Name"
-                    containerClassName="col-span-2"
-                    placeholder="Enter contact name"
-                    value={formik.values.everyDayContactName}
-                    onChange={formik.handleChange}
-                    disabled={!isModifyMode}
-                  />
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <Input
-                    name="everyDayContactNumber"
-                    label="Every Day Contact Number"
-                    type="tel"
-                    containerClassName="col-span-1"
-                    placeholder="Enter contact number"
-                    value={formik.values.everyDayContactNumber}
+                    name="firstDance"
+                    label="First Dance"
+                    placeholder="Enter first dance song"
+                    value={formik.values.firstDance}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
                   />
                   <Input
-                    name="noOfGuests"
-                    label="No of Guests"
-                    type="number"
-                    containerClassName="col-span-2"
-                    placeholder="Enter number of guests"
-                    value={formik.values.noOfGuests}
+                    name="dos"
+                    label="Do's"
+                    placeholder="Enter preferences/do's"
+                    value={formik.values.dos}
+                    onChange={formik.handleChange}
+                    disabled={!isModifyMode}
+                  />
+                  <Input
+                    name="stagTuneAndDestination"
+                    label="Stag Tune and destination"
+                    placeholder="Enter stag tune and destination"
+                    value={formik.values.stagTuneAndDestination}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
                   />
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <Input
+                      name="date"
+                      label="Date"
+                      type="date"
+                      placeholder="Select date"
+                      value={formik.values.date}
+                      onChange={formik.handleChange}
+                      disabled={!isModifyMode}
+                    />
+                    <Input
+                      name="start_time"
+                      label="Start Time"
+                      type="time"
+                      placeholder="Select start time"
+                      value={formik.values.start_time}
+                      onChange={formik.handleChange}
+                      disabled={!isModifyMode}
+                    />
+                    <Input
+                      name="end_time"
+                      label="End Time"
+                      type="time"
+                      placeholder="Select end time"
+                      value={formik.values.end_time}
+                      onChange={formik.handleChange}
+                      disabled={!isModifyMode}
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <Input
+                      name="accessDate"
+                      label="Access Time/Date"
+                      containerClassName="col-span-1"
+                      placeholder="Enter access info"
+                      value={formik.values.accessDate}
+                      onChange={formik.handleChange}
+                      disabled={!isModifyMode}
+                    />
+                    <Input
+                      name="everyDayContactName"
+                      label="Every Day Contact Name"
+                      containerClassName="col-span-2"
+                      placeholder="Enter contact name"
+                      value={formik.values.everyDayContactName}
+                      onChange={formik.handleChange}
+                      disabled={!isModifyMode}
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <Input
+                      name="everyDayContactNumber"
+                      label="Every Day Contact Number"
+                      type="tel"
+                      containerClassName="col-span-1"
+                      placeholder="Enter contact number"
+                      value={formik.values.everyDayContactNumber}
+                      onChange={formik.handleChange}
+                      disabled={!isModifyMode}
+                    />
+                    <Input
+                      name="noOfGuests"
+                      label="No of Guests"
+                      type="number"
+                      containerClassName="col-span-2"
+                      placeholder="Enter number of guests"
+                      value={formik.values.noOfGuests}
+                      onChange={formik.handleChange}
+                      disabled={!isModifyMode}
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <Input
+                      name="depositAmount"
+                      label="Deposit Amount"
+                      containerClassName="col-span-1"
+                      type="number"
+                      placeholder="Enter deposit amount"
+                      value={formik.values.depositAmount}
+                      onChange={formik.handleChange}
+                      disabled={!isModifyMode}
+                    />
+                    <Input
+                      name="createdBy"
+                      label="Created By"
+                      containerClassName="col-span-2"
+                      placeholder="Enter creator name"
+                      value={formik.values.createdBy}
+                      onChange={formik.handleChange}
+                      disabled={true} // Usually non-editable
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs">
+                      Brief Itinerary/Playlist and Notes
+                    </label>
+                    <textarea
+                      name="briefItinerary"
+                      className="h-[265px] w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
+                      placeholder="Enter brief itinerary, playlist, and notes"
+                      style={{ resize: "none" }}
+                      value={formik.values.briefItinerary}
+                      onChange={formik.handleChange}
+                      disabled={!isModifyMode}
+                    />
+                  </div>
                   <Input
-                    name="depositAmount"
-                    label="Deposit Amount"
-                    containerClassName="col-span-1"
-                    type="number"
-                    placeholder="Enter deposit amount"
-                    value={formik.values.depositAmount}
+                    name="donts"
+                    label="Don'ts"
+                    placeholder="Enter don'ts"
+                    value={formik.values.donts}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
                   />
                   <Input
-                    name="createdBy"
-                    label="Created By"
-                    containerClassName="col-span-2"
-                    placeholder="Enter creator name"
-                    value={formik.values.createdBy}
-                    onChange={formik.handleChange}
-                    disabled={true} // Usually non-editable
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs">
-                    Brief Itinerary/Playlist and Notes
-                  </label>
-                  <textarea
-                    name="briefItinerary"
-                    className="h-[265px] w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
-                    placeholder="Enter brief itinerary, playlist, and notes"
-                    style={{ resize: "none" }}
-                    value={formik.values.briefItinerary}
+                    name="henTuneAndDestination"
+                    label="Hen Tune and Destination"
+                    placeholder="Enter hen tune and destination"
+                    value={formik.values.henTuneAndDestination}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
                   />
                 </div>
-                <Input
-                  name="donts"
-                  label="Don'ts"
-                  placeholder="Enter don'ts"
-                  value={formik.values.donts}
-                  onChange={formik.handleChange}
-                  disabled={!isModifyMode}
-                />
-                <Input
-                  name="henTuneAndDestination"
-                  label="Hen Tune and Destination"
-                  placeholder="Enter hen tune and destination"
-                  value={formik.values.henTuneAndDestination}
-                  onChange={formik.handleChange}
-                  disabled={!isModifyMode}
-                />
               </div>
             </div>
           </div>
@@ -722,12 +733,28 @@ const ConfirmedEventsPage = () => {
                           Created on {n.created_at ? dayjs(n.created_at).format("DD-MM-YYYY HH:mm") : "—"}
                         </div>
                       </div>
-                    ))
-                  )}
-                </>
-              )}
+                    ) : (
+                      eventNotes.map((n: ConfirmEventNote) => (
+                        <div
+                          key={n.id ?? n.note}
+                          className="rounded-lg bg-gray-50 px-3 py-2"
+                        >
+                          <div className="text-sm font-medium text-gray-800">
+                            {n.note ?? n.notes ?? "Note"}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Created on{" "}
+                            {n.created_at
+                              ? dayjs(n.created_at).format("DD-MM-YYYY HH:mm")
+                              : "—"}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </>
+                )}
+              </div>
             </div>
-          </div>
 
           <div
             className={`overflow-hidden bg-white rounded-xl border border-gray-200 transition-all duration-300 ease-in-out ${
@@ -756,12 +783,15 @@ const ConfirmedEventsPage = () => {
                   <tbody>
                       {payments.length === 0 ? (
                       <tr>
-                        <td
-                          colSpan={3}
-                          className="px-4 py-2 text-sm text-gray-500"
-                        >
-                          No payments found.
-                        </td>
+                        <th className="px-4 py-2 text-left font-medium text-gray-700">
+                          Date
+                        </th>
+                        <th className="px-4 py-2 text-left font-medium text-gray-700">
+                          Amount
+                        </th>
+                        <th className="px-4 py-2 text-left font-medium text-gray-700">
+                          Reference
+                        </th>
                       </tr>
                     ) : (
                       payments.map((p: ConfirmEventPayment) => (
@@ -772,13 +802,37 @@ const ConfirmedEventsPage = () => {
                           <td className="px-4 py-2">£{Number(p.amount ?? 0)}</td>
                           <td className="px-4 py-2">-</td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                      ) : (
+                        payments.map((p: ConfirmEventPayment) => (
+                          <tr key={p.id}>
+                            <td className="px-4 py-2">
+                              {p.date
+                                ? dayjs(p.date).format("DD/MM/YYYY")
+                                : "-"}
+                            </td>
+                            <td className="px-4 py-2">£{p.amount ?? 0}</td>
+                            <td className="px-4 py-2">{p.reference ?? "-"}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
+          <Collapse
+            bordered={false}
+            expandIconPlacement="end"
+            expandIcon={({ isActive }) => (
+              <ChevronDown
+                size={14}
+                className={`transition-transform duration-300 ${isActive ? "rotate-180" : ""}`}
+              />
+            )}
+            style={{ background: "transparent" }}
+            items={getItems(panelStyle)}
+          />
         </div>
       </form>
       {showModal && (
