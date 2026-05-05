@@ -10,7 +10,7 @@ import {
 import Button from "@/src/components/Button";
 import { BackButton } from "@/src/components/Icons";
 import Input from "@/src/components/Input";
-import { Collapse, CollapseProps, Select, Spin, DatePicker } from "antd";
+import { Collapse, CollapseProps, Select, Spin, DatePicker, Modal } from "antd";
 import dayjs, { Dayjs } from "dayjs";
 import { useFormik } from "formik";
 import {
@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { CSSProperties, useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ConfirmEventData, EventsDropdownItem, ConfirmEventPayment, ConfirmEventNote, ConfirmEventPackage } from "@/src/types/types";
 import SendBrochureModal from "../open-enquiry/SendBrochure";
@@ -65,14 +66,16 @@ const ConfirmedEventsPage = () => {
     useSendConfirmInvoice();
   const { mutate: refundMutation, isPending: isProcessingRefund } =
     useRefundConfirmEvent();
+  const queryClient = useQueryClient();
   const [paymentAmount, setPaymentAmount] = useState<string>("");
-  const [paymentDate, setPaymentDate] = useState<Dayjs | null>(null);
+  const [paymentDate, setPaymentDate] = useState<Dayjs | null>(dayjs());
   const [paymentMethodId, setPaymentMethodId] = useState<string | number>("");
   const [paymentNotes, setPaymentNotes] = useState<string>("");
   const [rigOpen, setRigOpen] = useState(false); // rig list toggle
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [refundAmount, setRefundAmount] = useState<string>("");
+  const [signatureImage, setSignatureImage] = useState<string | null>(null);
   const [invoiceTemplate, setInvoiceTemplate] = useState<{ subject: string; body: string } | null>(null);
 
   const eventsOptions = (eventsDropdown?.data as EventsDropdownItem[])?.map(
@@ -164,12 +167,14 @@ const ConfirmedEventsPage = () => {
             event_date_contact:
               `${values.everyDayContactName} ${values.everyDayContactNumber}`.trim() ||
               null,
+            signature_image: signatureImage || null,
           },
           id: eventId,
         },
         {
           onSuccess: () => {
             setIsModifyMode(false);
+            setSignatureImage(null);
             toast.success("Event updated successfully");
           },
         },
@@ -178,20 +183,26 @@ const ConfirmedEventsPage = () => {
   });
 
   const handleCancelEvent = () => {
-    if (window.confirm("Are you sure you want to cancel this event?")) {
-      cancelEventMutation(
-        { id: eventId },
-        {
-          onSuccess: () => {
-            setEventId("");
-            toast.success("Event cancelled successfully");
-          },
-          onError: () => {
-            toast.error("Failed to cancel event");
-          },
-        }
-      );
-    }
+    Modal.confirm({
+      title: "Confirm cancellation",
+      content: "Are you sure you want to cancel this event?",
+      okText: "Yes",
+      cancelText: "No",
+      centered: true,
+      onOk() {
+        cancelEventMutation(
+          { id: eventId },
+          {
+            onSuccess: () => {
+              setEventId("");
+            },
+            onError: () => {
+              toast.error("Failed to cancel event");
+            },
+          }
+        );
+      },
+    });
   };
 
   const handleDownloadInvoice = () => {
@@ -221,6 +232,12 @@ const ConfirmedEventsPage = () => {
 
   const payments =
     (selectedEventData?.data as ConfirmEventData)?.event_payments ?? [];
+  const paymentsSum = (selectedEventData?.data?.event_payments || []).reduce(
+    (s: number, p: ConfirmEventPayment) => s + Number(p.amount || p.payment_amount || 0),
+    0,
+  );
+  const eventRefundAmount = Number(selectedEventData?.data?.refund_amount || 0) || 0;
+  const adjustedPaidAmount = Math.max(0, paymentsSum - eventRefundAmount);
   const eventNotes =
     (selectedEventData?.data as ConfirmEventData)?.event_notes ?? [];
 
@@ -242,7 +259,7 @@ const ConfirmedEventsPage = () => {
           Contracts
         </div>
       ),
-      children: <Contracts data={selectedEventData?.data} />,
+      children: <Contracts data={selectedEventData?.data} isModifyMode={isModifyMode} eventId={eventId} onSignatureChange={setSignatureImage} />,
       style: panelStyle,
     },
     {
@@ -928,7 +945,7 @@ const ConfirmedEventsPage = () => {
                           onSuccess: () => {
                             setShowDrawer(false);
                             setPaymentAmount("");
-                            setPaymentDate(null);
+                            setPaymentDate(dayjs());
                             setPaymentMethodId("");
                             setPaymentNotes("");
                           },
@@ -942,9 +959,9 @@ const ConfirmedEventsPage = () => {
                         <input
                           name="amount"
                           type="number"
-                          step="0.01"
                           className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
                           placeholder="0.00"
+                          min={0}
                           required
                           value={paymentAmount}
                           onChange={(e) => setPaymentAmount(e.target.value)}
@@ -1001,13 +1018,13 @@ const ConfirmedEventsPage = () => {
                         >
                           {isAddingPayment ? "Saving..." : "Add Payment"}
                         </button>
-                        <button 
+                        {/* <button 
                           type="button" 
                           onClick={() => setShowDrawer(false)} 
                           className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
                         >
                           Cancel
-                        </button>
+                        </button> */}
                       </div>
                     </form>
                   </div>
@@ -1025,20 +1042,22 @@ const ConfirmedEventsPage = () => {
                       <div className="flex justify-between">
                         <span className="text-gray-600">Deposit Received:</span>
                         <span className="font-semibold text-gray-900">
-                          £{((selectedEventData?.data?.event_payments || []).reduce((s: number, p: ConfirmEventPayment) => s + Number(p.amount || p.payment_amount || 0), 0)).toLocaleString()}
+                          £{adjustedPaidAmount.toLocaleString()}
                         </span>
                       </div>
                       <div className="pt-2 border-t border-emerald-200 flex justify-between">
                         <span className="font-semibold text-emerald-900">Outstanding:</span>
                         <span className="font-bold text-emerald-900">
-                          £{( (Number(selectedEventData?.data?.total_cost_for_equipment) || ((selectedEventData?.data?.event_packages || []).reduce((s: number, p: ConfirmEventPackage) => s + Number(p.total_price || p.sell_price || 0), 0))) - ((selectedEventData?.data?.event_payments || []).reduce((s: number, p: ConfirmEventPayment) => s + Number(p.amount || p.payment_amount || 0), 0)) ).toLocaleString()}
+                          £{(
+                            (Number(selectedEventData?.data?.total_cost_for_equipment) || ((selectedEventData?.data?.event_packages || []).reduce((s: number, p: ConfirmEventPackage) => s + Number(p.total_price || p.sell_price || 0), 0))) - adjustedPaidAmount
+                          ).toLocaleString()}
                         </span>
                       </div>
                     </div>
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="space-y-3 border-t border-gray-200 pt-4">
+                  {/* <div className="space-y-3 border-t border-gray-200 pt-4">
                     <button
                       onClick={async () => {
                         setButtonLoading("send-invoice");
@@ -1070,7 +1089,7 @@ const ConfirmedEventsPage = () => {
                     >
                       {isProcessingRefund ? "Processing..." : "Refund"}
                     </button>
-                  </div>
+                  </div> */}
                 </div>
               </div>
             </div>
@@ -1130,6 +1149,8 @@ const ConfirmedEventsPage = () => {
                 },
                 {
                   onSuccess: () => {
+                    // ensure fresh event data is fetched after refund
+                    queryClient.invalidateQueries({ queryKey: ["confirm-event", eventId] });
                     setShowRefundModal(false);
                     setRefundAmount("");
                   },
@@ -1148,12 +1169,7 @@ const ConfirmedEventsPage = () => {
                   )
                 : 0)
             }
-            paidAmount={
-              (selectedEventData?.data?.event_payments || []).reduce(
-                (s: number, p: ConfirmEventPayment) => s + Number(p.amount || p.payment_amount || 0),
-                0,
-              )
-            }
+            paidAmount={adjustedPaidAmount}
           />
         )}
     </div>

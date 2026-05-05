@@ -1,5 +1,5 @@
 "use client";
-import { Modal } from "antd";
+import { X } from "lucide-react";
 
 interface RefundModalProps {
   open: boolean;
@@ -22,6 +22,11 @@ export const RefundModal = ({
   eventTotal = null,
   paidAmount = null,
 }: RefundModalProps) => {
+  const formatCurrency = (v: number | null | undefined) => {
+    if (v === null || v === undefined) return "—";
+    const n = Number(v) || 0;
+    return `£${n.toLocaleString()}`;
+  };
   const handleRefund = () => {
     if (!String(refundAmount || "").trim() || Number(refundAmount) <= 0) {
       alert("Please enter a valid refund amount");
@@ -30,31 +35,53 @@ export const RefundModal = ({
     onRefund(refundAmount);
   };
 
+  if (!open) return null;
+
   return (
-    <Modal
-      open={open}
-      onCancel={onCancel}
-      title={null}
-      footer={null}
-      centered
-    >
-      <div className="rounded-lg overflow-hidden">
-        <div className="bg-primary px-4 py-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div
+        className="absolute inset-0 bg-black/40"
+        onClick={onCancel}
+        aria-hidden
+      />
+
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="relative w-[600px] max-w-[95%] bg-white rounded-xl shadow-xl"
+      >
+        {/* Close button */}
+        <button
+          onClick={onCancel}
+          aria-label="Close"
+          className="absolute right-3 top-3 z-20 inline-flex items-center justify-center p-2 bg-white rounded-full shadow-md text-gray-700"
+        >
+          <X size={18} />
+        </button>
+
+        <div className="bg-primary px-6 py-4 rounded-t-xl">
           <h3 className="text-white text-lg font-semibold">Refund</h3>
         </div>
-        <div className="p-5">
+
+        <div className="p-6">
           <p className="font-semibold mb-3">Are you sure you want to refund the amount for this event</p>
           <p className="font-bold mb-3">
-            Event Total Amount:{eventTotal ?? "—"} &nbsp;&nbsp; Paid Amount:{paidAmount ?? "—"}
+            Event Total Amount: {formatCurrency(eventTotal)} &nbsp;&nbsp; Paid Amount: {formatCurrency(paidAmount ?? null)}
           </p>
 
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">Please Enter Your Refund Amount</label>
             <input
               type="number"
-              step="0.01"
+              min={0}
               value={refundAmount}
-              onChange={(e) => setRefundAmount(e.target.value)}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (raw === "") return setRefundAmount("");
+                const num = Number(raw);
+                if (Number.isNaN(num)) return;
+                setRefundAmount(num < 0 ? "0" : raw);
+              }}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
               placeholder="Refund Amount"
             />
@@ -83,6 +110,6 @@ export const RefundModal = ({
           </div>
         </div>
       </div>
-    </Modal>
+    </div>
   );
 };

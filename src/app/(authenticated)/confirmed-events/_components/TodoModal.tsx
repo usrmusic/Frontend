@@ -4,13 +4,15 @@ import { Checkbox, Modal, Select } from "antd";
 import { useFormik } from "formik";
 import React from "react";
 import { toast } from "react-toastify";
-import { useAddTodo } from "@/src/api/events";
+import { useAddTodo, useUpdateTodo } from "@/src/api/events";
 import { useUsersDropdown } from "@/src/api/dropdown";
 
 interface CompoProps {
   open: boolean;
   onCancel: VoidFunction;
   eventId: string;
+  initialValues?: Partial<TodoFormValues> | null;
+  todoId?: number | null;
 }
 
 export interface TodoFormValues {
@@ -21,37 +23,61 @@ export interface TodoFormValues {
   complete: boolean;
 }
 
-const TodoModal = ({ open, onCancel, eventId }: CompoProps) => {
+const TodoModal = ({
+  open,
+  onCancel,
+  eventId,
+  initialValues,
+  todoId,
+}: CompoProps) => {
+  const isEdit = !!todoId;
   const addTodo = useAddTodo();
+  const updateTodo = useUpdateTodo();
   const { data } = useUsersDropdown();
 
   const formik = useFormik<TodoFormValues>({
+    enableReinitialize: true,
     initialValues: {
-      assigned_to: "",
-      action: "",
-      deadline: "",
-      comment: "",
-      complete: false,
+      assigned_to: initialValues?.assigned_to ? String(initialValues.assigned_to) : "",
+      action: initialValues?.action ?? "",
+      deadline: initialValues?.deadline ?? "",
+      comment: initialValues?.comment ?? "",
+      complete: initialValues?.complete ?? false,
     },
     onSubmit: (values, { resetForm }) => {
-      addTodo.mutate(
-        {
-          eventId: Number(eventId),
-          payload: values,
-        },
-        {
-          onSuccess: () => {
-            toast.success("Todo added successfully");
-            resetForm();
-            onCancel();
+      if (isEdit && todoId) {
+        updateTodo.mutate(
+          { eventId: Number(eventId), todoId, payload: values },
+          {
+            onSuccess: () => {
+              toast.success("Todo updated successfully");
+              resetForm();
+              onCancel();
+            },
           },
-        },
-      );
+        );
+      } else {
+        addTodo.mutate(
+          { eventId: Number(eventId), payload: values },
+          {
+            onSuccess: () => {
+              toast.success("Todo added successfully");
+              resetForm();
+              onCancel();
+            },
+          },
+        );
+      }
     },
   });
 
   return (
-    <Modal open={open} footer={false} title="Add Todo" onCancel={onCancel}>
+    <Modal
+      open={open}
+      footer={false}
+      title={isEdit ? "Edit Todo" : "Add Todo"}
+      onCancel={onCancel}
+    >
       <form onSubmit={formik.handleSubmit}>
         <div className="space-y-4">
           <div>
@@ -105,9 +131,9 @@ const TodoModal = ({ open, onCancel, eventId }: CompoProps) => {
         </div>
         <div className="mt-4">
           <ModalFooter
-            mode="add"
+            mode={isEdit ? "edit" : "add"}
             onCancel={onCancel}
-            loading={addTodo.isPending}
+            loading={addTodo.isPending || updateTodo.isPending}
           />
         </div>
       </form>

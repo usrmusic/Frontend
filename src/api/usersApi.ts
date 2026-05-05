@@ -75,6 +75,7 @@ export type Company = {
   vat: string | null;
   vat_percentage: number | null;
   admin_signature: string | null;
+  admin_signature_url?: string | null;
   created_at: string | null;
   updated_at: string | null;
 };
@@ -495,6 +496,34 @@ export const useEditUser = () => {
     },
   });
 };
+// Update current user's personal profile (multipart/form-data to support profile photo)
+export const useUpdateProfile = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { id: number | string; form: FormData }) => {
+      try {
+        const { id, form } = payload;
+        const response = await AxiosInstance.put(`/user/${id}`, form, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    },
+    onError: (error) => {
+      console.error("update profile failed:", (error as Error).message);
+    },
+  });
+};
 export const useEditPackage = () => {
   const queryClient = useQueryClient();
 
@@ -548,9 +577,8 @@ export const useAddCompany = () => {
       try {
         // Send FormData as the request body with the correct Content-Type
         const response = await AxiosInstance.post("/company", payload, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
+          // ensure axios/browser sets multipart boundary; override default JSON header
+          headers: { "Content-Type": undefined as unknown as string },
         });
         return response.data;
       } catch (error: unknown) {
@@ -574,19 +602,10 @@ export const useEditCompany = () => {
 
   return useMutation({
     // Accept both id and formData as params
-    mutationFn: async ({
-      id,
-      payload,
-    }: {
-      id: number | string;
-      payload: FormData;
-    }) => {
+    mutationFn: async ({ id, payload }: { id: number | string; payload: FormData }) => {
       try {
-        // PATCH is more typical for updates, but POST will be preserved if your backend requires it
-        const response = await AxiosInstance.post(`/company/${id}`, payload, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
+        const response = await AxiosInstance.put(`/company/${id}`, payload, {
+          headers: { "Content-Type": undefined as unknown as string },
         });
         return response.data;
       } catch (error: unknown) {
@@ -626,6 +645,50 @@ export const useAddUser = () => {
     },
     onError: (error) => {
       console.error("add user failed:", error.message);
+    },
+  });
+};
+export const useGetUserById = (id?: number | string) => {
+  return useQuery({
+    queryKey: ["user", id],
+    queryFn: async () => {
+      if (!id) throw new Error("missing id");
+      const response = await AxiosInstance.get(`/user/${id}`);
+      return response.data;
+    },
+    enabled: !!id,
+  });
+};
+
+export const useVerifyEmail = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (token: string) => {
+      const response = await AxiosInstance.post(`/user/verify`, { token });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
+      queryClient.invalidateQueries({ queryKey: ["user"] });
+    },
+    onError: (error) => {
+      console.error("verify email failed:", (error as Error).message);
+    },
+  });
+};
+
+export const useRequestVerifyEmail = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const response = await AxiosInstance.post(`/user/verify/request`);
+      return response.data as { ok?: boolean; emailSent?: boolean; verificationToken?: string };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
+    },
+    onError: (error) => {
+      console.error("request verify email failed:", (error as Error).message);
     },
   });
 };

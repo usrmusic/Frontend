@@ -146,12 +146,12 @@ const Sidebar = () => {
     },
     {
       key: "extras",
-      label: "Extras",
+      label: "Admin",
       icon: <RiFileListLine size={18} />,
       children: [
-        { href: "/rig-list", icon: <RiFileListLine size={20} />, label: "Rig List", permission: "rig list" },
         { href: "/users?title=Users", icon: <Contacts />, label: "Users", permissionAny: ["user", "manage access"] },
         { href: "/calendar", icon: <Calendar />, label: "Calendar", permission: "calendar" },
+        { href: "/rig-list", icon: <RiFileListLine size={20} />, label: "Rig List", permission: "rig list" },
       ],
     },
   ];
@@ -283,8 +283,12 @@ const Sidebar = () => {
           </div>
 
           <div>
-            <div
-              className={`flex items-center ${expanded ? "gap-3" : ""} ${expanded ? "pl-1" : ""}`}
+            <Link
+              href="/profile"
+              onMouseEnter={(e) => showTooltip(e, "Profile")}
+              onMouseMove={(e) => showTooltip(e, "Profile")}
+              onMouseLeave={hideTooltip}
+              className={`group relative flex shrink-0 items-center ${expanded ? "justify-start w-full gap-3 px-3 py-2 rounded-md" : "justify-center size-10 rounded-full"} hover:bg-black hover:text-white transition-colors duration-200`}
             >
               <Avatar
                 src={getImageSrc(authUser?.profile_photo || undefined)}
@@ -305,7 +309,7 @@ const Sidebar = () => {
               >
                 {authUser?.name ?? "User"}
               </span>
-            </div>
+            </Link>
           </div>
 
           <div

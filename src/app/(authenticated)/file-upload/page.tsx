@@ -253,11 +253,11 @@ const FileUploadPage = () => {
             Upload File
           </Button>
           {/* <Button icon={<Export w={16} h={16} />}>Export Data</Button> */}
-          <Button icon={<MoreVertical size={18} />}></Button>
+          {/* <Button icon={<MoreVertical size={18} />}></Button> */}
         </div>
       </div>
       <div className="flex flex-col gap-3">
-        <div className="bg-primary rounded-xl overflow-hidden p-4">
+        {/* <div className="bg-primary rounded-xl overflow-hidden p-4">
           <div className="flex items-center gap-2 rounded-lg bg-white px-4 py-3">
             <MagnifyingGlass w={18} h={18} />
             <input
@@ -268,7 +268,7 @@ const FileUploadPage = () => {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-        </div>
+        </div> */}
         <DataTable
           columns={columns}
           dataSource={uploadListData?.data}

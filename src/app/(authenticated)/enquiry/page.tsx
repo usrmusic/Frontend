@@ -420,7 +420,7 @@ const NewEnquiryPage = () => {
 
           const guestsValue = values.no_of_guests === "" || values.no_of_guests == null ? null : String(values.no_of_guests);
 
-            const payload = {
+          const payload = {
             name: clientName,
             email: values.email,
             contact_number: values.number,
@@ -441,6 +441,8 @@ const NewEnquiryPage = () => {
             extra_data,
             rig_notes_data,
             no_of_guests: guestsValue,
+            is_new_client: showNameInput ? true : false,
+            client_id: !showNameInput && clientId ? Number(clientId) : undefined,
           };
 
           try {

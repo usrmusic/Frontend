@@ -102,27 +102,27 @@ const ClientsPageContent = () => {
       dataIndex: "password_text",
       key: "password_text",
     },
-    {
-      title: "Status",
-      dataIndex: "status",
-      key: "status",
-      render: (value: string) => (
-        <span
-          className={`whitespace-nowrap ${
-            value?.toLowerCase() === "active"
-              ? "px-2 py-1 rounded-full text-green-700 bg-green-100"
-              : "px-2 py-1 rounded-full text-gray-600 bg-yellow-100"
-          }`}
-        >
-          {value ?? "No Status"}
-        </span>
-      ),
-    },
-    {
-      title: "Event Date",
-      dataIndex: "eventDate",
-      key: "eventDate",
-    },
+    // {
+    //   title: "Status",
+    //   dataIndex: "status",
+    //   key: "status",
+    //   render: (value: string) => (
+    //     <span
+    //       className={`whitespace-nowrap ${
+    //         value?.toLowerCase() === "active"
+    //           ? "px-2 py-1 rounded-full text-green-700 bg-green-100"
+    //           : "px-2 py-1 rounded-full text-gray-600 bg-yellow-100"
+    //       }`}
+    //     >
+    //       {value ?? "No Status"}
+    //     </span>
+    //   ),
+    // },
+    // {
+    //   title: "Event Date",
+    //   dataIndex: "eventDate",
+    //   key: "eventDate",
+    // },
     {
       title: "Contact Number",
       dataIndex: "contact_number",

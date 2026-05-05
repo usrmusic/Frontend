@@ -21,8 +21,36 @@ export type EventsDropdownItem = {
   };
 };
 
+export type ConfirmEventSignature = {
+  id?: string | number;
+  signature_path?: string | null;
+  signature_url?: string | null;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  created_at?: string | null;
+};
+
+export type ConfirmEventContract = {
+  id?: string | number;
+  status?: string | null;
+  signed_pdf_path?: string | null;
+  signed_pdf_url?: string | null;
+  signed_at?: string | null;
+  signatures?: ConfirmEventSignature[];
+};
+
+export type ConfirmEventCompany = {
+  id?: string | number;
+  name?: string | null;
+  admin_signature?: string | null;
+  admin_signature_url?: string | null;
+};
+
 export type ConfirmEventData = {
+  id?: string | number;
+  user_id?: string | number | null;
   users_events_user_idTousers?: {
+    id?: string | number;
     name?: string;
     email?: string;
     contact_number?: string;
@@ -63,6 +91,11 @@ export type ConfirmEventData = {
   file_uploads?: unknown[];
   event_payments?: ConfirmEventPayment[];
   event_notes?: ConfirmEventNote[];
+  contracts?: ConfirmEventContract[];
+  contract_token?: string | null;
+  contract_signed_at?: string | null;
+  contract_pdf_url?: string | null;
+  company?: ConfirmEventCompany | null;
 };
 
 export type ConfirmEventPayment = {

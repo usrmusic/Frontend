@@ -48,13 +48,19 @@ interface ConfirmEventPayload {
   event_date: string;
 }
 
-interface TodoRespI {
+export interface TodoRespI {
   id: number;
-  assigned_to: string;
+  event_id?: number;
+  assigned_to: number | string | null;
+  users_todos_assigned_toTousers?: { id: number; name: string } | null;
+  assigned_user_name?: string | null;
   action: string;
   deadline: string;
   comment: string;
   complete: boolean;
+  created_by?: number | string | null;
+  users_todos_created_byTousers?: { id: number; name: string } | null;
+  created_user_name?: string | null;
 }
 
 export const useGetConfirmEvent = (id: string) => {
@@ -130,6 +136,7 @@ export const useUpdateConfirmEvent = () => {
   });
 };
 export const useCancelEvent = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id }: { id: string }) => {
       try {
@@ -147,7 +154,14 @@ export const useCancelEvent = () => {
         throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: (_, { id }) => {
+      // Invalidate confirm-event detail and dropdown lists so cancelled event disappears
+      try {
+        queryClient.invalidateQueries({ queryKey: ["confirm-event", id] });
+      } catch (e) {}
+      try {
+        queryClient.invalidateQueries({ queryKey: ["events-dropdown"] });
+      } catch (e) {}
       toast.success("Event canceled successfully");
     },
   });
@@ -356,6 +370,7 @@ export const useDownloadInvoice = () => {
   });
 };
 export const useConfirmEvent = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
       id,
@@ -379,6 +394,14 @@ export const useConfirmEvent = () => {
         }
         throw error;
       }
+    },
+    onSuccess: (_, { id }) => {
+      try {
+        queryClient.invalidateQueries({ queryKey: ["enquiry-list"] });
+      } catch (e) {}
+      try {
+        queryClient.invalidateQueries({ queryKey: ["events-dropdown"] });
+      } catch (e) {}
     },
   });
 };
@@ -478,8 +501,76 @@ export const useDeleteTodo = () => {
       todoId: number;
     }) => {
       try {
-        const resp = await AxiosInstance.post(
-          `/todos/${eventId}/${todoId}?force=false`,
+        const resp = await AxiosInstance.delete(
+          `/todos/${eventId}/${todoId}`,
+        );
+        return resp.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "API Error");
+        } else {
+          toast.error("Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["todos-list"] });
+    },
+  });
+};
+
+export const useUpdateTodo = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      eventId,
+      todoId,
+      payload,
+    }: {
+      eventId: number;
+      todoId: number;
+      payload: TodoFormValues;
+    }) => {
+      try {
+        const resp = await AxiosInstance.put(
+          `/todos/${eventId}/${todoId}`,
+          payload,
+        );
+        return resp.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "API Error");
+        } else {
+          toast.error("Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["todos-list"] });
+    },
+  });
+};
+
+export const useToggleTodoComplete = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      eventId,
+      todoId,
+      complete,
+    }: {
+      eventId: number;
+      todoId: number;
+      complete: boolean;
+    }) => {
+      try {
+        const resp = await AxiosInstance.patch(
+          `/todos/${eventId}/${todoId}/complete`,
+          { complete },
         );
         return resp.data;
       } catch (error: unknown) {

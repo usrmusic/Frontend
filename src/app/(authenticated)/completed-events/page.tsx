@@ -194,9 +194,9 @@ const CompletedEventsPage = () => {
             >
               Download Invoice
             </Button>
-            <button className=" size-9 flex items-center justify-center rounded-lg bg-white hover:bg-secondary-200 transition-colors">
+            {/* <button className=" size-9 flex items-center justify-center rounded-lg bg-white hover:bg-secondary-200 transition-colors">
               <MoreVertical size={18} />
-            </button>
+            </button> */}
           </div>
         </div>
 

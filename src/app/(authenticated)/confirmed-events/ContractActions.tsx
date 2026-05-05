@@ -79,16 +79,7 @@ export default function ContractActions({
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {isSigned && contractPdfUrl ? (
-            <a
-              href={contractPdfUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="px-3 py-2 text-xs rounded bg-black text-white hover:bg-gray-800"
-            >
-              View signed PDF
-            </a>
-          ) : null}
+          {isSigned && contractPdfUrl ? null : null}
           {!isSigned ? (
             <>
               <button

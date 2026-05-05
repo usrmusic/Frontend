@@ -227,6 +227,61 @@ const OpenEnquiryPage = () => {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {/* <Button variant="outlined" disabled={!selectedRowKeys.length} color="danger">Delete</Button> */}
+                            <Button
+                type="default"
+                className="themeDefaultButton"
+                disabled={!selectedRowKeys.length || Boolean(buttonLoading)}
+                onClick={() => {
+                  if (!selectedRowKeys.length) return;
+                  router.push(`/enquiry?select=${encodeURIComponent(String(selectedRowKeys[0]))}`);
+                }}
+              >
+                Edit
+              </Button>
+              <Button
+                type="default"
+                className="themeDefaultButton"
+                disabled={!selectedRowKeys.length || Boolean(buttonLoading)}
+                loading={buttonLoading === "delete"}
+                onClick={() => {
+                  if (!selectedRowKeys.length) return;
+                  Modal.confirm({
+                    title: (
+                      <div className="flex items-center gap-3">
+                        <span className="text-red-600 text-xl">⚠️</span>
+                        <span className="font-medium">Delete enquiry</span>
+                      </div>
+                    ),
+                    content: (
+                      <div className="text-sm text-gray-700">
+                        Are you sure you want to delete this enquiry? This action cannot be undone. This will permanently remove the enquiry and related temporary data.
+                      </div>
+                    ),
+                    centered: true,
+                    maskClosable: false,
+                    okText: "Delete",
+                    okButtonProps: { danger: true, className: "!bg-red-600 !border-red-600 hover:!bg-red-700" },
+                    cancelText: "Cancel",
+                    onOk: () => {
+                      const id = String(selectedRowKeys[0]);
+                      setButtonLoading("delete");
+                      deleteEnquiry.mutate(id, {
+                        onSuccess: () => {
+                          toast.success("Enquiry deleted");
+                          setSelectedRowKeys([]);
+                          setSelectedRowData(null);
+                          setButtonLoading(null);
+                        },
+                        onError: () => {
+                          setButtonLoading(null);
+                        },
+                      });
+                    },
+                  });
+                }}
+              >
+                Delete
+              </Button>
                 <Button
                 type="default"
                 disabled={!selectedRowKeys.length || Boolean(buttonLoading)}
@@ -299,64 +354,9 @@ const OpenEnquiryPage = () => {
               >
                 Send Quote
               </Button>
-              <Button
-                type="default"
-                className="themeDefaultButton"
-                disabled={!selectedRowKeys.length || Boolean(buttonLoading)}
-                onClick={() => {
-                  if (!selectedRowKeys.length) return;
-                  router.push(`/enquiry?select=${encodeURIComponent(String(selectedRowKeys[0]))}`);
-                }}
-              >
-                Edit
-              </Button>
-              <Button
-                type="default"
-                className="themeDefaultButton"
-                disabled={!selectedRowKeys.length || Boolean(buttonLoading)}
-                loading={buttonLoading === "delete"}
-                onClick={() => {
-                  if (!selectedRowKeys.length) return;
-                  Modal.confirm({
-                    title: (
-                      <div className="flex items-center gap-3">
-                        <span className="text-red-600 text-xl">⚠️</span>
-                        <span className="font-medium">Delete enquiry</span>
-                      </div>
-                    ),
-                    content: (
-                      <div className="text-sm text-gray-700">
-                        Are you sure you want to delete this enquiry? This action cannot be undone. This will permanently remove the enquiry and related temporary data.
-                      </div>
-                    ),
-                    centered: true,
-                    maskClosable: false,
-                    okText: "Delete",
-                    okButtonProps: { danger: true, className: "!bg-red-600 !border-red-600 hover:!bg-red-700" },
-                    cancelText: "Cancel",
-                    onOk: () => {
-                      const id = String(selectedRowKeys[0]);
-                      setButtonLoading("delete");
-                      deleteEnquiry.mutate(id, {
-                        onSuccess: () => {
-                          toast.success("Enquiry deleted");
-                          setSelectedRowKeys([]);
-                          setSelectedRowData(null);
-                          setButtonLoading(null);
-                        },
-                        onError: () => {
-                          setButtonLoading(null);
-                        },
-                      });
-                    },
-                  });
-                }}
-              >
-                Delete
-              </Button>
-              <button className="size-9 flex items-center justify-center rounded-lg bg-secondary-100 hover:bg-secondary-200 transition-colors">
+              {/* <button className="size-9 flex items-center justify-center rounded-lg bg-secondary-100 hover:bg-secondary-200 transition-colors">
                 <MoreVertical size={18} />
-              </button>
+              </button> */}
             </div>
           </div>
         </div>
