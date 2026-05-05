@@ -20,6 +20,7 @@ import {
 } from "@/src/api/dropdown";
 import { usePackageData, useSingleClient, useCreateEnquiry, useGetEnquiry, useUpdateEnquiry } from "@/src/api/enquiry";
 import dayjs from "dayjs";
+import { parseTimeTo24 } from "@/src/utils/timeConverter";
 
 type EnquiryFormValues = {
   name: string;
@@ -126,7 +127,8 @@ const NewEnquiryPage = () => {
   const formikRef = useRef<FormikProps<EnquiryFormValues>>(null);
   const [notesModalOpen, setNotesModalOpen] = useState(false);
   const [notesItem, setNotesItem] = useState<ExtraItem | null>(null);
-  const [showRigListCard, setShowRigListCard] = useState(false);
+  type CardsOpen = { rigList: boolean; startingPackage: boolean; extras: boolean };
+  const [cardsOpen, setCardsOpen] = useState<CardsOpen>({ rigList: false, startingPackage: true, extras: true });
   const searchParams = useSearchParams();
   const router = useRouter();
   const editId = searchParams?.get("select") ?? null;
@@ -424,8 +426,8 @@ const NewEnquiryPage = () => {
             contact_number: values.number,
             address: values.address,
             event_date: eventDate,
-            start_time: values.startTime,
-            end_time: values.endTime,
+            start_time: parseTimeTo24(values.startTime),
+            end_time: parseTimeTo24(values.endTime),
             deposit_amount: Number(values.depositAmount) || 0,
             venue_id: values.venue && String(values.venue).match(/^\d+$/) ? Number(values.venue) : undefined,
             new_venue_name: values.venue && !String(values.venue).match(/^\d+$/) ? String(values.venue) : "",
@@ -439,6 +441,8 @@ const NewEnquiryPage = () => {
             extra_data,
             rig_notes_data,
             no_of_guests: guestsValue,
+            is_new_client: showNameInput ? true : false,
+            client_id: !showNameInput && clientId ? Number(clientId) : undefined,
           };
 
           try {
@@ -525,7 +529,7 @@ const NewEnquiryPage = () => {
                             <div className="flex-1">
                               <label className="mb-1 block text-xs">Name</label>
                               <select
-                                className="h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none"
+                                className="h-10 w-full rounded-xl border bg-secondary-100 border-gray-200 px-3 text-sm outline-none"
                                 value={clientId != null ? String(clientId) : String(values.name ?? "")}
                                 onChange={(e) => {
                                   const selectedId = e.target.value;
@@ -545,7 +549,7 @@ const NewEnquiryPage = () => {
                           )}
                           <Button
                             type="primary"
-                            className="w-[90px]! h-10! text-xs!"
+                            className="w-[150px]! h-10! text-xs!"
                             icon={<PlusIcon size={14} />}
                               onClick={() => {
                               setShowNameInput((v) => !v);
@@ -571,7 +575,7 @@ const NewEnquiryPage = () => {
                               }
                             }}
                           >
-                            {showNameInput ? "Cancel" : "Add New"}
+                            {showNameInput ? "Select Client" : "Add New Client"}
                           </Button>
                         </div>
                         <Field name="address">
@@ -650,7 +654,7 @@ const NewEnquiryPage = () => {
                           {(fieldProps: FieldProps) => (
                             <div className="space-y-1">
                               <div
-                                className={`flex gap-2 ${showVenueInput ? "items-center" : "items-end"}`}
+                                className={`flex gap-2 items-end`}
                               >
                                 {showVenueInput ? (
                                     <Input
@@ -666,7 +670,7 @@ const NewEnquiryPage = () => {
                                       Venue
                                     </label>
                                     <select
-                                      className="h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none"
+                                      className="h-10 w-full rounded-xl border bg-secondary-100 border-gray-200 px-3 text-sm outline-none"
                                       value={String(fieldProps.field.value ?? "")}
                                       onChange={(e) => {
                                         const selectedVenue = e.target.value;
@@ -732,9 +736,18 @@ const NewEnquiryPage = () => {
                                 <Input
                                   {...fieldProps.field}
                                   label="End Time"
-                                  type="time"
+                                  type="text"
+                                  placeholder="e.g. 7am, 7:30pm or 19:30"
                                   error={touched.endTime ? (errors.endTime as string | undefined) : undefined}
                                   required
+                                  value={fieldProps.field.value}
+                                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                    setFieldValue("endTime", e.target.value);
+                                  }}
+                                  onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
+                                    const parsed = parseTimeTo24(e.target.value);
+                                    setFieldValue("endTime", parsed);
+                                  }}
                                 />
                               </div>
                             )}
@@ -747,9 +760,18 @@ const NewEnquiryPage = () => {
                                 <Input
                                   {...fieldProps.field}
                                   label="Start Time"
-                                  type="time"
+                                  type="text"
+                                  placeholder="e.g. 7am, 7:30pm or 07:00"
                                   error={touched.startTime ? (errors.startTime as string | undefined) : undefined}
                                   required
+                                  value={fieldProps.field.value}
+                                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                    setFieldValue("startTime", e.target.value);
+                                  }}
+                                  onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
+                                    const parsed = parseTimeTo24(e.target.value);
+                                    setFieldValue("startTime", parsed);
+                                  }}
                                 />
                               </div>
                             )}
@@ -774,7 +796,7 @@ const NewEnquiryPage = () => {
                                 <div className="space-y-1">
                                   <label className="mb-1 block text-xs">Select DJ</label>
                                   <select
-                                    className="h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none"
+                                    className="h-10 w-full rounded-xl border bg-secondary-100 border-gray-200 px-3 text-sm outline-none"
                                     value={values.dj?.id}
                                     onChange={(e) => {
                                       const value = Number(e.target.value);
@@ -841,9 +863,27 @@ const NewEnquiryPage = () => {
                 <Card variant="white" className="p-0 overflow-hidden">
                   <div className="flex items-center justify-between bg-primary px-6 py-4 text-white">
                     <h3 className="font-medium">Starting Package</h3>
-                    <p className="text-xs text-white/80">Basics</p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="text-xs"
+                        aria-label={cardsOpen.startingPackage ? "Hide starting package" : "Show starting package"}
+                        onClick={() => setCardsOpen((s) => ({ ...s, startingPackage: !s.startingPackage }))}
+                      >
+                        {cardsOpen.startingPackage ? <X size={14} /> : <PlusIcon size={14} />}
+                      </button>
+                    </div>
                   </div>
-                  <div className="px-6 py-5">
+                  <div
+                    className={`px-6 text-xs text-gray-700 transition-all duration-300 ease-in-out overflow-hidden`}
+                    style={{
+                      maxHeight: cardsOpen.startingPackage ? 2000 : 0,
+                      paddingTop: cardsOpen.startingPackage ? 20 : 0,
+                      paddingBottom: cardsOpen.startingPackage ? 20 : 0,
+                      opacity: cardsOpen.startingPackage ? 1 : 0,
+                    }}
+                    aria-hidden={!cardsOpen.startingPackage}
+                  >
                     <div className="mb-2 flex items-center justify-between text-[11px] text-gray-500">
                       <span className="w-7/12">Basics</span>
                       <span className="w-1/12 text-center">Unit Price</span>
@@ -893,9 +933,27 @@ const NewEnquiryPage = () => {
                 <Card variant="white" className="p-0 overflow-hidden">
                   <div className="flex items-center justify-between bg-primary px-6 py-4 text-white">
                     <h3 className="font-medium">Extras</h3>
-                    <p className="text-xs text-white/80">Extras</p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="text-xs"
+                        aria-label={cardsOpen.extras ? "Hide extras" : "Show extras"}
+                        onClick={() => setCardsOpen((s) => ({ ...s, extras: !s.extras }))}
+                      >
+                        {cardsOpen.extras ? <X size={14} /> : <PlusIcon size={14} />}
+                      </button>
+                    </div>
                   </div>
-                  <div className="px-6 py-5">
+                  <div
+                    className={`px-6 text-xs text-gray-700 transition-all duration-300 ease-in-out overflow-hidden overflow-y-auto no-scrollbar`}
+                    style={{
+                      maxHeight: cardsOpen.extras ? 2000 : 0,
+                      paddingTop: cardsOpen.extras ? 20 : 0,
+                      paddingBottom: cardsOpen.extras ? 20 : 0,
+                      opacity: cardsOpen.extras ? 1 : 0,
+                    }}
+                    aria-hidden={!cardsOpen.extras}
+                  >
                     <div className="mb-2 flex items-center justify-between text-[11px] text-gray-500">
                       <span className="w-7/12">Extras</span>
                       <span className="w-1/12 text-center">Unit Price</span>
@@ -987,22 +1045,22 @@ const NewEnquiryPage = () => {
                     <button
                       type="button"
                       className="text-xs"
-                      aria-label={showRigListCard ? "Hide rig list" : "Show rig list"}
-                      onClick={() => setShowRigListCard((v) => !v)}
+                      aria-label={cardsOpen.rigList ? "Hide rig list" : "Show rig list"}
+                      onClick={() => setCardsOpen((s) => ({ ...s, rigList: !s.rigList }))}
                     >
-                      {showRigListCard ? <X size={14} /> : <PlusIcon size={14} />}
+                      {cardsOpen.rigList ? <X size={14} /> : <PlusIcon size={14} />}
                     </button>
                   </div>
 
                   <div
                     className={`px-6 text-xs text-gray-700 transition-all duration-300 ease-in-out overflow-hidden`}
                     style={{
-                      maxHeight: showRigListCard ? 600 : 0,
-                      paddingTop: showRigListCard ? 20 : 0,
-                      paddingBottom: showRigListCard ? 20 : 0,
-                      opacity: showRigListCard ? 1 : 0,
+                      maxHeight: cardsOpen.rigList ? 600 : 0,
+                      paddingTop: cardsOpen.rigList ? 20 : 0,
+                      paddingBottom: cardsOpen.rigList ? 20 : 0,
+                      opacity: cardsOpen.rigList ? 1 : 0,
                     }}
-                    aria-hidden={!showRigListCard}
+                    aria-hidden={!cardsOpen.rigList}
                   >
                     <div className="space-y-3">
                       {rigList.length ? (

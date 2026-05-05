@@ -11,6 +11,7 @@ import VenueModal from "./VenueModal";
 import { Pencil } from "lucide-react";
 import AlertModal from "@/src/components/common/AlertModal";
 import { TableRowSelection } from "antd/es/table/interface";
+import { CSVLink } from "react-csv";
 
 const initialParams = {
   page: 1,
@@ -70,11 +71,6 @@ const VenuesPage = () => {
       dataIndex: "venue",
       key: "venue",
     },
-    // {
-    //   title: "Address",
-    //   dataIndex: "address",
-    //   key: "address",
-    // },
     {
       title: "Stage",
       dataIndex: "stage",
@@ -90,16 +86,6 @@ const VenuesPage = () => {
       dataIndex: "access",
       key: "access",
     },
-    // {
-    //   title: "Smoke Note",
-    //   dataIndex: "smokeNote",
-    //   key: "smokeNote",
-    // },
-    // {
-    //   title: "Rigging Point",
-    //   dataIndex: "riggingPoint",
-    //   key: "riggingPoint",
-    // },
     {
       title: "Notes",
       dataIndex: "notes",
@@ -121,12 +107,27 @@ const VenuesPage = () => {
     },
   ];
 
+  const csvHeaders = [
+    { label: "Venue", key: "venue" },
+    { label: "Stage", key: "stage" },
+    { label: "Power", key: "power" },
+    { label: "Access", key: "access" },
+    { label: "Notes", key: "notes" },
+  ];
+  const csvData = venueData?.data.map((row) => ({
+    venue: row.venue,
+    stage: row.stage,
+    power: row.power,
+    access: row.access,
+    notes: row.notes,
+  }));
+
   return (
     <div className="space-y-4 mt-4">
       {/* Filters Card */}
       <Card variant="green">
         <div className="flex items-center justify-between">
-          <div className="flex max-w-96.25 items-center gap-2 rounded-lg bg-white px-4 h-10">
+          <div className="flex w-[300px] items-center gap-2 rounded-lg bg-white px-4 h-10">
             <MagnifyingGlass w={18} h={18} />
             <input
               type="text"
@@ -144,7 +145,13 @@ const VenuesPage = () => {
             >
               Remove
             </Button>
-            {/* <Button>Export Data</Button> */}
+            <CSVLink
+              data={csvData ?? []}
+              filename="venues.csv"
+              headers={csvHeaders}
+            >
+              <Button>Export Data</Button>
+            </CSVLink>
           </div>
         </div>
       </Card>

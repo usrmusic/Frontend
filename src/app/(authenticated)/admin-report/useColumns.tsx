@@ -37,8 +37,8 @@ const useColumns = (
       render: (date) => <>{dayjs(date).format("DD-MM-YYYY")}</>,
     },
     {
-      key: "eventStatus",
-      dataIndex: "eventStatus",
+      key: "event_status",
+      dataIndex: "event_status",
       title: (
         <div>
           <p className="mb-1">Event Status</p>
@@ -70,8 +70,8 @@ const useColumns = (
       ),
     },
     {
-      key: "venue",
-      dataIndex: "venue",
+      key: "venue_name",
+      dataIndex: "venue_name",
       title: (
         <div>
           <p className="mb-1">Venue</p>
@@ -124,8 +124,8 @@ const useColumns = (
       ),
     },
     {
-      key: "paymentOutstanding",
-      dataIndex: "paymentOutstanding",
+      key: "payment_remaining",
+      dataIndex: "payment_remaining",
       title: (
         <div>
           <p className="mb-1">Payment Outstanding</p>

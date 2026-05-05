@@ -1,11 +1,25 @@
 import { ConfirmEventData } from "@/src/types/types";
 import dayjs from "dayjs";
+import SignaturePad, { type SignaturePadHandle } from "@/src/components/common/SignaturePad";
+import { useRef } from "react";
 import Image from "next/image";
-import React from "react";
 
-const Contracts = ({ data }: { data: ConfirmEventData }) => {
+
+
+
+type ContractEventLike = ConfirmEventData & {
+  id?: number | string | null;
+  contract_token?: string | null;
+  contract_signed_at?: string | null;
+  contract_pdf_url?: string | null;
+};
+
+const Contracts = ({ data, isModifyMode, eventId, onSignatureChange }: { data: ConfirmEventData; isModifyMode?: boolean; eventId?: string | number; onSignatureChange?: (uri: string | null) => void }) => {
+  const ev = data as ContractEventLike;
+  const padRef = useRef<SignaturePadHandle | null>(null);
   return (
     <div className="md:mx-[150px] mx-10">
+      
       <Image
         src={"/images/contract_thumb.jpg"}
         alt="contract"
@@ -36,32 +50,85 @@ const Contracts = ({ data }: { data: ConfirmEventData }) => {
           </p>
         </div>
       </div>
-      <div className="mt-5 flex flex-col md:flex-row gap-6">
-        {/* Left Section */}
-        <div className="md:w-7/12">
-          <p className="text-[11pt]">
-            Signed by{" "}
-            <span id="client_name_temp" className="font-bold">
-              {data?.users_events_user_idTousers?.name}
-            </span>
+      {/* Signature header removed — replaced by structured signature blocks below */}
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+        {/* Company / Admin column */}
+        <div>
+          <p className="text-[11pt] font-semibold">
+            Signed by <span className="font-bold">{data?.company_names?.name || "USR Music Ltd"}</span>
             <br />
-            for and on behalf of Client
+            <span className="text-sm">for and on behalf of Company</span>
           </p>
+
+          <div className="mt-3 bg-white rounded-md border border-gray-200 p-4 text-center">
+            <div className="h-32 flex items-center justify-center bg-gray-50">
+              {data?.company_names?.admin_signature_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={String(data.company_names.admin_signature_url)}
+                  alt="Company signature"
+                  className="max-h-full max-w-full object-contain"
+                />
+              ) : (
+                <div className="text-xs text-gray-500">No company signature image</div>
+              )}
+            </div>
+            <p className="text-xs text-gray-600 mt-2">Signature of company</p>
+          </div>
         </div>
 
-        {/* Right Section */}
-        <div className="md:w-5/12">
-          <div className="border border-gray-300 rounded-md bg-[#f8d7da] p-4 flex items-center justify-center text-center min-h-[120px]">
-            <div>
-              <strong>No signature yet.</strong>
-              <br />
-              This document has not been signed.
-            </div>
-          </div>
+        {/* Client column */}
+        <div>
+          <p className="text-[11pt] font-semibold">
+            Signed by <span className="font-bold">{data?.users_events_user_idTousers?.name || "Client"}</span>
+            <br />
+            <span className="text-sm">for and on behalf of Client</span>
+          </p>
 
-          <p className="font-bold mt-2">Client</p>
+          <div className="mt-3 bg-white rounded-md border border-gray-200 p-4 text-center">
+            <div className="min-h-[140px] flex items-center justify-center bg-gray-50 w-full">
+              {/* If in modify mode, show pad */}
+              {isModifyMode ? (
+                <div className="w-full max-w-[420px]">
+                  <SignaturePad
+                    ref={(r) => (padRef.current = r)}
+                    width={360}
+                    height={120}
+                    className="mx-auto"
+                    onChange={(empty) => onSignatureChange?.(empty ? null : padRef.current?.toDataURL() ?? null)}
+                  />
+                  <div className="mt-2 flex justify-end">
+                    <button
+                      type="button"
+                      className="text-xs text-gray-600 underline"
+                      onClick={() => {
+                        padRef.current?.clear();
+                        onSignatureChange?.(null);
+                      }}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                // show existing client signature image if present
+                (Array.isArray(data?.contracts) && data.contracts[0] && Array.isArray(data.contracts[0].signatures) && data.contracts[0].signatures[0]?.signature_url) ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={String(data.contracts[0].signatures[0].signature_url)}
+                    alt="Client signature"
+                    className="max-h-full max-w-full object-contain"
+                  />
+                ) : (
+                  <div className="text-xs text-gray-500">No client signature image</div>
+                )
+              )}
+            </div>
+            <p className="text-xs text-gray-600 mt-2">Signature of client</p>
+          </div>
         </div>
       </div>
+
       <div className="section text-base text-gray-800 space-y-4 mt-5">
         <p className="font-bold">Agreed Terms and Conditions</p>
         {/* 1.1 */}

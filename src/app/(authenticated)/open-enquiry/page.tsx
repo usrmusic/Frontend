@@ -1,5 +1,10 @@
 "use client";
-import { useAddNote, useOpenEnquiryList, useUpdateEnquiry, useDeleteEnquiry } from "@/src/api/enquiry";
+import {
+  useAddNote,
+  useOpenEnquiryList,
+  useUpdateEnquiry,
+  useDeleteEnquiry,
+} from "@/src/api/enquiry";
 import { useConfirmEvent } from "@/src/api/events";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
@@ -28,7 +33,6 @@ const initialParams = {
   search: "",
 };
 
-
 import type { OpenEnquiryList } from "@/src/api/enquiry";
 
 interface CompanyOption {
@@ -41,33 +45,39 @@ const OpenEnquiryPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [buttonLoading, setButtonLoading] = useState<string | null>(null);
   const [modalTemplate, setModalTemplate] = useState<unknown | null>(null);
-  const [modalCompanies, setModalCompanies] = useState<Array<{ id: string | number; name: string }> | null>(null);
+  const [modalCompanies, setModalCompanies] = useState<Array<{
+    id: string | number;
+    name: string;
+  }> | null>(null);
   const [note, setNote] = useState("");
   const [flagLoading, setFlagLoading] = useState<Record<string, boolean>>({});
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
-  const [selectedRowData, setSelectedRowData] = useState<OpenEnquiryList[] | null>(null);
-  const [clickedBtn, setClickedBtn] = useState<"brochure" | "quote" | "invoice">("invoice");
+  const [selectedRowData, setSelectedRowData] = useState<
+    OpenEnquiryList[] | null
+  >(null);
+  const [clickedBtn, setClickedBtn] = useState<
+    "brochure" | "quote" | "invoice"
+  >("invoice");
 
   const { data: enquiryData, isLoading } = useOpenEnquiryList(params);
   const { data: companyNameOptions } = useCompanyDropdown();
 
   const { mutate: addNoteMutation } = useAddNote();
-  const { mutate: confirmEventMutation, isPending: confirmingEvent } = useConfirmEvent();
+  const { mutate: confirmEventMutation, isPending: confirmingEvent } =
+    useConfirmEvent();
   const updateEnquiry = useUpdateEnquiry();
   const deleteEnquiry = useDeleteEnquiry();
   const router = useRouter();
 
   // Memoize options to prevent unnecessary re-renders and fix TS mapping
   const companyOptions = useMemo(() => {
-    const dynamicOptions = companyNameOptions?.data?.map((opt: CompanyOption) => ({
-      label: opt.name,
-      value: String(opt.id),
-    })) || [];
+    const dynamicOptions =
+      companyNameOptions?.data?.map((opt: CompanyOption) => ({
+        label: opt.name,
+        value: String(opt.id),
+      })) || [];
 
-    return [
-      { label: "Select company", value: "" },
-      ...dynamicOptions,
-    ];
+    return [{ label: "Select company", value: "" }, ...dynamicOptions];
   }, [companyNameOptions]);
 
   const formik = useFormik({
@@ -137,7 +147,8 @@ const OpenEnquiryPage = () => {
       title: "Event Date",
       dataIndex: "date",
       key: "date",
-      render: (value: string) => value ? dayjs(value).format("MM/DD/YYYY") : "-",
+      render: (value: string) =>
+        value ? dayjs(value).format("MM/DD/YYYY") : "-",
     },
     {
       title: "Tell Us More",
@@ -227,79 +238,7 @@ const OpenEnquiryPage = () => {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {/* <Button variant="outlined" disabled={!selectedRowKeys.length} color="danger">Delete</Button> */}
-                <Button
-                type="default"
-                disabled={!selectedRowKeys.length || Boolean(buttonLoading)}
-                className="themeDefaultButton"
-                loading={buttonLoading === "emailUpdate"}
-                onClick={async () => {
-                  if (!selectedRowKeys.length) return;
-                  setButtonLoading("emailUpdate");
-                  try {
-                      const data = await fetchEmailTemplate(String(selectedRowKeys[0]), "EMAIL FOR UPDATE");
-                      setModalTemplate(data?.email ?? null);
-                      setModalCompanies(data?.companies ?? null);
-                      setClickedBtn("brochure"); // use brochure API for now
-                      setModalOpen(true);
-                  } catch (err) {
-                    console.error(err);
-                    toast.error("Failed to load email template");
-                  } finally {
-                    setButtonLoading(null);
-                  }
-                }}
-              >
-                Email Update
-              </Button>
-                <Button
-                type="default"
-                className="themeDefaultButton"
-                loading={buttonLoading === "brochure"}
-                onClick={async () => {
-                  if (!selectedRowKeys.length) return;
-                  setButtonLoading("brochure");
-                  try {
-                      const data = await fetchEmailTemplate(String(selectedRowKeys[0]), "EMAIL BROCHURE");
-                      setModalTemplate(data?.email ?? null);
-                      setModalCompanies(data?.companies ?? null);
-                      setClickedBtn("brochure");
-                      setModalOpen(true);
-                  } catch (err) {
-                    console.error(err);
-                    toast.error("Failed to load email template");
-                  } finally {
-                    setButtonLoading(null);
-                  }
-                }}
-                disabled={!selectedRowKeys.length || Boolean(buttonLoading)}
-              >
-                Send Brochure
-              </Button>
-              <Button
-                type="primary"
-                className="themeDefaultButton"
-                disabled={!selectedRowKeys.length || Boolean(buttonLoading)}
-                loading={buttonLoading === "quote"}
-                onClick={async () => {
-                  if (!selectedRowKeys.length) return;
-                  setButtonLoading("quote");
-                  try {
-                    const data = await fetchEmailTemplate(String(selectedRowKeys[0]), "SEND QUOTE-OPEN");
-                    setModalTemplate(data?.email ?? null);
-                    setModalCompanies(data?.companies ?? null);
-                    setClickedBtn("quote");
-                    setModalOpen(true);
-                  } catch (err) {
-                    console.error(err);
-                    toast.error("Failed to load email template");
-                  } finally {
-                    setButtonLoading(null);
-                  }
-                }}
-              >
-                Send Quote
-              </Button>
-              <Button
+                            <Button
                 type="default"
                 className="themeDefaultButton"
                 disabled={!selectedRowKeys.length || Boolean(buttonLoading)}
@@ -354,9 +293,90 @@ const OpenEnquiryPage = () => {
               >
                 Delete
               </Button>
-              <button className="size-9 flex items-center justify-center rounded-lg bg-secondary-100 hover:bg-secondary-200 transition-colors">
+                <Button
+                type="default"
+                disabled={!selectedRowKeys.length || Boolean(buttonLoading)}
+                className="themeDefaultButton"
+                loading={buttonLoading === "emailUpdate"}
+                onClick={async () => {
+                  if (!selectedRowKeys.length) return;
+                  setButtonLoading("emailUpdate");
+                  try {
+                    const data = await fetchEmailTemplate(
+                      String(selectedRowKeys[0]),
+                      "EMAIL FOR UPDATE",
+                    );
+                    setModalTemplate(data?.email ?? null);
+                    setModalCompanies(data?.companies ?? null);
+                    setClickedBtn("brochure"); // use brochure API for now
+                    setModalOpen(true);
+                  } catch (err) {
+                    console.error(err);
+                    toast.error("Failed to load email template");
+                  } finally {
+                    setButtonLoading(null);
+                  }
+                }}
+              >
+                Email Update
+              </Button>
+              <Button
+                type="default"
+                className="themeDefaultButton"
+                loading={buttonLoading === "brochure"}
+                onClick={async () => {
+                  if (!selectedRowKeys.length) return;
+                  setButtonLoading("brochure");
+                  try {
+                    const data = await fetchEmailTemplate(
+                      String(selectedRowKeys[0]),
+                      "EMAIL BROCHURE",
+                    );
+                    setModalTemplate(data?.email ?? null);
+                    setModalCompanies(data?.companies ?? null);
+                    setClickedBtn("brochure");
+                    setModalOpen(true);
+                  } catch (err) {
+                    console.error(err);
+                    toast.error("Failed to load email template");
+                  } finally {
+                    setButtonLoading(null);
+                  }
+                }}
+                disabled={!selectedRowKeys.length || Boolean(buttonLoading)}
+              >
+                Send Brochure
+              </Button>
+              <Button
+                type="primary"
+                className="themeDefaultButton"
+                disabled={!selectedRowKeys.length || Boolean(buttonLoading)}
+                loading={buttonLoading === "quote"}
+                onClick={async () => {
+                  if (!selectedRowKeys.length) return;
+                  setButtonLoading("quote");
+                  try {
+                    const data = await fetchEmailTemplate(
+                      String(selectedRowKeys[0]),
+                      "SEND QUOTE-OPEN",
+                    );
+                    setModalTemplate(data?.email ?? null);
+                    setModalCompanies(data?.companies ?? null);
+                    setClickedBtn("quote");
+                    setModalOpen(true);
+                  } catch (err) {
+                    console.error(err);
+                    toast.error("Failed to load email template");
+                  } finally {
+                    setButtonLoading(null);
+                  }
+                }}
+              >
+                Send Quote
+              </Button>
+              {/* <button className="size-9 flex items-center justify-center rounded-lg bg-secondary-100 hover:bg-secondary-200 transition-colors">
                 <MoreVertical size={18} />
-              </button>
+              </button> */}
             </div>
           </div>
         </div>
@@ -365,14 +385,20 @@ const OpenEnquiryPage = () => {
         <div className="col-span-12 xl:col-span-9 space-y-6">
           <Card variant="white" className="p-0 overflow-hidden shadow-sm">
             <div className="bg-primary p-5">
-              <div className="flex max-w-full items-center gap-2 rounded-lg bg-white px-4 py-3">
+              <div className="flex items-center gap-2 rounded-lg bg-white px-4 py-3 max-w-[300px]">
                 <MagnifyingGlass w={18} h={18} />
                 <input
                   type="text"
                   placeholder="Search by name, mobile..."
                   className="w-full bg-[#ffffff] outline-none text-sm placeholder:text-gray-400"
                   value={params.search}
-                  onChange={(e) => setParams((prev) => ({ ...prev, search: e.target.value, page: 1 }))}
+                  onChange={(e) =>
+                    setParams((prev) => ({
+                      ...prev,
+                      search: e.target.value,
+                      page: 1,
+                    }))
+                  }
                 />
               </div>
             </div>
@@ -385,7 +411,8 @@ const OpenEnquiryPage = () => {
                 pageSize: params.limit,
                 current: params.page,
                 total: enquiryData?.meta?.total,
-                onChange: (page, pageSize) => setParams({ ...params, page, limit: pageSize }),
+                onChange: (page, pageSize) =>
+                  setParams({ ...params, page, limit: pageSize }),
               }}
               rowSelection={rowSelection}
               onRow={(record) => ({
@@ -404,9 +431,11 @@ const OpenEnquiryPage = () => {
 
         {/* Right Section: Sidebar Actions */}
         <div className="col-span-12 xl:col-span-3 space-y-6">
-
           {/* Notes Card */}
-          <Card variant="white" className="flex flex-col shadow-sm overflow-hidden p-0">
+          <Card
+            variant="white"
+            className="flex flex-col shadow-sm overflow-hidden p-0"
+          >
             <div className="flex items-center justify-between bg-primary px-6 py-4 text-white">
               <h3 className="font-medium">Recent Activities</h3>
             </div>
@@ -435,7 +464,10 @@ const OpenEnquiryPage = () => {
               {selectedRowData?.[0]?.event_notes?.length ? (
                 <ul className="space-y-3">
                   {selectedRowData[0].event_notes?.map((item) => (
-                    <li key={item.id} className="text-xs text-gray-600 bg-gray-50 p-2.5 rounded-lg border-l-4 border-primary">
+                    <li
+                      key={item.id}
+                      className="text-xs text-gray-600 bg-gray-50 p-2.5 rounded-lg border-l-4 border-primary"
+                    >
                       {item.notes}
                     </li>
                   ))}
@@ -461,14 +493,25 @@ const OpenEnquiryPage = () => {
                     placeholder="Select company"
                     options={companyOptions}
                     value={formik.values.company_name || undefined}
-                    onChange={(value) => formik.setFieldValue("company_name", value)}
+                    onChange={(value) =>
+                      formik.setFieldValue("company_name", value)
+                    }
                   />
                   <DatePicker
                     placeholder="Payment date"
                     className="w-full text-xs"
                     format="DD-MM-YYYY"
-                    value={formik.values.event_date ? dayjs(formik.values.event_date, "DD-MM-YYYY") : undefined}
-                    onChange={(val) => formik.setFieldValue("event_date", val ? dayjs(val).format("DD-MM-YYYY") : "")}
+                    value={
+                      formik.values.event_date
+                        ? dayjs(formik.values.event_date, "DD-MM-YYYY")
+                        : undefined
+                    }
+                    onChange={(val) =>
+                      formik.setFieldValue(
+                        "event_date",
+                        val ? dayjs(val).format("DD-MM-YYYY") : "",
+                      )
+                    }
                     allowClear
                   />
                 </div>
@@ -477,7 +520,7 @@ const OpenEnquiryPage = () => {
                     name="deposit_amount"
                     type="number"
                     placeholder="Amount"
-                    className="w-full text-xs"
+                    className="w-full text-xs bg-white!"
                     value={formik.values.deposit_amount}
                     onChange={formik.handleChange}
                   />
@@ -487,13 +530,15 @@ const OpenEnquiryPage = () => {
                     value={formik.values.payment_method_id}
                     onChange={formik.handleChange}
                   >
-                    <option value="" disabled>Payment method</option>
+                    <option value="" disabled>
+                      Payment method
+                    </option>
                     <option value="1">Cash</option>
                     <option value="2">Bank Transfer</option>
                     <option value="3">Card</option>
                   </select>
                 </div>
-                                <div className="grid grid-cols-2 gap-2 mt-3">
+                <div className="grid grid-cols-2 gap-2 mt-3">
                   {[
                     { key: "brochure_emailed", label: "Brochure emailed?" },
                     { key: "called", label: "Called?" },
@@ -552,7 +597,14 @@ const OpenEnquiryPage = () => {
           open={modalOpen}
           sendMode={clickedBtn}
           eventId={String(selectedRowKeys[0])}
-          template={modalTemplate as { id?: string; email_name?: string; subject?: string; body?: string } | null}
+          template={
+            modalTemplate as {
+              id?: string;
+              email_name?: string;
+              subject?: string;
+              body?: string;
+            } | null
+          }
           companies={modalCompanies}
           onCancel={() => {
             setModalOpen(false);

@@ -1,6 +1,9 @@
 import { useAddCompany, useEditCompany } from "@/src/api/usersApi";
 import ModalFooter from "@/src/components/common/ModalFooter";
 import Input from "@/src/components/Input";
+import SignaturePad, {
+  type SignaturePadHandle,
+} from "@/src/components/common/SignaturePad";
 import { Modal } from "antd";
 import { useFormik } from "formik";
 import {
@@ -14,6 +17,7 @@ import {
   Phone,
   User,
 } from "lucide-react";
+import { useRef, useState } from "react";
 import { BsInstagram } from "react-icons/bs";
 import { FaFacebook } from "react-icons/fa";
 import { FaEnvelopesBulk } from "react-icons/fa6";
@@ -42,6 +46,7 @@ interface CompanyProps {
     sort_code?: string;
     vat?: string;
     vat_percentage?: string;
+    admin_signature_url?: string | null;
   } | null;
 }
 
@@ -54,6 +59,9 @@ const CompanyModal = ({
   const addCompany = useAddCompany();
   const editCompany = useEditCompany();
   const loading = addCompany.isPending || editCompany.isPending;
+
+  const padRef = useRef<SignaturePadHandle | null>(null);
+  const [showPad, setShowPad] = useState(!(initialValues?.admin_signature_url));
 
   const formik = useFormik({
     enableReinitialize: true,
@@ -76,6 +84,7 @@ const CompanyModal = ({
       sort_code: initialValues?.sort_code || "",
       vat: initialValues?.vat || "",
       vat_percentage: initialValues?.vat_percentage || "",
+      admin_signature: null as string | null,
     },
     onSubmit: (values) => {
       // Create a new FormData object
@@ -96,15 +105,25 @@ const CompanyModal = ({
       formData.append("sort_code", values.sort_code);
       formData.append("vat", values.vat);
       formData.append("vat_percentage", values.vat_percentage);
-      formData.append("admin_signature", "dummy signature value");
-      if (values.company_logo) {
+      if (values.admin_signature && values.admin_signature.startsWith("data:image/")) {
+        formData.append("admin_signature", values.admin_signature);
+      }
+      if (values.company_logo instanceof File) {
         formData.append("company_logo", values.company_logo);
       }
-      if (values.brochure) {
+      if (values.brochure instanceof File) {
         formData.append("brochure", values.brochure);
       }
       if (isEditMode) {
-        editCompany.mutate({ id: initialValues.id, payload: formData });
+        editCompany.mutate(
+          { id: initialValues.id, payload: formData },
+          {
+            onSuccess: () => {
+              handleCancel();
+              toast.success("Company updated successfully");
+            },
+          },
+        );
       } else {
         addCompany.mutate(formData, {
           onSuccess: () => {
@@ -163,6 +182,65 @@ const CompanyModal = ({
                 );
               }}
             />
+          </div>
+          <div className="space-y-3">
+            <p className="text-center font-medium">Admin Signature</p>
+            {!showPad && initialValues?.admin_signature_url ? (
+              <div className="flex flex-col items-center gap-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={initialValues?.admin_signature_url as string}
+                  alt="Admin signature"
+                  className="border rounded p-2 max-h-24"
+                />
+                <button
+                  type="button"
+                  className="text-xs text-blue-600 underline"
+                  onClick={() => setShowPad(true)}
+                >
+                  Replace signature
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <SignaturePad
+                  ref={padRef}
+                  width={500}
+                  height={160}
+                  onChange={(empty) => {
+                    formik.setFieldValue(
+                      "admin_signature",
+                      empty ? null : padRef.current?.toDataURL() ?? null,
+                    );
+                  }}
+                />
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    className="text-xs text-gray-600 underline"
+                    onClick={() => {
+                      padRef.current?.clear();
+                      formik.setFieldValue("admin_signature", null);
+                    }}
+                  >
+                    Clear
+                  </button>
+                  {initialValues?.admin_signature_url && (
+                    <button
+                      type="button"
+                      className="text-xs text-gray-600 underline"
+                      onClick={() => {
+                        padRef.current?.clear();
+                        formik.setFieldValue("admin_signature", null);
+                        setShowPad(false);
+                      }}
+                    >
+                      Keep existing
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           <div className="space-y-3">
             <p className="text-center font-medium">Contact Details</p>

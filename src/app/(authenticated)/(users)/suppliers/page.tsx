@@ -11,6 +11,7 @@ import SupplierModal from "./SupplierModal";
 import { Pencil } from "lucide-react";
 import AlertModal from "@/src/components/common/AlertModal";
 import { TableRowSelection } from "antd/es/table/interface";
+import { CSVLink } from "react-csv";
 
 const initialParams = {
   page: 1,
@@ -108,12 +109,29 @@ const SuppliersPage = () => {
     },
   ];
 
+  const csvHeaders = [
+    { label: "Name", key: "name" },
+    { label: "Company Name", key: "company_name" },
+    { label: "Mobile", key: "contact_number" },
+    { label: "Email", key: "email" },
+    { label: "Industry", key: "industry" },
+    { label: "Notes", key: "notes" },
+  ];
+  const csvData = suppliersData?.data.map((row) => ({
+    name: row.name,
+    company_name: row.company_name,
+    contact_number: row.contact_number,
+    email: row.email,
+    industry: row.industry,
+    notes: row.notes,
+  }));
+
   return (
     <div className="space-y-4 mt-4">
       {/* Filters Card */}
       <Card variant="green">
         <div className="flex items-center justify-between">
-          <div className="flex max-w-96.25 items-center gap-2 rounded-lg bg-white px-4 h-10">
+          <div className="flex w-[300px] items-center gap-2 rounded-lg bg-white px-4 h-10">
             <MagnifyingGlass w={18} h={18} />
             <input
               type="text"
@@ -131,7 +149,13 @@ const SuppliersPage = () => {
             >
               Remove
             </Button>
-            {/* <Button>Export Data</Button> */}
+            <CSVLink
+              data={csvData ?? []}
+              filename="suppliers.csv"
+              headers={csvHeaders}
+            >
+              <Button>Export Data</Button>
+            </CSVLink>
           </div>
         </div>
       </Card>

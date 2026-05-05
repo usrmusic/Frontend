@@ -5,12 +5,13 @@ import {
   useDownloadInvoice,
   useGetConfirmEvent,
   useUpdateConfirmEvent,
+  useAddConfirmPayment,
 } from "@/src/api/events";
 import Button from "@/src/components/Button";
 import { BackButton } from "@/src/components/Icons";
 import Input from "@/src/components/Input";
-import { Collapse, CollapseProps, Select, Spin } from "antd";
-import dayjs from "dayjs";
+import { Collapse, CollapseProps, Select, Spin, DatePicker, Modal } from "antd";
+import dayjs, { Dayjs } from "dayjs";
 import { useFormik } from "formik";
 import {
   ChevronDown,
@@ -18,17 +19,23 @@ import {
   FolderOpen,
   MoreVertical,
   SquareCheckBig,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { CSSProperties, useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
-import Files from "./Files";
-import { ConfirmEventData, EventsDropdownItem } from "@/src/types/types";
+import { useQueryClient } from "@tanstack/react-query";
+import { useSearchParams, useRouter } from "next/navigation";
+import { ConfirmEventData, EventsDropdownItem, ConfirmEventPayment, ConfirmEventNote, ConfirmEventPackage } from "@/src/types/types";
 import SendBrochureModal from "../open-enquiry/SendBrochure";
 import { toast } from "react-toastify";
 import { fetchEmailTemplate } from "@/src/api/enquiry";
+import Files from "./Files";
 import Contracts from "./Contracts";
 import Todos from "./_components/Todos";
+import { parseTimeTo24 } from "@/src/utils/timeConverter";
+import { useSendConfirmInvoice, useRefundConfirmEvent } from "@/src/api/events";
+import { SendInvoiceModal } from "./_components/SendInvoiceModal";
+import { RefundModal } from "./_components/RefundModal";
 
 const ConfirmedEventsPage = () => {
   const [eventId, setEventId] = useState("");
@@ -37,6 +44,7 @@ const ConfirmedEventsPage = () => {
   const [showPayments, setShowPayments] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
+  const [showDrawer, setShowDrawer] = useState(false);
   const [buttonLoading, setButtonLoading] = useState<string | null>(null);
   const [modalTemplate, setModalTemplate] = useState<null>(null);
   const [modalCompanies, setModalCompanies] = useState<Array<{
@@ -51,6 +59,24 @@ const ConfirmedEventsPage = () => {
     useCancelEvent();
   const { data: eventsDropdown } = useRigListEventsDropdown();
   const { data: selectedEventData, isLoading } = useGetConfirmEvent(eventId);
+  const { mutate: addPaymentMutation, isPending: isAddingPayment } =
+    useAddConfirmPayment();
+  const router = useRouter();
+  const { mutate: sendInvoiceMutation, isPending: isSendingInvoice } =
+    useSendConfirmInvoice();
+  const { mutate: refundMutation, isPending: isProcessingRefund } =
+    useRefundConfirmEvent();
+  const queryClient = useQueryClient();
+  const [paymentAmount, setPaymentAmount] = useState<string>("");
+  const [paymentDate, setPaymentDate] = useState<Dayjs | null>(dayjs());
+  const [paymentMethodId, setPaymentMethodId] = useState<string | number>("");
+  const [paymentNotes, setPaymentNotes] = useState<string>("");
+  const [rigOpen, setRigOpen] = useState(false); // rig list toggle
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [refundAmount, setRefundAmount] = useState<string>("");
+  const [signatureImage, setSignatureImage] = useState<string | null>(null);
+  const [invoiceTemplate, setInvoiceTemplate] = useState<{ subject: string; body: string } | null>(null);
 
   const eventsOptions = (eventsDropdown?.data as EventsDropdownItem[])?.map(
     (item) => ({
@@ -141,18 +167,58 @@ const ConfirmedEventsPage = () => {
             event_date_contact:
               `${values.everyDayContactName} ${values.everyDayContactNumber}`.trim() ||
               null,
+            signature_image: signatureImage || null,
           },
           id: eventId,
         },
         {
           onSuccess: () => {
             setIsModifyMode(false);
+            setSignatureImage(null);
             toast.success("Event updated successfully");
           },
         },
       );
     },
   });
+
+  const handleCancelEvent = () => {
+    Modal.confirm({
+      title: "Confirm cancellation",
+      content: "Are you sure you want to cancel this event?",
+      okText: "Yes",
+      cancelText: "No",
+      centered: true,
+      onOk() {
+        cancelEventMutation(
+          { id: eventId },
+          {
+            onSuccess: () => {
+              setEventId("");
+            },
+            onError: () => {
+              toast.error("Failed to cancel event");
+            },
+          }
+        );
+      },
+    });
+  };
+
+  const handleDownloadInvoice = () => {
+    if (!eventId) {
+      toast.error("No event selected");
+      return;
+    }
+    downloadInvoiceMutation(
+      { id: eventId },
+      {
+        onError: () => {
+          toast.error("Failed to download invoice");
+        },
+      }
+    );
+  };
 
   const searchParams = useSearchParams();
   const searchParamsKey = searchParams?.toString() ?? "";
@@ -166,6 +232,12 @@ const ConfirmedEventsPage = () => {
 
   const payments =
     (selectedEventData?.data as ConfirmEventData)?.event_payments ?? [];
+  const paymentsSum = (selectedEventData?.data?.event_payments || []).reduce(
+    (s: number, p: ConfirmEventPayment) => s + Number(p.amount || p.payment_amount || 0),
+    0,
+  );
+  const eventRefundAmount = Number(selectedEventData?.data?.refund_amount || 0) || 0;
+  const adjustedPaidAmount = Math.max(0, paymentsSum - eventRefundAmount);
   const eventNotes =
     (selectedEventData?.data as ConfirmEventData)?.event_notes ?? [];
 
@@ -187,7 +259,7 @@ const ConfirmedEventsPage = () => {
           Contracts
         </div>
       ),
-      children: <Contracts data={selectedEventData?.data} />,
+      children: <Contracts data={selectedEventData?.data} isModifyMode={isModifyMode} eventId={eventId} onSignatureChange={setSignatureImage} />,
       style: panelStyle,
     },
     {
@@ -219,14 +291,6 @@ const ConfirmedEventsPage = () => {
       style: panelStyle,
     },
   ];
-
-  const handleCancelEvent = () => {
-    cancelEventMutation({ id: eventId });
-  };
-
-  const handleDownloadInvoice = () => {
-    downloadInvoiceMutation({ id: eventId });
-  };
 
   return (
     <div>
@@ -278,7 +342,7 @@ const ConfirmedEventsPage = () => {
                       setModalCompanies(data?.companies ?? null);
                       setSendMode("quote");
                       setShowModal(true);
-                    } catch (err) {
+                    } catch {
                       toast.error("Failed to load email template");
                     } finally {
                       setButtonLoading(null);
@@ -307,7 +371,7 @@ const ConfirmedEventsPage = () => {
                       setModalCompanies(data?.companies ?? null);
                       setSendMode("invoice");
                       setShowModal(true);
-                    } catch (err) {
+                    } catch {
                       toast.error("Failed to load email template");
                     } finally {
                       setButtonLoading(null);
@@ -317,7 +381,13 @@ const ConfirmedEventsPage = () => {
                 >
                   Send Invoice
                 </Button>
-                <Button>
+                {/* Additional top-level confirmed send invoice + refund buttons */}
+                <Button
+                  onClick={() => setShowRefundModal(true)}
+                >
+                  Refund
+                </Button>
+                <Button onClick={() => setShowDrawer(true)}>
                   <MoreVertical size={14} />
                 </Button>
               </>
@@ -486,19 +556,27 @@ const ConfirmedEventsPage = () => {
                   <Input
                     name="start_time"
                     label="Start Time"
-                    type="time"
-                    placeholder="Select start time"
+                    type="text"
+                    placeholder="e.g. 7am, 7:30pm or 19:30"
                     value={formik.values.start_time}
                     onChange={formik.handleChange}
+                    onBlur={(e) => {
+                      const parsed = parseTimeTo24(e.target.value);
+                      formik.setFieldValue("start_time", parsed);
+                    }}
                     disabled={!isModifyMode}
                   />
                   <Input
                     name="end_time"
                     label="End Time"
-                    type="time"
-                    placeholder="Select end time"
+                    type="text"
+                    placeholder="e.g. 7pm, 7:30pm or 19:30"
                     value={formik.values.end_time}
                     onChange={formik.handleChange}
+                    onBlur={(e) => {
+                      const parsed = parseTimeTo24(e.target.value);
+                      formik.setFieldValue("end_time", parsed);
+                    }}
                     disabled={!isModifyMode}
                   />
                 </div>
@@ -627,24 +705,21 @@ const ConfirmedEventsPage = () => {
             aria-hidden={!showNotes}
           >
             <div className="space-y-3">
-              {showNotes && (
+                  {showNotes && (
                 <>
                   {eventNotes.length === 0 ? (
                     <div className="text-sm text-gray-500">No notes found.</div>
                   ) : (
-                    eventNotes.map((n: any) => (
+                    eventNotes.map((n: ConfirmEventNote) => (
                       <div
-                        key={n.id ?? n.note ?? Math.random()}
+                        key={n.id ?? n.notes ?? Math.random()}
                         className="rounded-lg bg-gray-50 px-3 py-2"
                       >
                         <div className="text-sm font-medium text-gray-800">
-                          {n.note ?? n.notes ?? "Note"}
+                          {n.notes ?? "Note"}
                         </div>
                         <div className="text-xs text-gray-500">
-                          Created on{" "}
-                          {n.created_at
-                            ? dayjs(n.created_at).format("DD-MM-YYYY HH:mm")
-                            : "—"}
+                          Created on {n.created_at ? dayjs(n.created_at).format("DD-MM-YYYY HH:mm") : "—"}
                         </div>
                       </div>
                     ))
@@ -679,7 +754,7 @@ const ConfirmedEventsPage = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {payments.length === 0 ? (
+                      {payments.length === 0 ? (
                       <tr>
                         <td
                           colSpan={3}
@@ -689,21 +764,13 @@ const ConfirmedEventsPage = () => {
                         </td>
                       </tr>
                     ) : (
-                      payments.map((p: any) => (
-                        <tr key={p.id ?? p.payment_reference ?? Math.random()}>
+                      payments.map((p: ConfirmEventPayment) => (
+                        <tr key={p.id ?? Math.random()}>
                           <td className="px-4 py-2">
-                            {p.payment_date
-                              ? dayjs(p.payment_date).format("DD/MM/YYYY")
-                              : p.date
-                                ? dayjs(p.date).format("DD/MM/YYYY")
-                                : "-"}
+                            {p.date ? dayjs(p.date).format("DD/MM/YYYY") : "-"}
                           </td>
-                          <td className="px-4 py-2">
-                            £{p.amount ?? p.payment_amount ?? p.payment ?? 0}
-                          </td>
-                          <td className="px-4 py-2">
-                            {p.payment_reference ?? p.reference ?? "-"}
-                          </td>
+                          <td className="px-4 py-2">£{Number(p.amount ?? 0)}</td>
+                          <td className="px-4 py-2">-</td>
                         </tr>
                       ))
                     )}
@@ -714,6 +781,16 @@ const ConfirmedEventsPage = () => {
           </div>
         </div>
       </form>
+      {showModal && (
+        <SendBrochureModal
+          open={showModal}
+          eventId={eventId}
+          sendMode={sendMode}
+          template={modalTemplate}
+          companies={modalCompanies}
+          onCancel={() => setShowModal(false)}
+        />
+      )}
       <Collapse
         bordered={false}
         expandIconPlacement="end"
@@ -726,16 +803,375 @@ const ConfirmedEventsPage = () => {
         style={{ background: "transparent" }}
         items={getItems(panelStyle)}
       />
-      {showModal && (
-        <SendBrochureModal
-          open={showModal}
-          eventId={eventId}
-          sendMode={sendMode}
-          template={modalTemplate}
-          companies={modalCompanies}
-          onCancel={() => setShowModal(false)}
-        />
-      )}
+      {/* Slide-over drawer for payments */}
+      <div
+        className={`fixed inset-0 z-50 pointer-events-none transition-all duration-300 ${showDrawer ? "opacity-100" : "opacity-0"}`}
+          aria-hidden={!showDrawer}
+        >
+          <div
+            className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${showDrawer ? "opacity-100 pointer-events-auto" : "opacity-0"}`}
+            onClick={() => setShowDrawer(false)}
+          ></div>
+
+          <aside
+            className={`pointer-events-auto fixed right-0 top-0 h-full w-[420px] bg-white shadow-xl z-50 transform transition-transform duration-300 ${
+              showDrawer ? "translate-x-0" : "translate-x-full"
+            }`}
+            role="dialog"
+            aria-labelledby="drawer-title"
+          >
+            <div className="h-full flex flex-col bg-white">
+              {/* Header */}
+              <div className="p-6 border-b border-gray-200 flex justify-between items-start bg-gradient-to-r from-white to-slate-50">
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Event Payment</p>
+                  <h3 id="drawer-title" className="themeH1 text-lg mt-1">{selectedEventData?.data?.company_names?.name || "USR Music Ltd"}</h3>
+                  <p className="text-sm text-gray-600 mt-1">{selectedEventData?.data?.venues?.venue ?? ""}</p>
+                </div>
+                <button 
+                  onClick={() => setShowDrawer(false)} 
+                  className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                  aria-label="Close drawer"
+                >
+                  <X size={18} className="text-gray-600" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto scrollbar-hide">
+                <div className="p-6 space-y-6">
+                  {/* Package Summary Section */}
+                  <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-4 border border-slate-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Package Summary</p>
+                        <p className="font-semibold text-gray-900 mt-1">{selectedEventData?.data?.dj_package_name || "DJ Package"}</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="px-3 py-1.5 bg-primary hover:bg-primary/90 text-white text-xs font-medium rounded-lg transition-colors"
+                        onClick={() => router.push(`/enquiry?select=${encodeURIComponent(String(eventId))}`)}
+                        title="Edit enquiry details"
+                      >
+                        Edit
+                      </button>
+                    </div>
+
+                    {/* Equipment Names Only */}
+                    <div className="space-y-2 pt-3 border-t border-slate-200">
+                      {(selectedEventData?.data?.event_packages)?.length ? (
+                        <div className="space-y-1">
+                          {(selectedEventData?.data?.event_packages).map((p: ConfirmEventPackage) => (
+                            <div key={p.id} className="flex items-center gap-2">
+                              <SquareCheckBig size={14} className="text-primary flex-shrink-0" />
+                              <p className="font-medium text-sm text-gray-900">{p.equipment?.name || p.package_name || p.name || "Item"}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-500 py-2">No equipment items</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Rig List Section */}
+                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
+                      <h4 className="text-sm font-semibold text-gray-900">Rig List</h4>
+                      <button
+                        type="button"
+                        className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                        aria-label={rigOpen ? "Hide rig list" : "Show rig list"}
+                        onClick={() => setRigOpen((s) => !s)}
+                        title="Toggle rig list details"
+                      >
+                        <ChevronDown size={18} className={`transition-transform ${rigOpen ? "rotate-180" : ""}`} />
+                      </button>
+                    </div>
+                    
+                    {/* Detailed Equipment List */}
+                    <div
+                      className={`transition-all duration-300 ease-in-out overflow-hidden`}
+                      style={{
+                        maxHeight: rigOpen ? "600px" : "0px",
+                        opacity: rigOpen ? 1 : 0,
+                      }}
+                    >
+                      <div className="p-4 space-y-3">
+                        {(selectedEventData?.data?.event_packages)?.length ? (
+                          (selectedEventData?.data?.event_packages).map((p: ConfirmEventPackage) => (
+                            <div key={p.id} className="flex items-start justify-between bg-slate-50 rounded-lg p-3 border border-slate-100">
+                              <div className="flex-1">
+                                <div className="flex items-start gap-2">
+                                  <SquareCheckBig size={14} className="text-primary mt-0.5 flex-shrink-0" />
+                                  <div>
+                                    <p className="font-semibold text-sm text-gray-900">{p.equipment?.name || p.package_name || p.name || "Item"}</p>
+                                    {p.notes && <p className="text-xs text-gray-600 mt-1 italic">{p.notes}</p>}
+                                    {p.quantity && p.quantity > 1 && <p className="text-xs text-gray-500 mt-1">Quantity: {p.quantity}</p>}
+                                  </div>
+                                </div>
+                              </div>
+                              {p.total_price && (
+                                <div className="ml-3 text-sm font-semibold text-gray-900 flex-shrink-0 whitespace-nowrap">
+                                  £{Number(p.total_price).toLocaleString()}
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-xs text-gray-500 text-center py-4">No equipment items</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Payment Form Section */}
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-semibold text-gray-900">Add Payment</h4>
+                    
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (!eventId) return toast.error("No event selected");
+                        const dateIso = paymentDate ? paymentDate.toISOString() : new Date().toISOString();
+                        addPaymentMutation({
+                          id: eventId,
+                          payload: {
+                            payment_method_id: paymentMethodId ? Number(paymentMethodId) : undefined,
+                            amount: Number(paymentAmount || 0),
+                            date: dateIso,
+                            notes: paymentNotes || undefined,
+                          },
+                        }, {
+                          onSuccess: () => {
+                            setShowDrawer(false);
+                            setPaymentAmount("");
+                            setPaymentDate(dayjs());
+                            setPaymentMethodId("");
+                            setPaymentNotes("");
+                          },
+                        });
+                      }}
+                      className="space-y-4"
+                    >
+                      {/* Amount Input */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">Amount</label>
+                        <input
+                          name="amount"
+                          type="number"
+                          className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                          placeholder="0.00"
+                          min={0}
+                          required
+                          value={paymentAmount}
+                          onChange={(e) => setPaymentAmount(e.target.value)}
+                        />
+                      </div>
+
+                      {/* Date & Payment Method */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">Date</label>
+                          <DatePicker
+                            placeholder="DD/MM/YYYY"
+                            className="w-full text-xs"
+                            format="DD-MM-YYYY"
+                            value={paymentDate}
+                            onChange={(val) => setPaymentDate(val)}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">Method</label>
+                          <select
+                            name="payment_method_id"
+                            className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                            value={String(paymentMethodId ?? "")}
+                            onChange={(e) => setPaymentMethodId(e.target.value)}
+                          >
+                            <option value="">Select method</option>
+                            <option value="1">Cash</option>
+                            <option value="2">Bank Transfer</option>
+                            <option value="3">Card</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Notes */}
+                      {/* <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">Notes</label>
+                        <textarea
+                          name="notes"
+                          className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors resize-none"
+                          rows={3}
+                          placeholder="Add payment notes..."
+                          value={paymentNotes}
+                          onChange={(e) => setPaymentNotes(e.target.value)}
+                        />
+                      </div> */}
+
+                      {/* Submit Buttons */}
+                      <div className="flex gap-2 pt-2">
+                        <button 
+                          type="submit" 
+                          className="flex-1 px-4 py-2.5 bg-primary hover:bg-primary/90 text-white font-medium rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                          disabled={isAddingPayment}
+                        >
+                          {isAddingPayment ? "Saving..." : "Add Payment"}
+                        </button>
+                        {/* <button 
+                          type="button" 
+                          onClick={() => setShowDrawer(false)} 
+                          className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
+                        >
+                          Cancel
+                        </button> */}
+                      </div>
+                    </form>
+                  </div>
+
+                  {/* Payment Summary */}
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 space-y-3">
+                    <h4 className="text-sm font-semibold text-emerald-900">Payment Summary</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Total Amount:</span>
+                        <span className="font-semibold text-gray-900">
+                          £{(Number(selectedEventData?.data?.total_cost_for_equipment) || ((selectedEventData?.data?.event_packages || []).reduce((s: number, p: ConfirmEventPackage) => s + Number(p.total_price || p.sell_price || 0), 0))).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Deposit Received:</span>
+                        <span className="font-semibold text-gray-900">
+                          £{adjustedPaidAmount.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="pt-2 border-t border-emerald-200 flex justify-between">
+                        <span className="font-semibold text-emerald-900">Outstanding:</span>
+                        <span className="font-bold text-emerald-900">
+                          £{(
+                            (Number(selectedEventData?.data?.total_cost_for_equipment) || ((selectedEventData?.data?.event_packages || []).reduce((s: number, p: ConfirmEventPackage) => s + Number(p.total_price || p.sell_price || 0), 0))) - adjustedPaidAmount
+                          ).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  {/* <div className="space-y-3 border-t border-gray-200 pt-4">
+                    <button
+                      onClick={async () => {
+                        setButtonLoading("send-invoice");
+                        try {
+                          const data = await fetchEmailTemplate(
+                            String(eventId),
+                            "SEND INVOICE-CONFIRMED",
+                          );
+                          setInvoiceTemplate({
+                            subject: data?.email?.subject || `Invoice for event #${eventId}`,
+                            body: data?.email?.body || `Please find your invoice attached.`,
+                          });
+                          setShowInvoiceModal(true);
+                        } catch {
+                          toast.error("Failed to load invoice template");
+                        } finally {
+                          setButtonLoading(null);
+                        }
+                      }}
+                      disabled={isProcessingRefund || isSendingInvoice}
+                      className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {buttonLoading === "send-invoice" ? "Loading..." : "Send Invoice"}
+                    </button>
+                    <button
+                      onClick={() => setShowRefundModal(true)}
+                      disabled={isProcessingRefund || isSendingInvoice}
+                      className="w-full px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {isProcessingRefund ? "Processing..." : "Refund"}
+                    </button>
+                  </div> */}
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        {/* Send Invoice Modal */}
+        {showInvoiceModal && (
+          <SendInvoiceModal
+            open={showInvoiceModal}
+            onCancel={() => setShowInvoiceModal(false)}
+            eventId={eventId}
+            template={invoiceTemplate}
+            onSend={(subject, body) => {
+              setButtonLoading("sending");
+              sendInvoiceMutation(
+                {
+                  id: eventId,
+                  payload: {
+                    subject,
+                    body,
+                    company_name_id: selectedEventData?.data?.names_id
+                      ? Number(selectedEventData.data.names_id)
+                      : undefined,
+                    email: selectedEventData?.data?.users_events_user_idTousers?.email,
+                  },
+                },
+                {
+                  onSuccess: () => {
+                    setShowInvoiceModal(false);
+                    setInvoiceTemplate(null);
+                    setButtonLoading(null);
+                  },
+                  onError: () => {
+                    setButtonLoading(null);
+                  },
+                },
+              );
+            }}
+            isSending={isSendingInvoice}
+          />
+        )}
+
+        {/* Refund Modal */}
+        {showRefundModal && (
+          <RefundModal
+            open={showRefundModal}
+            onCancel={() => {
+              setShowRefundModal(false);
+              setRefundAmount("");
+            }}
+            onRefund={(amount) => {
+              refundMutation(
+                {
+                  id: eventId,
+                  payload: { refund_amount: Number(amount) },
+                },
+                {
+                  onSuccess: () => {
+                    // ensure fresh event data is fetched after refund
+                    queryClient.invalidateQueries({ queryKey: ["confirm-event", eventId] });
+                    setShowRefundModal(false);
+                    setRefundAmount("");
+                  },
+                },
+              );
+            }}
+            isProcessing={isProcessingRefund}
+            refundAmount={refundAmount}
+            setRefundAmount={setRefundAmount}
+            eventTotal={
+              Number(selectedEventData?.data?.total_cost_for_equipment) ||
+              (Array.isArray(selectedEventData?.data?.event_packages)
+                ? (selectedEventData?.data?.event_packages || []).reduce(
+                    (s: number, p: ConfirmEventPackage) => s + Number(p.total_price || p.sell_price || 0),
+                    0,
+                  )
+                : 0)
+            }
+            paidAmount={adjustedPaidAmount}
+          />
+        )}
     </div>
   );
 };
