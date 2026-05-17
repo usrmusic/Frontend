@@ -113,9 +113,9 @@ export default function OpenEnquiriesList({
           <Skeleton active />
         </div>
           ) : !filteredEnquiries?.length ? (
-        <div className="text-xs text-gray-500">No open enquiries.</div>
+        <div className="text-sm text-gray-500">No open enquiries.</div>
       ) : (
-        <ul className="space-y-2 no-scrollbar text-xs max-h-[300px] overflow-auto">
+        <ul className="space-y-2 no-scrollbar text-sm max-h-[300px] overflow-auto">
           {filteredEnquiries.map((enq: OpenEnquiry, idx: number) => {
             const djName =
               enq.users_events_dj_idTousers?.name ??
@@ -137,8 +137,8 @@ export default function OpenEnquiriesList({
             return (
               <li
                 key={String(enq.id ?? enq.couple_name ?? `enq-${idx}`)}
-                className={`flex items-center border-b border-[#636363] last:border-0 justify-between px-3 py-3 ${scope === 'personal' ? '' : 'cursor-pointer hover:bg-gray-50'} rounded transition-colors`}
-                onDoubleClick={() => { if (scope !== 'personal') handleEnquiryClick(enq); }}
+                className={`flex items-center border-b border-[#636363] last:border-0 justify-between px-3 py-3 ${scope === 'personal' ? '' : 'cursor-pointer hover:bg-gray-50'} transition-colors`}
+                onClick={() => { if (scope !== 'personal') handleEnquiryClick(enq); }}
               >
                 <div className="flex gap-3">
                   <Image
@@ -149,12 +149,12 @@ export default function OpenEnquiriesList({
                     className="rounded-lg"
                   />
                   <div>
-                    <p className="text-gray-900">{djName}</p>
-                    <p className="text-[11px] text-gray-400">{secondary}</p>
+                    <p className="text-sm text-gray-900">{djName}</p>
+                    <p className="text-xs text-gray-400">{secondary}</p>
                   </div>
                 </div>
                 <div
-                  className="rounded-sm px-2 text-center py-1 text-[10px] font-medium text-white min-w-[84px] whitespace-nowrap"
+                  className="rounded-sm px-2 text-center py-1 text-xs font-medium text-white min-w-[84px] whitespace-nowrap"
                   style={{ background: colorPrimaryGradient }}
                 >
                   {badgeText}

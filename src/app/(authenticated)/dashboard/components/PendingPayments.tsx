@@ -25,7 +25,7 @@ export default function PendingPayments({
 }: PendingPaymentsProps) {
   const router = useRouter();
 
-  const handlePaymentDoubleClick = (payment: PendingPayment) => {
+  const handlePaymentClick = (payment: PendingPayment) => {
     try {
       const clientName =
         payment.client_name ?? payment.couple_name ?? `Client #${payment.id}`;
@@ -56,34 +56,34 @@ export default function PendingPayments({
   return (
     <Card variant="white" className="flex flex-col h-full">
       <div className="flex flex-col flex-1 justify-start h-full">
-        <p className="mb-3 text-base font-medium">Pending Payment</p>
+        <h4 className="mb-3 font-poppins text-base font-semibold text-gray-900 flex items-center min-h-8">Pending Payment</h4>
         {isLoading ? (
           <div className="w-full pt-3 flex items-center justify-center">
             <Skeleton active />
           </div>
         ) : !payments?.length ? (
-          <div className="text-xs text-gray-500">
+          <div className="text-sm text-gray-500">
             No pending payments.
           </div>
         ) : (
-          <ul className="space-y-2 no-scrollbar text-xs flex-1 max-h-[320px] overflow-auto">
+          <ul className="space-y-2 no-scrollbar text-sm flex-1 max-h-[320px] overflow-auto">
             {payments.map((p) => (
               <li
                 key={p.id}
                 className={`flex items-center justify-between py-2 border-b border-[#636363] ${scope === 'personal' ? '' : 'cursor-pointer hover:bg-gray-50'} transition-colors`}
-                title={scope === 'personal' ? undefined : 'Double-click to search'}
-                onDoubleClick={() => { if (scope !== 'personal') handlePaymentDoubleClick(p); }}
+                title={scope === 'personal' ? undefined : 'Click to search'}
+                onClick={() => { if (scope !== 'personal') handlePaymentClick(p); }}
               >
                 <div>
-                  <p>{p.client_name ?? `Client #${p.id}`}</p>
-                  <p className="text-[11px] text-gray-400">
+                  <p className="text-sm text-gray-900">{p.client_name ?? `Client #${p.id}`}</p>
+                  <p className="text-xs text-gray-400">
                     {p.payment_date
                       ? new Date(p.payment_date).toLocaleDateString()
                       : "No date"}{" "}
                     · {p.outstanding ? `£${p.outstanding}` : ""}
                   </p>
                 </div>
-                <span className="rounded-full bg-rose-50 px-3 py-1 text-[10px] font-medium text-rose-500">
+                <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-rose-500">
                   Pending
                 </span>
               </li>

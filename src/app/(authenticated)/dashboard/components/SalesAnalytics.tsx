@@ -54,21 +54,21 @@ export default function SalesAnalytics({
     : 0;
 
   return (
-    <Card variant="white" className="shadow-sm p-4 flex flex-col h-full">
+    <Card variant="white" className="shadow-sm p-5 flex flex-col h-full">
       <div className="mb-2 gap-2 flex flex-col">
-        <p className="text-base font-semibold text-gray-800">
+        <h4 className="font-poppins text-base font-semibold text-gray-900 flex items-center min-h-8">
           Sales Analytics
-        </p>
-        <p className="text-xs text-gray-400">Events Progress</p>
+        </h4>
+        <p className="text-sm text-gray-400">Events Progress</p>
         <div className="flex items-baseline gap-2 mt-1">
-          <span className="text-lg font-bold text-gray-900">
+          <span className="text-2xl font-bold text-gray-900">
             {isLoading ? "..." : confirmedEventsCount}
           </span>
-          <span className="text-xs text-gray-400">
+          <span className="text-sm text-gray-400">
             /{isLoading ? "..." : totalEvents}
           </span>
         </div>
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-sm text-gray-500 mt-1">
           {completedPercent}% Events Completed
         </p>
       </div>
@@ -84,11 +84,11 @@ export default function SalesAnalytics({
               />
             </div>
           ) : !djEntries.length ? (
-            <div className="text-xs text-gray-500">
+            <div className="text-sm text-gray-500">
               No sales analytics data available.
             </div>
           ) : (
-            <ul className="text-xs space-y-4">
+            <ul className="text-sm space-y-4">
               {topDjs.map((d, i) => {
                 const pct = totalDjCount
                   ? Math.round((d.count / totalDjCount) * 100)

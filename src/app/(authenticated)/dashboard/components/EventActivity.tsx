@@ -22,27 +22,30 @@ export default function EventActivity({
     <Card variant="white" className="col-span-12 lg:col-span-3 flex flex-col shadow-sm">
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <p className="text-sm font-semibold text-gray-900">
+          <h4 className="font-poppins text-base font-semibold text-gray-900">
             Events Activity
-          </p>
+          </h4>
         </div>
       </div>
-      <ul className="mb-4 no-scrollbar space-y-2 text-xs max-h-[280px] overflow-auto">
+      <ul className="mb-4 no-scrollbar text-sm max-h-[280px] overflow-auto">
         {isLoading ? (
-          <li className="flex items-center">
+          <li className="flex items-center py-2">
             <Skeleton active paragraph={false} />
           </li>
         ) : !notes?.length ? (
-          <li className="text-xs text-gray-500">No recent notes.</li>
+          <li className="text-sm text-gray-500 py-2">No recent notes.</li>
         ) : (
           notes.map((note) => (
-            <li key={note.id} className="flex items-start gap-2">
+            <li
+              key={note.id}
+              className="flex items-start gap-2 py-2 border-b border-[#636363] last:border-0"
+            >
               <span className="h-2 w-2 rounded-full bg-primary mt-1 flex-shrink-0" />
               <div>
-                <div className="text-gray-700">
+                <div className="text-sm text-gray-700">
                   {note.notes?.slice(0, 80) || "—"}
                 </div>
-                <div className="text-[11px] text-gray-400">
+                <div className="text-xs text-gray-400">
                   {note.created_by ?? "System"} ·{" "}
                   {note.created_at
                     ? new Date(note.created_at).toLocaleString()
