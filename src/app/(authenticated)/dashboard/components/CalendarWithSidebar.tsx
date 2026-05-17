@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DayPicker, type DayButtonProps } from "react-day-picker";
 import "react-day-picker/dist/style.css";
@@ -102,11 +102,6 @@ function CalendarWithSidebar({
   const [month, setMonth] = useState<Date>(() => startOfToday());
   const [selected, setSelected] = useState<Date>(() => startOfToday());
   const [sidebarIdx, setSidebarIdx] = useState(0);
-  const lastClickRef = useRef<{ time: number; date: string | null }>({
-    time: 0,
-    date: null,
-  });
-
   const eventsByDate = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
     (events || []).forEach((event) => {
@@ -162,32 +157,33 @@ function CalendarWithSidebar({
     setSelected(start);
   };
 
+  const navigateToCalendar = (isoDate: string) => {
+    const perms = (auth?.permissions || []).map((p) => String(p).toLowerCase());
+    const hasCalendar =
+      perms.includes("calendar") ||
+      perms.includes("calendar:view") ||
+      perms.includes("access_calendar");
+    if (!hasCalendar) {
+      import("antd").then(({ notification }) => {
+        notification.warning({
+          message: "Access denied",
+          description: "You don't have permission to view the calendar.",
+          placement: "topRight",
+        });
+      });
+      return;
+    }
+    try {
+      router.push(`/calendar?date=${isoDate}`);
+    } catch (e) {
+      console.error("Navigation error:", e);
+    }
+  };
+
   const handleSelectDay = (date: Date | undefined) => {
     if (!date) return;
-    const now = Date.now();
-    const isoDate = date.toISOString().split("T")[0];
-    const isDoubleClick =
-      lastClickRef.current.date === isoDate &&
-      now - (lastClickRef.current.time || 0) < 400;
-
     setSelected(date);
-    lastClickRef.current = { time: now, date: isoDate };
-    if (isDoubleClick) {
-      // only navigate to calendar if user has calendar permission
-      const perms = (auth?.permissions || []).map((p) => String(p).toLowerCase());
-      const hasCalendar = perms.includes("calendar") || perms.includes("calendar:view") || perms.includes("access_calendar");
-      if (!hasCalendar) {
-        import("antd").then(({ notification }) => {
-          notification.warning({ message: "Access denied", description: "You don't have permission to view the calendar.", placement: 'topRight' });
-        });
-        return;
-      }
-      try {
-        router.push(`/calendar?date=${isoDate}`);
-      } catch (e) {
-        console.error("Navigation error:", e);
-      }
-    }
+    navigateToCalendar(getDateKey(date));
   };
 
   const handlePrev = () => setMonth((prev) => subMonths(prev, 1));
@@ -205,30 +201,31 @@ function CalendarWithSidebar({
     const button = <button {...buttonProps} />;
     if (!dayEvents.length) return button;
 
-    const first = dayEvents[0];
-    const title =
-      first.couple_name ||
-      first.users_events_dj_idTousers?.name ||
-      first.title ||
-      "Event";
-    const venue = first.venues?.venue;
-    const dj = first.users_events_dj_idTousers?.name;
-    const showDj = dj && dj !== title;
-
     return (
       <Tooltip
         placement="top"
         title={
-          <div className="text-xs leading-snug">
-            <div className="font-medium">{title}</div>
-            {venue && <div>{venue}</div>}
-            {showDj && <div className="opacity-80">DJ: {dj}</div>}
-            {dayEvents.length > 1 && (
-              <div className="opacity-70 mt-1">
-                +{dayEvents.length - 1} more event
-                {dayEvents.length > 2 ? "s" : ""}
-              </div>
-            )}
+          <div className="text-xs leading-snug max-h-64 overflow-auto no-scrollbar">
+            {dayEvents.map((ev, idx) => {
+              const evTitle =
+                ev.couple_name ||
+                ev.users_events_dj_idTousers?.name ||
+                ev.title ||
+                "Event";
+              const evVenue = ev.venues?.venue;
+              const evDj = ev.users_events_dj_idTousers?.name;
+              const evShowDj = evDj && evDj !== evTitle;
+              return (
+                <div
+                  key={ev.id ?? idx}
+                  className={idx > 0 ? "mt-2 pt-2 border-t border-white/20" : ""}
+                >
+                  <div className="font-medium">{evTitle}</div>
+                  {evVenue && <div>{evVenue}</div>}
+                  {evShowDj && <div className="opacity-80">DJ: {evDj}</div>}
+                </div>
+              );
+            })}
           </div>
         }
       >
@@ -303,30 +300,8 @@ function CalendarWithSidebar({
           selected={selected}
           onSelect={handleSelectDay}
           onDayClick={(day: Date) => {
-            const iso = getDateKey(day);
-            const now = Date.now();
-            const isDouble =
-              lastClickRef.current.date === iso &&
-              now - (lastClickRef.current.time || 0) < 400;
-
             setSelected(day);
-            lastClickRef.current = { time: now, date: iso };
-            if (isDouble) {
-              // only navigate to calendar if user has calendar permission
-              const perms = (auth?.permissions || []).map((p) => String(p).toLowerCase());
-              const hasCalendar = perms.includes("calendar") || perms.includes("calendar:view") || perms.includes("access_calendar");
-              if (!hasCalendar) {
-                import("antd").then(({ notification }) => {
-                  notification.warning({ message: "Access denied", description: "You don't have permission to view the calendar.", placement: 'topRight' });
-                });
-                return;
-              }
-              try {
-                router.push(`/calendar?date=${iso}`);
-              } catch (err) {
-                console.error(err);
-              }
-            }
+            navigateToCalendar(getDateKey(day));
           }}
           month={month}
           onMonthChange={setMonth}

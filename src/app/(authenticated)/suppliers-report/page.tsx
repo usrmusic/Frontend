@@ -43,11 +43,14 @@ const SuppliersPage = () => {
   const { columns } = useColumns();
 
   const [showStat, setShowStat] = useState({
-    eventStat: false,
-    remainingStat: false,
     totalPaidStat: false,
     totalCostStat: false,
   });
+
+  const toggleKeyMap: Record<string, keyof typeof showStat | undefined> = {
+    "total paid": "totalPaidStat",
+    "total cost": "totalCostStat",
+  };
 
   const statsData = suppliersReportData?.stats;
   const stats: StatItem[] = [
@@ -118,22 +121,26 @@ const SuppliersPage = () => {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((item) => {
-          const keyMap: Record<string, string> = {
-            events: "eventStat",
-            remaining: "remainingStat",
-            "total paid": "totalPaidStat",
-            "total cost": "totalCostStat",
-          };
           const lookup = (item.label || "").toString().toLowerCase();
-          const statKey = keyMap[lookup] || "eventStat";
-          const k = statKey as keyof typeof showStat;
-          const isVisible = Boolean(showStat[k]);
+          const statKey = toggleKeyMap[lookup];
+          const isToggleable = Boolean(statKey);
+          const isVisible = statKey ? Boolean(showStat[statKey]) : true;
+          const iconColor = item.variant === "green" ? "#fff" : undefined;
 
           return (
             <Card
               key={item.label}
               variant={item.variant}
               className={`flex items-center justify-between`}
+              onClick={
+                isToggleable && !isLoading && statKey
+                  ? () =>
+                      setShowStat((prev) => ({
+                        ...prev,
+                        [statKey]: !prev[statKey],
+                      }))
+                  : undefined
+              }
             >
               <div className="flex items-center gap-3">
                 {item.icon && (
@@ -150,22 +157,16 @@ const SuppliersPage = () => {
                   ) : (
                     <div className="flex items-center gap-2">
                       <p
-                        className={`text-xl font-semibold ${item.variant === "green" ? "text-white" : "text-black"} ${!isVisible ? "blur-sm" : ""}`}
+                        className={`text-xl font-semibold ${item.variant === "green" ? "text-white" : "text-black"} ${isToggleable && !isVisible ? "blur-sm" : ""}`}
                       >
                         {item.value}
                       </p>
-                      <button
-                        type="button"
-                            onClick={() =>
-                              setShowStat((prev) => {
-                                const k = statKey as keyof typeof prev;
-                                return { ...prev, [k]: !prev[k] };
-                              })
-                            }
-                        aria-label={isVisible ? `Hide ${item.label}` : `Show ${item.label}`}
-                      >
-                        {isVisible ? <EyeOff size={18} /> : <Eye size={18} />}
-                      </button>
+                      {isToggleable &&
+                        (isVisible ? (
+                          <EyeOff size={18} color={iconColor} />
+                        ) : (
+                          <Eye size={18} color={iconColor} />
+                        ))}
                     </div>
                   )}
                 </div>

@@ -17,6 +17,7 @@ import {
   TbFileUpload,
 } from "react-icons/tb";
 import { RiFileListLine } from "react-icons/ri";
+import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { deleteCookie } from "cookies-next";
@@ -114,51 +115,31 @@ const Sidebar = () => {
     return permissions.some((p) => authUser.permissions?.includes(p));
   };
 
-  const groups: Group[] = [
-    {
-      key: "enquiries",
-      label: "Enquiries",
-      icon: <Enquiry />,
-      children: [
-        { href: "/enquiry", icon: <Enquiry />, label: "Enquiry", permission: "new enquiry" },
-        { href: "/open-enquiry", icon: <MailOpen />, label: "Open Enquiry", permission: "open enquiry" },
-        { href: "/confirmed-events", icon: <Reports />, label: "Confirmed Events", permission: "confirm event" },
-        { href: "/completed-events", icon: <TbReportSearch size={20} />, label: "Completed Events", permission: "complete event" },
-      ],
-    },
-    {
-      key: "files",
-      label: "Files",
-      icon: <RiFileListLine size={18} />,
-      children: [
-        { href: "/file-upload", icon: <TbFileUpload size={20} />, label: "File Upload", permission: "file upload" },
-        { href: "/downloads", icon: <TbFileDownload size={20} />, label: "Downloads", permission: "downloads" },
-      ],
-    },
-    {
-      key: "reports",
-      label: "Reports",
-      icon: <Reports />,
-      children: [
-        { href: "/suppliers-report", icon: <TbReportMedical size={20} />, label: "Suppliers Report", permission: "supplier reporting" },
-        { href: "/admin-report", icon: <TbReportAnalytics size={20} />, label: "Admin Report", permission: "admin reporting" },
-      ],
-    },
-    {
-      key: "extras",
-      label: "Admin",
-      icon: <RiFileListLine size={18} />,
-      children: [
-        { href: "/users?title=Users", icon: <Contacts />, label: "Users", permissionAny: ["user", "manage access"] },
-        { href: "/calendar", icon: <Calendar />, label: "Calendar", permission: "calendar" },
-        { href: "/rig-list", icon: <RiFileListLine size={20} />, label: "Rig List", permission: "rig list" },
-      ],
-    },
-  ];
-
-  // Dashboard should be visible to all authenticated users
+  // Top-level priority links — always visible, never inside a folder.
+  // Dashboard is visible to all authenticated users; the rest are permission-gated.
   const standaloneLinks: LinkItem[] = [
     { href: "/dashboard", icon: <Dashboard />, label: "Dashboard" },
+    { href: "/enquiry", icon: <Enquiry />, label: "Enquiry", permission: "new enquiry" },
+    { href: "/open-enquiry", icon: <MailOpen />, label: "Open Enquiry", permission: "open enquiry" },
+    { href: "/confirmed-events", icon: <Reports />, label: "Confirmed Events", permission: "confirm event" },
+    { href: "/rig-list", icon: <RiFileListLine size={20} />, label: "Rig List", permission: "rig list" },
+    { href: "/calendar", icon: <Calendar />, label: "Calendar", permission: "calendar" },
+  ];
+
+  const groups: Group[] = [
+    {
+      key: "more",
+      label: "More",
+      icon: <MoreHorizontal size={20} />,
+      children: [
+        { href: "/completed-events", icon: <TbReportSearch size={20} />, label: "Completed Events", permission: "complete event" },
+        { href: "/file-upload", icon: <TbFileUpload size={20} />, label: "File Upload", permission: "file upload" },
+        { href: "/downloads", icon: <TbFileDownload size={20} />, label: "Downloads", permission: "downloads" },
+        { href: "/suppliers-report", icon: <TbReportMedical size={20} />, label: "Suppliers Report", permission: "supplier reporting" },
+        { href: "/admin-report", icon: <TbReportAnalytics size={20} />, label: "Admin Report", permission: "admin reporting" },
+        { href: "/users?title=Users", icon: <Contacts />, label: "Users", permissionAny: ["user", "manage access"] },
+      ],
+    },
   ];
 
   const isAllowed = (item: LinkItem) => {
@@ -178,10 +159,7 @@ const Sidebar = () => {
         .filter((g) => g.children.length > 0);
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => ({
-    enquiries: true,
-    reports: false,
-    files: false,
-    extras: false,
+    more: false,
   }));
 
   return (
@@ -191,9 +169,12 @@ const Sidebar = () => {
         aria-expanded={expanded}
       >
         <div
-          className={`flex flex-col ${expanded ? "gap-4 w-full" : "gap-3"} h-full overflow-y-auto overflow-x-hidden no-scrollbar [&>*:nth-last-child(3)]:mt-auto `}
-          style={{ msOverflowStyle: "none", scrollbarWidth: "none" }}
+          className={`flex flex-col ${expanded ? "gap-4 w-full" : "gap-3"} h-full overflow-hidden`}
         >
+          <div
+            className={`flex flex-col ${expanded ? "gap-4 w-full" : "gap-3 items-center"} flex-1 overflow-y-auto overflow-x-hidden no-scrollbar`}
+            style={{ msOverflowStyle: "none", scrollbarWidth: "none" }}
+          >
           {visibleStandalone.map((item, index) => {
             const isActive = pathname.startsWith(item.href.split("?")[0]);
             return (
@@ -263,6 +244,11 @@ const Sidebar = () => {
             );
           })}
 
+          </div>
+
+          <div
+            className={`flex flex-col ${expanded ? "gap-4 w-full" : "gap-3 items-center"} shrink-0 pt-3 mt-1 border-t border-gray-200`}
+          >
           <div>
             <Link
               href="/login"
@@ -328,6 +314,7 @@ const Sidebar = () => {
             >
               <span aria-hidden>{expanded ? "‹" : "›"}</span>
             </button>
+          </div>
           </div>
         </div>
       </div>

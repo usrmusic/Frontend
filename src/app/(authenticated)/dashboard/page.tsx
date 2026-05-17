@@ -14,8 +14,6 @@ import DashboardTodos from "./components/DashboardTodos";
 
 const DashboardPage = () => {
   const [showStat, setShowStat] = useState({
-    eventStat: false,
-    remainingStat: false,
     profitStat: false,
     turnOverStat: false,
   });

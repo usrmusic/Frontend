@@ -32,7 +32,7 @@ export default function EventOverview({
 }: EventOverviewProps) {
   const router = useRouter();
 
-  const handleEventRowDoubleClick = (record: UpcomingEventRow) => {
+  const handleEventRowClick = (record: UpcomingEventRow) => {
     try {
       // Prefer venue, then DJ, then couple/client name. Include `name` param for better search.
       const venue = record?.venue_name || record?.venue || "";
@@ -92,9 +92,9 @@ export default function EventOverview({
       className="col-span-12 xl:col-span-6 p-0 overflow-hidden rounded-3xl bg-white"
       style={{ boxShadow: "0px 1px 3px 0px #0000001A" }}
     >
-      <div className="flex items-center justify-between p-4 text-white rounded-t-3xl">
+      <div className="flex items-center justify-between p-5 text-white rounded-t-3xl">
         <div className="flex items-center gap-3">
-          <h4 className="font-poppins font-medium text-black">
+          <h4 className="font-poppins text-base font-semibold text-gray-900">
             Event Overview
           </h4>
         </div>
@@ -109,31 +109,27 @@ export default function EventOverview({
         </div>
       </div>
 
-      <div className="p-4">
-        <div className="overflow-hidden rounded-2xl border border-gray-50 p-3">
-          <div className="grid grid-cols-12 items-center gap-4">
-            <div className="col-span-12">
-              {isLoading ? (
-                <div className="h-44 flex items-center justify-center">
-                  <Spin size="large" />
-                </div>
-              ) : (
-                <div className="max-h-[260px] overflow-auto no-scrollbar">
-                  <Table<UpcomingEventRow>
-                    size="small"
-                    pagination={false}
-                    dataSource={events}
-                    rowKey={(r) => r.id}
-                    columns={upcomingColumns}
-                    onRow={(record) => ({
-                      onDoubleClick: () => handleEventRowDoubleClick(record),
-                      style: { cursor: "pointer" },
-                    })}
-                  />
-                </div>
-              )}
+      <div className="px-5 pb-5">
+        <div className="overflow-hidden rounded-2xl border border-gray-50 [&_.ant-table]:text-sm [&_.ant-table-thead_th]:text-sm [&_.ant-table-tbody_td]:text-sm">
+          {isLoading ? (
+            <div className="h-44 flex items-center justify-center">
+              <Spin size="large" />
             </div>
-          </div>
+          ) : (
+            <div className="max-h-[300px] overflow-auto no-scrollbar">
+              <Table<UpcomingEventRow>
+                size="small"
+                pagination={false}
+                dataSource={events}
+                rowKey={(r) => r.id}
+                columns={upcomingColumns}
+                onRow={(record) => ({
+                  onClick: () => handleEventRowClick(record),
+                  style: { cursor: "pointer" },
+                })}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
