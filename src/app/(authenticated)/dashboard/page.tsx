@@ -102,8 +102,8 @@ const DashboardPage = () => {
         {/* Right column stats */}
         <section className="col-span-12 xl:col-span-6 flex flex-col gap-4 h-full">
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-stretch h-full">
-            {/* Sales Analytics (admin only) */}
-            {dashboard?.scope === 'admin' && (
+            {/* Sales Analytics (admin only — show skeleton while loading) */}
+            {(dashboardLoading || dashboard?.scope === 'admin') && (
               <SalesAnalytics
                 djCounts={
                   Object.fromEntries(
@@ -119,8 +119,8 @@ const DashboardPage = () => {
               />
             )}
 
-            {/* Pending Payments (admin + personal) */}
-            {(dashboard?.scope === 'admin' || dashboard?.scope === 'personal') && (
+            {/* Pending Payments (admin + personal — show skeleton while loading) */}
+            {(dashboardLoading || dashboard?.scope === 'admin' || dashboard?.scope === 'personal') && (
               <PendingPayments
                 payments={dashboard?.pendingPayments || []}
                 isLoading={dashboardLoading}
@@ -157,7 +157,7 @@ const DashboardPage = () => {
           variant="white"
           className="dashboard-calendar col-span-12 lg:col-span-4 shadow-sm p-0 rounded-2xl bg-[#F6F5F0]"
         >
-          <CalendarWithSidebar events={dashboard?.calendarEvents} />
+          <CalendarWithSidebar events={dashboard?.calendarEvents} isLoading={dashboardLoading} />
         </Card>
 
         {/* Event Activity Component (hide for team scope) */}

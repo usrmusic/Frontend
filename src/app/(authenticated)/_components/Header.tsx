@@ -50,7 +50,7 @@ const Header = () => {
     return () => { mounted = false; };
   }, []);
 
-  const futureYears = 1;
+  const futureYears = 0;
   const pastYears = 4;
   const currentYear = new Date().getFullYear();
   const yearOptions = Array.from({ length: futureYears + pastYears + 1 }, (_, i) => {
@@ -140,7 +140,19 @@ const Header = () => {
               }
             }}
             notFoundContent={dropdownFetching ? <Spin size="small" /> : (dropdownParams ? <div className="text-sm text-gray-500">No results</div> : <div className="text-sm text-gray-500">Type to search</div>)}
-            options={(dropdownItems || []).map((it) => ({ value: String(it.id), label: it.couple_name ?? it.client?.name ?? `#${it.id}`, status: it.status, clientId: it.client?.id }))}
+            options={(dropdownItems || []).map((it) => {
+              const clientName = it.couple_name ?? it.client?.name ?? `#${it.id}`;
+              const dateStr = it.date
+                ? new Date(it.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                : '';
+              return {
+                value: String(it.id),
+                label: dateStr ? `${dateStr} - ${clientName}` : clientName,
+                status: it.status,
+                clientId: it.client?.id,
+                date: it.date ?? null,
+              };
+            })}
             loading={dropdownFetching}
             classNames={{ popup: { root: "rounded-md" } }}
             filterOption={false}

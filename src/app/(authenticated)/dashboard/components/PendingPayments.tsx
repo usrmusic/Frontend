@@ -8,7 +8,7 @@ export interface PendingPayment {
   client_name?: string | null;
   couple_name?: string | null;
   event_status_id?: number;
-  payment_date?: string | null;
+  date?: string | null;
   outstanding?: number | null;
 }
 
@@ -77,8 +77,8 @@ export default function PendingPayments({
                 <div>
                   <p className="text-sm text-gray-900">{p.client_name ?? `Client #${p.id}`}</p>
                   <p className="text-xs text-gray-400">
-                    {p.payment_date
-                      ? new Date(p.payment_date).toLocaleDateString()
+                    {p.date
+                      ? new Date(p.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
                       : "No date"}{" "}
                     · {p.outstanding ? `£${p.outstanding}` : ""}
                   </p>

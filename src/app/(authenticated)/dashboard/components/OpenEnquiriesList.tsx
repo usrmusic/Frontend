@@ -11,6 +11,7 @@ type OpenEnquiry = {
   date?: string | null;
   client?: { name?: string | null } | null;
   venue?: string | null;
+  venues?: { venue?: string | null } | null;
   subtitle?: string | null;
   created_at?: string | null;
   tag?: string | null;
@@ -117,19 +118,16 @@ export default function OpenEnquiriesList({
       ) : (
         <ul className="space-y-2 no-scrollbar text-sm max-h-[300px] overflow-auto">
           {filteredEnquiries.map((enq: OpenEnquiry, idx: number) => {
-            const djName =
-              enq.users_events_dj_idTousers?.name ??
-              enq.couple_name ??
-              "Unknown";
             const clientName =
               enq.users_events_user_idTousers?.name ??
               enq.client?.name ??
-              "";
-            const secondary =
-              clientName ||
-              enq.venue ||
-              enq.subtitle ||
-              (enq.created_at ? formatDate(enq.created_at) : "");
+              enq.couple_name ??
+              "Unknown";
+            const venueName =
+              enq.venues?.venue ??
+              enq.venue ??
+              enq.subtitle ??
+              "Unknown Venue";
             const badgeText = enq.date
               ? formatDate(enq.date)
               : (enq.tag ?? "New");
@@ -149,8 +147,8 @@ export default function OpenEnquiriesList({
                     className="rounded-lg"
                   />
                   <div>
-                    <p className="text-sm text-gray-900">{djName}</p>
-                    <p className="text-xs text-gray-400">{secondary}</p>
+                    <p className="text-sm text-gray-900">{clientName}</p>
+                    <p className="text-xs text-gray-400">{venueName}</p>
                   </div>
                 </div>
                 <div

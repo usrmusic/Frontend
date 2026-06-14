@@ -161,6 +161,17 @@ textarea {
   border: none;
 }
 
+.green-header-modal .ant-modal-content {
+  padding: 0 !important;
+  overflow: hidden;
+  border-radius: 16px !important;
+}
+
+.green-header-modal .ant-modal-header {
+  margin-bottom: 0 !important;
+  border-radius: 16px 16px 0 0 !important;
+}
+
 @media print {
   body * {
     visibility: hidden;

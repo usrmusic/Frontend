@@ -83,18 +83,12 @@ const Page = () => {
                       {rigNotesData?.packages?.map((pkg: any, idx: number) => (
                         <div key={idx}>
                           <p>{pkg.equipment?.name}</p>
-                          <p>
-                            {pkg.equipment?.rig_notes
-                              ?.split("<br>")
-                              .map((note: string, nidx: number) => (
-                                <ul key={nidx} className="space-y-2">
-                                  <li className="flex items-center gap-2">
-                                    <input type="checkbox" />
-                                    {note.trim()}
-                                  </li>
-                                </ul>
-                              ))}
-                          </p>
+                          {pkg.equipment?.rig_notes && (
+                            <div
+                              className="text-sm pl-2 py-1"
+                              dangerouslySetInnerHTML={{ __html: pkg.equipment.rig_notes }}
+                            />
+                          )}
                         </div>
                       ))}
                     </div>
