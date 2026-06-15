@@ -2,7 +2,6 @@
 import {
   useAddNote,
   useOpenEnquiryList,
-  useUpdateEnquiry,
   useDeleteEnquiry,
 } from "@/src/api/enquiry";
 import { useConfirmEvent } from "@/src/api/events";
@@ -11,20 +10,19 @@ import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
 import { useFormik } from "formik";
-import { Select, DatePicker, TableColumnsType } from "antd";
+import { Select, DatePicker, TableColumnsType, InputNumber } from "antd";
 import type { TableRowSelection } from "antd/es/table/interface";
 import dayjs from "dayjs";
-import { MoreVertical, Check } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "antd";
 import { useSearchParams } from "next/navigation";
+import { useDebounce } from "@/src/hooks/useDebounce";
 import SendBrochureModal from "./SendBrochure";
 import { toast } from "react-toastify";
 import { fetchEmailTemplate } from "@/src/api/enquiry";
 import { useCompanyDropdown } from "@/src/api/dropdown";
-import Input from "@/src/components/Input";
 // using Ant Design inputs for date/amount
 
 const initialParams = {
@@ -50,7 +48,8 @@ const OpenEnquiryPage = () => {
     name: string;
   }> | null>(null);
   const [note, setNote] = useState("");
-  const [flagLoading, setFlagLoading] = useState<Record<string, boolean>>({});
+  const [searchInput, setSearchInput] = useState(initialParams.search);
+  const debouncedSearch = useDebounce(searchInput, 400);
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [selectedRowData, setSelectedRowData] = useState<
     OpenEnquiryList[] | null
@@ -62,10 +61,9 @@ const OpenEnquiryPage = () => {
   const { data: enquiryData, isLoading } = useOpenEnquiryList(params);
   const { data: companyNameOptions } = useCompanyDropdown();
 
-  const { mutate: addNoteMutation } = useAddNote();
+  const { mutate: addNoteMutation, isPending: addingNote } = useAddNote();
   const { mutate: confirmEventMutation, isPending: confirmingEvent } =
     useConfirmEvent();
-  const updateEnquiry = useUpdateEnquiry();
   const deleteEnquiry = useDeleteEnquiry();
   const router = useRouter();
 
@@ -122,12 +120,21 @@ const OpenEnquiryPage = () => {
     newSelectedRowKeys: React.Key[],
     rows: OpenEnquiryList[],
   ) => {
-    setSelectedRowKeys(newSelectedRowKeys.map((key) => String(key)));
-    setSelectedRowData(rows);
+    // checkbox UI, but enforce single-select: keep only the last toggled row
+    const lastKey = newSelectedRowKeys[newSelectedRowKeys.length - 1];
+    if (lastKey === undefined) {
+      setSelectedRowKeys([]);
+      setSelectedRowData(null);
+      return;
+    }
+    const lastRow = rows.find((r) => String(r.id) === String(lastKey)) ?? null;
+    setSelectedRowKeys([String(lastKey)]);
+    setSelectedRowData(lastRow ? [lastRow] : null);
   };
 
   const rowSelection: TableRowSelection<OpenEnquiryList> = {
-    type: "radio",
+    type: "checkbox",
+    hideSelectAll: true,
     selectedRowKeys,
     onChange: onSelectChange,
   };
@@ -137,6 +144,13 @@ const OpenEnquiryPage = () => {
       title: "Name",
       dataIndex: ["users_events_user_idTousers", "name"],
       key: "name",
+      sorter: (a, b) => {
+        const an =
+          (a.users_events_user_idTousers as { name?: string })?.name ?? "";
+        const bn =
+          (b.users_events_user_idTousers as { name?: string })?.name ?? "";
+        return an.localeCompare(bn);
+      },
     },
     {
       title: "Mobile",
@@ -147,6 +161,8 @@ const OpenEnquiryPage = () => {
       title: "Event Date",
       dataIndex: "date",
       key: "date",
+      sorter: (a, b) =>
+        dayjs(a.date as string).valueOf() - dayjs(b.date as string).valueOf(),
       render: (value: string) =>
         value ? dayjs(value).format("MM/DD/YYYY") : "-",
     },
@@ -154,6 +170,8 @@ const OpenEnquiryPage = () => {
       title: "Tell Us More",
       dataIndex: "details",
       key: "details",
+      sorter: (a, b) =>
+        String(a.details ?? "").localeCompare(String(b.details ?? "")),
     },
   ];
 
@@ -175,41 +193,9 @@ const OpenEnquiryPage = () => {
     if (!selectedRowKeys?.length) return;
     const id = String(selectedRowKeys[0]);
     const found = enquiryData?.data?.find((d) => String(d.id) === id) || null;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (found) setSelectedRowData([found]);
   }, [enquiryData, selectedRowKeys]);
-
-  const toggleFlag = async (flag: string) => {
-    if (!selectedRowKeys.length) return;
-    const id = selectedRowKeys[0];
-    const current = selectedRowData?.[0]?.[flag];
-    // show loader for this flag
-    setFlagLoading((s) => ({ ...s, [flag]: true }));
-
-    // optimistic UI update
-    setSelectedRowData((prev) => {
-      if (!prev || !prev.length) return prev;
-      return [{ ...prev[0], [flag]: !current } as OpenEnquiryList];
-    });
-
-    updateEnquiry.mutate(
-      { id: String(id), body: { [flag]: !current } },
-      {
-        onSuccess: () => {
-          toast.success("Updated");
-          setFlagLoading((s) => ({ ...s, [flag]: false }));
-        },
-        onError: () => {
-          toast.error("Failed to update");
-          // revert optimistic update on error
-          setSelectedRowData((prev) => {
-            if (!prev || !prev.length) return prev;
-            return [{ ...prev[0], [flag]: current } as OpenEnquiryList];
-          });
-          setFlagLoading((s) => ({ ...s, [flag]: false }));
-        },
-      },
-    );
-  };
 
   const searchParams = useSearchParams();
 
@@ -218,11 +204,17 @@ const OpenEnquiryPage = () => {
     const name = searchParams?.get("name") ?? "";
     if (!s) return;
     const displayValue = name || s;
-    setParams((prev) => {
-      if (prev.search === displayValue) return prev;
-      return { ...prev, search: displayValue, page: 1 };
-    });
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSearchInput(displayValue);
   }, [searchParams]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setParams((prev) => {
+      if (prev.search === debouncedSearch) return prev;
+      return { ...prev, search: debouncedSearch, page: 1 };
+    });
+  }, [debouncedSearch]);
 
   return (
     <div className="mt-8 space-y-6">
@@ -251,6 +243,7 @@ const OpenEnquiryPage = () => {
               </Button>
               <Button
                 type="default"
+                danger
                 className="themeDefaultButton"
                 disabled={!selectedRowKeys.length || Boolean(buttonLoading)}
                 loading={buttonLoading === "delete"}
@@ -374,31 +367,22 @@ const OpenEnquiryPage = () => {
               >
                 Send Quote
               </Button>
-              {/* <button className="size-9 flex items-center justify-center rounded-lg bg-secondary-100 hover:bg-secondary-200 transition-colors">
-                <MoreVertical size={18} />
-              </button> */}
             </div>
           </div>
         </div>
 
         {/* Left Section: Table */}
-        <div className="col-span-12 xl:col-span-9 space-y-6">
+        <div className="col-span-12 lg:col-span-8 space-y-6">
           <Card variant="white" className="p-0 overflow-hidden shadow-sm">
-            <div className="bg-primary p-5">
-              <div className="flex items-center gap-2 rounded-lg bg-white px-4 py-3 max-w-[300px]">
+            <div className="bg-primary px-4 py-3">
+              <div className="flex items-center gap-2 rounded-lg bg-white! px-4 py-2.5 max-w-[320px]">
                 <MagnifyingGlass w={18} h={18} />
                 <input
                   type="text"
-                  placeholder="Search by name, mobile..."
-                  className="w-full bg-[#ffffff] outline-none text-sm placeholder:text-gray-400"
-                  value={params.search}
-                  onChange={(e) =>
-                    setParams((prev) => ({
-                      ...prev,
-                      search: e.target.value,
-                      page: 1,
-                    }))
-                  }
+                  placeholder="Search by name, mobile, or event details..."
+                  className="w-full bg-white! outline-none text-sm placeholder:text-gray-400"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                 />
               </div>
             </div>
@@ -415,6 +399,9 @@ const OpenEnquiryPage = () => {
                   setParams({ ...params, page, limit: pageSize }),
               }}
               rowSelection={rowSelection}
+              rowClassName={(_, index) =>
+                index % 2 === 1 ? "[&>td]:bg-[#F7F7F5]" : ""
+              }
               onRow={(record) => ({
                 onClick: () => {
                   try {
@@ -430,39 +417,40 @@ const OpenEnquiryPage = () => {
         </div>
 
         {/* Right Section: Sidebar Actions */}
-        <div className="col-span-12 xl:col-span-3 space-y-6">
-          {/* Notes Card */}
-          <Card
-            variant="white"
-            className="flex flex-col shadow-sm overflow-hidden p-0"
-          >
-            <div className="flex items-center justify-between bg-primary px-6 py-4 text-white">
-              <h3 className="font-medium">Recent Activities</h3>
-            </div>
+        <div className="col-span-12 lg:col-span-4 space-y-4 lg:border-l lg:border-gray-200 lg:pl-6">
 
-            <div className="p-4">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Add a note..."
-                  className="flex-1 rounded-lg border border-gray-200 p-2 text-xs outline-none bg-gray-50 focus:bg-white focus:border-primary transition-all"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                />
-                <Button
-                  type="primary"
-                  className="h-9 w-16 shrink-0 rounded-lg text-xs"
-                  onClick={hanldeAddNote}
-                  disabled={!selectedRowKeys.length || !note.trim()}
-                >
-                  Add
-                </Button>
-              </div>
-            </div>
+          {/* Note Input */}
+          <div className="flex gap-3 items-stretch">
+            <textarea
+              placeholder="Add a note..."
+              rows={3}
+              className="flex-1 bg-white! rounded-xl px-4 py-3 text-sm outline-none shadow-sm placeholder:text-gray-400 resize-none"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            />
+            <button
+              className="bg-primary text-white rounded-xl px-7 text-sm font-medium shadow-sm disabled:opacity-50 transition-opacity flex items-center gap-2"
+              disabled={!selectedRowKeys.length || !note.trim() || addingNote}
+              onClick={hanldeAddNote}
+            >
+              {addingNote && (
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
+                </svg>
+              )}
+              Add
+            </button>
+          </div>
 
-            <div className="p-4 min-h-[150px] max-h-[250px] overflow-y-auto">
+          {/* Recent Activities */}
+          <div className="rounded-xl bg-white overflow-hidden shadow-sm min-h-[45%]">
+            <div className="px-4 py-3">
+              <p className="text-sm font-medium text-gray-700">Recent activites</p>
+            </div>
+            <div className="p-4 h-52 overflow-y-auto no-scrollbar space-y-2">
               {selectedRowData?.[0]?.event_notes?.length ? (
-                <ul className="space-y-3">
+                <ul className="space-y-2">
                   {selectedRowData[0].event_notes?.map((item) => (
                     <li
                       key={item.id}
@@ -478,117 +466,70 @@ const OpenEnquiryPage = () => {
                 </div>
               )}
             </div>
-          </Card>
+          </div>
 
-          {/* Deposit Form Card */}
-          <Card variant="white" className="p-0 shadow-sm overflow-hidden ">
-            <div className="flex items-center justify-between bg-primary px-6 py-4 text-white">
-              <h3 className="font-medium">Confirm Deposit</h3>
-            </div>
-            <div className="px-6 py-5">
-              <form className="space-y-3" onSubmit={formik.handleSubmit}>
-                <div className="grid grid-cols-1 gap-3">
-                  <Select
-                    className="w-full custom-select"
-                    placeholder="Select company"
-                    options={companyOptions}
-                    value={formik.values.company_name || undefined}
-                    onChange={(value) =>
-                      formik.setFieldValue("company_name", value)
-                    }
-                  />
-                  <DatePicker
-                    placeholder="Payment date"
-                    className="w-full text-xs"
-                    format="DD-MM-YYYY"
-                    value={
-                      formik.values.event_date
-                        ? dayjs(formik.values.event_date, "DD-MM-YYYY")
-                        : undefined
-                    }
-                    onChange={(val) =>
-                      formik.setFieldValue(
-                        "event_date",
-                        val ? dayjs(val).format("DD-MM-YYYY") : "",
-                      )
-                    }
-                    allowClear
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    name="deposit_amount"
-                    type="number"
-                    placeholder="Amount"
-                    className="w-full text-xs bg-white!"
-                    value={formik.values.deposit_amount}
-                    onChange={formik.handleChange}
-                  />
-                  <select
-                    name="payment_method_id"
-                    className="h-10 w-full rounded-xl border border-gray-200 bg-white px-2 text-xs outline-none focus:border-primary"
-                    value={formik.values.payment_method_id}
-                    onChange={formik.handleChange}
-                  >
-                    <option value="" disabled>
-                      Payment method
-                    </option>
-                    <option value="1">Cash</option>
-                    <option value="2">Bank Transfer</option>
-                    <option value="3">Card</option>
-                  </select>
-                </div>
-                <div className="grid grid-cols-2 gap-2 mt-3">
-                  {[
-                    { key: "brochure_emailed", label: "Brochure emailed?" },
-                    { key: "called", label: "Called?" },
-                    { key: "send_media", label: "Send media?" },
-                    { key: "quoted", label: "Quoted?" },
-                  ].map((f) => {
-                    const enabled = Boolean(selectedRowData?.[0]?.[f.key]);
-                    const loading = Boolean(flagLoading[f.key]);
-                    return (
-                      <button
-                        key={f.key}
-                        type="button"
-                        onClick={() => toggleFlag(f.key)}
-                        className={`flex items-center justify-between gap-3 px-2 py-2 rounded-lg border transition-colors text-sm ${
-                          enabled
-                            ? "bg-primary text-white border-primary"
-                            : "bg-white text-gray-700 border-gray-200"
-                        }`}
-                        disabled={!selectedRowKeys.length || loading}
-                      >
-                        <span>{f.label}</span>
-                        <span className="flex items-center">
-                          {loading ? (
-                            <span className="w-4 h-4 border-2 border-white/80 border-t-transparent rounded-full animate-spin inline-block" />
-                          ) : enabled ? (
-                            <span className="w-6 h-6 rounded-full flex items-center justify-center bg-primary border border-primary">
-                              <Check size={12} className="text-white" />
-                            </span>
-                          ) : (
-                            <span className="w-6 h-6 rounded-full border border-gray-200 flex items-center justify-center bg-transparent">
-                              <span className="w-2 h-2 rounded-full bg-gray-300" />
-                            </span>
-                          )}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <Button
-                  type="primary"
-                  className="w-full h-10 mt-2 font-semibold"
-                  htmlType="submit"
-                  loading={confirmingEvent}
-                  disabled={!selectedRowKeys.length}
-                >
-                  Confirm Booking
-                </Button>
-              </form>
-            </div>
-          </Card>
+          {/* Deposit Form */}
+          <div className="rounded-xl overflow-hidden p-4">
+            <form className="space-y-3" onSubmit={formik.handleSubmit}>
+              <div className="grid grid-cols-2 gap-2">
+                <Select
+                  className="w-full"
+                  placeholder="Company"
+                  options={companyOptions}
+                  value={formik.values.company_name || undefined}
+                  onChange={(value) =>
+                    formik.setFieldValue("company_name", value)
+                  }
+                />
+                <DatePicker
+                  placeholder="Date"
+                  className="w-full text-xs"
+                  format="DD/MM/YYYY"
+                  value={
+                    formik.values.event_date
+                      ? dayjs(formik.values.event_date, "DD-MM-YYYY")
+                      : undefined
+                  }
+                  onChange={(val) =>
+                    formik.setFieldValue(
+                      "event_date",
+                      val ? dayjs(val).format("DD-MM-YYYY") : "",
+                    )
+                  }
+                  allowClear
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <InputNumber
+                  placeholder="Amount"
+                  className="w-full"
+                  style={{ width: "100%" }}
+                  value={formik.values.deposit_amount ? Number(formik.values.deposit_amount) : undefined}
+                  onChange={(val) => formik.setFieldValue("deposit_amount", val ?? "")}
+                />
+                <Select
+                  placeholder="Payment"
+                  className="w-full"
+                  value={formik.values.payment_method_id || undefined}
+                  onChange={(val) => formik.setFieldValue("payment_method_id", val)}
+                  options={[
+                    { label: "Cash", value: "1" },
+                    { label: "Bank Transfer", value: "2" },
+                    { label: "Card", value: "3" },
+                  ]}
+                />
+              </div>
+              <Button
+                type="primary"
+                className="w-full h-10 font-semibold"
+                htmlType="submit"
+                loading={confirmingEvent}
+                disabled={!selectedRowKeys.length}
+              >
+                Deposit Received
+              </Button>
+            </form>
+          </div>
         </div>
       </div>
 

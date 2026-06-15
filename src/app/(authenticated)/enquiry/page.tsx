@@ -366,13 +366,15 @@ const NewEnquiryPage = () => {
     }
   }, [packageData, editId, restoredEditSelections]);
 
-  const { rigList, totalPrice } = useMemo(() => {
-    const list: Array<{ name: string; notes?: string | null; rig_notes?: string | null }> = [];
+  const { equipmentList, rigNotesList, totalPrice } = useMemo(() => {
+    const eqList: Array<{ name: string; notes?: string | null }> = [];
+    const rnList: Array<{ name: string; rig_notes: string }> = [];
     let total = 0;
 
     const basePrice = packageData?.data?.equipments?.sell_price ?? 0;
     total += Number(basePrice) || 0;
 
+    // Basics — no notes, rig_notes only if user entered via modal
     const pkgEquip = (packageData?.data?.equipments?.package_user_equipments ?? []) as PackageUserEquipment[];
     for (const it of pkgEquip) {
       const equipment = it.equipment ?? null;
@@ -383,14 +385,13 @@ const NewEnquiryPage = () => {
       if (key && selectedPackageEquipments[key]) {
         total += Number(unit) * Number(qty);
         const override = extrasOverrides[key];
-        list.push({
-          name: equipment?.name ?? "",
-          notes: override?.notes ?? null,
-          rig_notes: override?.rig_notes ?? equipment?.rig_notes ?? null,
-        });
+        eqList.push({ name: equipment?.name ?? "", notes: null });
+        const rigNotes = override?.rig_notes ?? "";
+        if (rigNotes) rnList.push({ name: equipment?.name ?? "", rig_notes: rigNotes });
       }
     }
 
+    // Extras — notes from modal override or item default; rig_notes from override or item default
     const extras = (packageData?.data?.extras ?? []) as ExtraItem[];
     for (const ex of extras) {
       const id = ex.id;
@@ -399,21 +400,21 @@ const NewEnquiryPage = () => {
       if (id != null && selectedExtras[String(id)]) {
         total += Number(unit) * Number(qty);
         const override = extrasOverrides[String(id)];
-        list.push({
-          name: ex.name ?? "",
-          notes: override?.notes ?? ex.notes ?? null,
-          rig_notes: override?.rig_notes ?? ex.rig_notes ?? null,
-        });
+        const notes = override?.notes ?? (ex as ExtraItem & { notes?: string }).notes ?? null;
+        eqList.push({ name: ex.name ?? "", notes: notes || null });
+        const rigNotes = override?.rig_notes ?? ex.rig_notes ?? "";
+        if (rigNotes) rnList.push({ name: ex.name ?? "", rig_notes: rigNotes });
       }
     }
 
-    // Custom extras are always included
+    // Custom extras
     for (const ex of customExtras) {
       total += Number(ex.sell_price) * Number(ex.quantity);
-      list.push({ name: ex.name, notes: ex.notes || null, rig_notes: ex.rig_notes || null });
+      eqList.push({ name: ex.name, notes: ex.notes || null });
+      if (ex.rig_notes) rnList.push({ name: ex.name, rig_notes: ex.rig_notes });
     }
 
-    return { rigList: list, totalPrice: total };
+    return { equipmentList: eqList, rigNotesList: rnList, totalPrice: total };
   }, [packageData, selectedPackageEquipments, selectedExtras, extrasOverrides, customExtras]);
 
   const openNotesModal = (
@@ -507,8 +508,9 @@ const NewEnquiryPage = () => {
           const djPackageName = packageData?.data?.equipments?.package_name || packageParams.package_name || "";
           const djCost = Number(packageData?.data?.equipments?.sell_price ?? 0);
 
-          type EquipmentPayloadItem = { equipment_id: number; sell_price: number; quantity: number; notes: string };
-          type RigNotesItem = { equipment_id: number; rig_notes: string };
+          type EquipmentPayloadItem = { equipment_id: number; sell_price: number; quantity: number };
+          type ExtrasPayloadItem = { equipment_id: number; sell_price: number; quantity: number; notes: string | null };
+          type RigNotesItem = { equipment_id: number; rig_notes: string | null };
           const equipment_data: EquipmentPayloadItem[] = [];
           const rig_notes_data: RigNotesItem[] = [];
 
@@ -523,16 +525,15 @@ const NewEnquiryPage = () => {
                 equipment_id: Number(id),
                 sell_price: Number(equipment?.sell_price ?? 0),
                 quantity: Number(it.quantity ?? 1),
-                notes: override?.notes ?? equipment?.rig_notes ?? "",
               });
               rig_notes_data.push({
                 equipment_id: Number(id),
-                rig_notes: override?.rig_notes ?? equipment?.rig_notes ?? "",
+                rig_notes: override?.rig_notes?.trim() || null,
               });
             }
           }
 
-          const extra_data: EquipmentPayloadItem[] = [];
+          const extra_data: ExtrasPayloadItem[] = [];
           const extras = (packageData?.data?.extras ?? []) as ExtraItem[];
           for (const ex of extras) {
             if (ex.id != null && selectedExtras[String(ex.id)]) {
@@ -541,11 +542,11 @@ const NewEnquiryPage = () => {
                 equipment_id: Number(ex.id),
                 sell_price: Number(ex.sell_price ?? 0),
                 quantity: Number(ex.quantity ?? 1),
-                notes: override?.notes ?? (ex as ExtraItem & { notes?: string }).notes ?? ex.rig_notes ?? "",
+                notes: (override?.notes ?? (ex as ExtraItem & { notes?: string }).notes)?.trim() || null,
               });
               rig_notes_data.push({
                 equipment_id: Number(ex.id),
-                rig_notes: override?.rig_notes ?? ex.rig_notes ?? "",
+                rig_notes: (override?.rig_notes ?? ex.rig_notes)?.trim() || null,
               });
             }
           }
@@ -557,11 +558,11 @@ const NewEnquiryPage = () => {
                 equipment_id: ex.equipment_id,
                 sell_price: ex.sell_price,
                 quantity: ex.quantity,
-                notes: ex.notes,
+                notes: ex.notes?.trim() || null,
               });
               rig_notes_data.push({
                 equipment_id: ex.equipment_id,
-                rig_notes: ex.rig_notes,
+                rig_notes: ex.rig_notes?.trim() || null,
               });
             }
           }
@@ -1073,7 +1074,7 @@ const NewEnquiryPage = () => {
                             <span className="w-2/12 text-center">Unit Price</span>
                             <span className="w-1/12 text-center">Qty</span>
                             <span className="w-1/12 text-center">Price</span>
-                            <span className="w-2/12 text-center">Notes</span>
+                            <span className="w-2/12 text-center">Total Price</span>
                           </div>
                           <div className="space-y-2">
                             {packageData?.data?.equipments?.package_user_equipments?.map(
@@ -1084,7 +1085,6 @@ const NewEnquiryPage = () => {
                                 const unitPrice = equipment?.sell_price ?? 0;
                                 const qty = item.quantity ?? 1;
                                 const price = unitPrice * qty;
-                                const override = extrasOverrides[key];
                                 return (
                                   <div
                                     key={key}
@@ -1107,29 +1107,7 @@ const NewEnquiryPage = () => {
                                     <div className="w-2/12 text-center">{unitPrice}</div>
                                     <div className="w-1/12 text-center">{qty}</div>
                                     <div className="w-1/12 text-center">{price}</div>
-                                    <div className="w-2/12 flex justify-center">
-                                      <button
-                                        type="button"
-                                        title="Add / edit notes"
-                                        onClick={() =>
-                                          openNotesModal(
-                                            equipment?.name ?? "Notes",
-                                            override?.notes ?? "",
-                                            override?.rig_notes ?? equipment?.rig_notes ?? "",
-                                            (notes, rig_notes) =>
-                                              setExtrasOverrides((prev) => ({
-                                                ...prev,
-                                                [key]: { notes, rig_notes },
-                                              })),
-                                          )
-                                        }
-                                      >
-                                        <SquareCheckBig
-                                          size={19}
-                                          className={override ? "text-primary" : "text-gray-400"}
-                                        />
-                                      </button>
-                                    </div>
+                                    <div className="w-2/12 text-center">{price}</div>
                                   </div>
                                 );
                               },
@@ -1309,11 +1287,16 @@ const NewEnquiryPage = () => {
                         <h3 className="font-medium">{values.dj?.name || "At a Glance"}</h3>
                       </div>
                       <div className="px-5 py-4 text-xs text-gray-700 space-y-2">
-                        {rigList.length ? (
-                          rigList.map((r, i) => (
-                            <div key={i} className="flex items-center gap-2">
-                              <SquareCheckBig size={15} className="flex-shrink-0 text-primary" />
-                              <p className="text-xs text-gray-800 leading-tight">{r.name}</p>
+                        {equipmentList.length ? (
+                          equipmentList.map((r, i) => (
+                            <div key={i} className="space-y-0.5">
+                              <div className="flex items-center gap-2">
+                                <SquareCheckBig size={15} className="flex-shrink-0 text-primary" />
+                                <p className="text-xs text-gray-800 leading-tight">{r.name}</p>
+                              </div>
+                              {r.notes && (
+                                <p className="pl-5 text-[11px] text-gray-500 leading-snug whitespace-pre-line">{r.notes}</p>
+                              )}
                             </div>
                           ))
                         ) : (
@@ -1352,27 +1335,15 @@ const NewEnquiryPage = () => {
                       >
                         <div className="px-6 text-xs text-gray-700">
                           <div className="space-y-3">
-                            {rigList.length ? (
-                              rigList.map((r, idx) => (
+                            {rigNotesList.length ? (
+                              rigNotesList.map((r, idx) => (
                                 <div key={idx} className="space-y-0.5">
-                                  <div className="flex items-start gap-2">
-                                    <SquareCheckBig size={14} className="flex-shrink-0 text-primary mt-0.5" />
-                                    <p className="font-medium text-gray-900 leading-tight">{r.name}</p>
-                                  </div>
-                                  {(r.notes || r.rig_notes) && (
-                                    <div className="pl-6 space-y-0.5">
-                                      {r.notes && (
-                                        <p className="text-[11px] text-gray-500 leading-snug break-words whitespace-pre-line">{r.notes}</p>
-                                      )}
-                                      {r.rig_notes && (
-                                        <p className="text-[11px] text-gray-500 leading-snug break-words whitespace-pre-line">{r.rig_notes}</p>
-                                      )}
-                                    </div>
-                                  )}
+                                  <p className="font-semibold text-gray-900 leading-tight">{r.name}</p>
+                                  <p className="pl-2 text-[11px] text-gray-500 leading-snug whitespace-pre-line">{r.rig_notes}</p>
                                 </div>
                               ))
                             ) : (
-                              <p className="text-[11px] text-gray-500">No rig items selected</p>
+                              <p className="text-[11px] text-gray-500">No rig notes</p>
                             )}
                           </div>
                         </div>

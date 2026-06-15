@@ -78,19 +78,35 @@ const Page = () => {
                 <Spin />
               ) : (
                 <>
-                  {rigNotesData?.packages?.length > 0 ? (
+                  {rigNotesData?.packages?.filter((pkg: any) => pkg.rig_notes || pkg.equipment?.rig_notes).length > 0 ? (
                     <div className="space-y-4">
-                      {rigNotesData?.packages?.map((pkg: any, idx: number) => (
-                        <div key={idx}>
-                          <p>{pkg.equipment?.name}</p>
-                          {pkg.equipment?.rig_notes && (
-                            <div
-                              className="text-sm pl-2 py-1"
-                              dangerouslySetInnerHTML={{ __html: pkg.equipment.rig_notes }}
-                            />
-                          )}
-                        </div>
-                      ))}
+                      {rigNotesData?.packages
+                        ?.filter((pkg: any) => pkg.rig_notes || pkg.equipment?.rig_notes)
+                        .map((pkg: any, idx: number) => {
+                          const rawNotes = pkg.rig_notes || pkg.equipment?.rig_notes || "";
+                          const lines = rawNotes
+                            .replace(/\r\n|\n|\r/g, "\n")
+                            .split("\n")
+                            .map((l: string) => l.trim())
+                            .filter(Boolean);
+                          const title = pkg.rig_notes ? lines[0] : (pkg.equipment?.name || "Equipment");
+                          const items = pkg.rig_notes ? lines.slice(1) : lines;
+                          return (
+                            <div key={idx} className="pb-1">
+                              <p className="font-semibold text-sm">{title}</p>
+                              {items.length > 0 && (
+                                <ul className="list-none p-0 m-0 space-y-1 mt-1">
+                                  {items.map((line: string, i: number) => (
+                                    <li key={i} className="flex items-center gap-2 pl-2 text-xs">
+                                      <input type="checkbox" className="size-3 flex-shrink-0" />
+                                      <span>{line}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          );
+                        })}
                     </div>
                   ) : (
                     <>No rig notes available. </>

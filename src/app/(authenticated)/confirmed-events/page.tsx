@@ -96,7 +96,8 @@ const ConfirmedEventsPage = () => {
     first_name: data?.users_events_user_idTousers?.name || "",
     email: data?.users_events_user_idTousers?.email || "",
     phone_number: data?.users_events_user_idTousers?.contact_number || "",
-    djName: data?.dj_name || "",
+    venue: data?.venues?.venue || data?.venue || "",
+    djName: data?.users_events_dj_idTousers?.name || data?.dj_package_name || "",
     videography: data?.videography || "",
     caterer: data?.caterer || "",
     decor: data?.decor || "",
@@ -110,8 +111,7 @@ const ConfirmedEventsPage = () => {
     start_time: data?.start_time ? dayjs(data.start_time).format("HH:mm") : "",
     end_time: data?.end_time ? dayjs(data.end_time).format("HH:mm") : "",
     accessDate: data?.access_time || "",
-    everyDayContactName: "", // These are concatenated in event_date_contact
-    everyDayContactNumber: "",
+    eventDateContact: data?.event_date_contact || "",
     noOfGuests: data?.no_of_guests || "",
     depositAmount: data?.deposit_amount || "",
     createdBy: data?.created_by || "",
@@ -136,8 +136,7 @@ const ConfirmedEventsPage = () => {
               ? Number(values.phone_number)
               : null,
 
-            // DJ & Vendors
-            dj_name: values.djName || null,
+            // DJ & Vendors (dj_name omitted — DJ is set at enquiry time, not editable here)
             videography: values.videography || null,
             caterer: values.caterer || null,
             decor: values.decor || null,
@@ -163,10 +162,8 @@ const ConfirmedEventsPage = () => {
             stag_songs: values.stagTuneAndDestination || null,
             hen_songs: values.henTuneAndDestination || null,
 
-            // Contact String
-            event_date_contact:
-              `${values.everyDayContactName} ${values.everyDayContactNumber}`.trim() ||
-              null,
+            // Contact (single field, Laravel parity)
+            event_date_contact: values.eventDateContact || null,
             signature_image: signatureImage || null,
           },
           id: eventId,
@@ -432,10 +429,11 @@ const ConfirmedEventsPage = () => {
             className={`bg-white rounded-xl p-5 ${isLoading ? "opacity-60" : ""}`}
           >
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* LEFT COLUMN — order/labels match Laravel @notmobile desktop form */}
               <div className="space-y-4">
                 <Input
                   name="first_name"
-                  label="Client Name"
+                  label="Client name"
                   placeholder="Enter client name"
                   value={formik.values.first_name}
                   onChange={formik.handleChange}
@@ -453,7 +451,7 @@ const ConfirmedEventsPage = () => {
                   />
                   <Input
                     name="phone_number"
-                    label="Phone Number"
+                    label="Phone number"
                     type="number"
                     placeholder="Enter phone number"
                     value={formik.values.phone_number}
@@ -462,11 +460,11 @@ const ConfirmedEventsPage = () => {
                   />
                   <Input
                     name="djName"
-                    label="Dj Name"
+                    label="DJ name"
                     placeholder="Enter DJ name"
                     value={formik.values.djName}
                     onChange={formik.handleChange}
-                    disabled={!isModifyMode}
+                    disabled
                   />
                   <Input
                     name="videography"
@@ -495,52 +493,64 @@ const ConfirmedEventsPage = () => {
                 </div>
                 <Input
                   name="name"
-                  label="Couple Name"
-                  placeholder="Enter couple name"
+                  label="Name/s (How should the DJ address you on the microphone?)"
+                  placeholder="Enter name/s"
                   value={formik.values.name}
                   onChange={formik.handleChange}
                   disabled={!isModifyMode}
                 />
-                <Input
-                  name="entranceSong"
-                  label="Entrance Song"
-                  placeholder="Enter entrance song"
-                  value={formik.values.entranceSong}
-                  onChange={formik.handleChange}
-                  disabled={!isModifyMode}
-                />
-                <Input
-                  name="cakeCutSong"
-                  label="Cake cut song"
-                  placeholder="Enter cake cut song"
-                  value={formik.values.cakeCutSong}
-                  onChange={formik.handleChange}
-                  disabled={!isModifyMode}
-                />
-                <Input
-                  name="firstDance"
-                  label="First Dance"
-                  placeholder="Enter first dance song"
-                  value={formik.values.firstDance}
-                  onChange={formik.handleChange}
-                  disabled={!isModifyMode}
-                />
-                <Input
-                  name="dos"
-                  label="Do's"
-                  placeholder="Enter preferences/do's"
-                  value={formik.values.dos}
-                  onChange={formik.handleChange}
-                  disabled={!isModifyMode}
-                />
-                <Input
-                  name="stagTuneAndDestination"
-                  label="Stag Tune and destination"
-                  placeholder="Enter stag tune and destination"
-                  value={formik.values.stagTuneAndDestination}
-                  onChange={formik.handleChange}
-                  disabled={!isModifyMode}
-                />
+                <div>
+                  <label className="mb-1 block text-xs">
+                    Entrance Song/Style (eg Guests upstanding, napkin waves, any dhol players etc)
+                  </label>
+                  <textarea
+                    name="entranceSong"
+                    className="h-24 w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
+                    placeholder="Enter entrance song/style"
+                    style={{ resize: "none" }}
+                    value={formik.values.entranceSong}
+                    onChange={formik.handleChange}
+                    disabled={!isModifyMode}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs">
+                    Cake Cut Song/Who to feed? (Leave song name blank if you wish for DJ to select)
+                  </label>
+                  <textarea
+                    name="cakeCutSong"
+                    className="h-24 w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
+                    placeholder="Enter cake cut song"
+                    style={{ resize: "none" }}
+                    value={formik.values.cakeCutSong}
+                    onChange={formik.handleChange}
+                    disabled={!isModifyMode}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs">First dance</label>
+                  <textarea
+                    name="firstDance"
+                    className="h-24 w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
+                    placeholder="Enter first dance song"
+                    style={{ resize: "none" }}
+                    value={formik.values.firstDance}
+                    onChange={formik.handleChange}
+                    disabled={!isModifyMode}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs">Do&apos;s</label>
+                  <textarea
+                    name="dos"
+                    className="h-24 w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
+                    placeholder="Enter preferences/do's"
+                    style={{ resize: "none" }}
+                    value={formik.values.dos}
+                    onChange={formik.handleChange}
+                    disabled={!isModifyMode}
+                  />
+                </div>
               </div>
               <div className="space-y-4">
                 <div className="grid grid-cols-3 gap-4">
@@ -580,67 +590,60 @@ const ConfirmedEventsPage = () => {
                     disabled={!isModifyMode}
                   />
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    name="venue"
+                    label="Venue"
+                    placeholder="Venue"
+                    value={formik.values.venue}
+                    onChange={formik.handleChange}
+                    disabled
+                  />
                   <Input
                     name="accessDate"
-                    label="Access Time/Date"
-                    containerClassName="col-span-1"
+                    label="Access Date/Time"
                     placeholder="Enter access info"
                     value={formik.values.accessDate}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
                   />
-                  <Input
-                    name="everyDayContactName"
-                    label="Every Day Contact Name"
-                    containerClassName="col-span-2"
-                    placeholder="Enter contact name"
-                    value={formik.values.everyDayContactName}
-                    onChange={formik.handleChange}
-                    disabled={!isModifyMode}
-                  />
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <Input
-                    name="everyDayContactNumber"
-                    label="Every Day Contact Number"
-                    type="tel"
-                    containerClassName="col-span-1"
-                    placeholder="Enter contact number"
-                    value={formik.values.everyDayContactNumber}
+                    name="eventDateContact"
+                    label="Event day contact"
+                    placeholder="Enter event day contact"
+                    value={formik.values.eventDateContact}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
                   />
                   <Input
                     name="noOfGuests"
-                    label="No of Guests"
+                    label="No of guests"
                     type="number"
-                    containerClassName="col-span-2"
                     placeholder="Enter number of guests"
                     value={formik.values.noOfGuests}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
                   />
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <Input
                     name="depositAmount"
                     label="Deposit Amount"
-                    containerClassName="col-span-1"
                     type="number"
                     placeholder="Enter deposit amount"
                     value={formik.values.depositAmount}
                     onChange={formik.handleChange}
-                    disabled={!isModifyMode}
+                    disabled
                   />
                   <Input
                     name="createdBy"
-                    label="Created By"
-                    containerClassName="col-span-2"
+                    label="Created by"
                     placeholder="Enter creator name"
                     value={formik.values.createdBy}
                     onChange={formik.handleChange}
-                    disabled={true} // Usually non-editable
+                    disabled
                   />
                 </div>
                 <div>
@@ -649,7 +652,7 @@ const ConfirmedEventsPage = () => {
                   </label>
                   <textarea
                     name="briefItinerary"
-                    className="h-[265px] w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
+                    className="h-[180px] w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
                     placeholder="Enter brief itinerary, playlist, and notes"
                     style={{ resize: "none" }}
                     value={formik.values.briefItinerary}
@@ -657,22 +660,36 @@ const ConfirmedEventsPage = () => {
                     disabled={!isModifyMode}
                   />
                 </div>
-                <Input
-                  name="donts"
-                  label="Don'ts"
-                  placeholder="Enter don'ts"
-                  value={formik.values.donts}
-                  onChange={formik.handleChange}
-                  disabled={!isModifyMode}
-                />
-                <Input
-                  name="henTuneAndDestination"
-                  label="Hen Tune and Destination"
-                  placeholder="Enter hen tune and destination"
-                  value={formik.values.henTuneAndDestination}
-                  onChange={formik.handleChange}
-                  disabled={!isModifyMode}
-                />
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    name="stagTuneAndDestination"
+                    label="Stag Tune/Destination"
+                    placeholder="Enter stag tune/destination"
+                    value={formik.values.stagTuneAndDestination}
+                    onChange={formik.handleChange}
+                    disabled={!isModifyMode}
+                  />
+                  <Input
+                    name="henTuneAndDestination"
+                    label="Hen Tune/Destination"
+                    placeholder="Enter hen tune/destination"
+                    value={formik.values.henTuneAndDestination}
+                    onChange={formik.handleChange}
+                    disabled={!isModifyMode}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs">Dont&apos;s</label>
+                  <textarea
+                    name="donts"
+                    className="h-24 w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
+                    placeholder="Enter don'ts"
+                    style={{ resize: "none" }}
+                    value={formik.values.donts}
+                    onChange={formik.handleChange}
+                    disabled={!isModifyMode}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -861,9 +878,12 @@ const ConfirmedEventsPage = () => {
                       {(selectedEventData?.data?.event_packages)?.length ? (
                         <div className="space-y-1">
                           {(selectedEventData?.data?.event_packages).map((p: ConfirmEventPackage) => (
-                            <div key={p.id} className="flex items-center gap-2">
-                              <SquareCheckBig size={14} className="text-primary flex-shrink-0" />
-                              <p className="font-medium text-sm text-gray-900">{p.equipment?.name || p.package_name || p.name || "Item"}</p>
+                            <div key={p.id} className="flex items-start gap-2">
+                              <SquareCheckBig size={14} className="text-primary flex-shrink-0 mt-0.5" />
+                              <div>
+                                <p className="font-medium text-sm text-gray-900">{p.equipment?.name || p.package_name || p.name || "Item"}</p>
+                                {p.notes && <p className="text-xs text-gray-500 italic mt-0.5">{p.notes}</p>}
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -905,7 +925,7 @@ const ConfirmedEventsPage = () => {
                                   <SquareCheckBig size={14} className="text-primary mt-0.5 flex-shrink-0" />
                                   <div>
                                     <p className="font-semibold text-sm text-gray-900">{p.equipment?.name || p.package_name || p.name || "Item"}</p>
-                                    {p.notes && <p className="text-xs text-gray-600 mt-1 italic">{p.notes}</p>}
+                                    {p.rig_notes && <p className="text-xs text-gray-600 mt-1 italic">{p.rig_notes}</p>}
                                     {p.quantity && p.quantity > 1 && <p className="text-xs text-gray-500 mt-1">Quantity: {p.quantity}</p>}
                                   </div>
                                 </div>
