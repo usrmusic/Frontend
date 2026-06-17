@@ -55,8 +55,13 @@ export type ConfirmEventData = {
     email?: string;
     contact_number?: string;
   };
+  users_events_dj_idTousers?: {
+    id?: string | number;
+    name?: string;
+  } | null;
   venues: { venue: string };
   dj_name?: string;
+  dj_package_name?: string;
   videography?: string;
   caterer?: string;
   decor?: string;
@@ -80,6 +85,7 @@ export type ConfirmEventData = {
   start_time?: string;
   end_time?: string;
   access_date?: string;
+  event_date_contact?: string;
   everyday_contact_name?: string;
   everyday_contact_number?: string;
   no_of_guests?: string | number;
@@ -96,6 +102,9 @@ export type ConfirmEventData = {
   contract_signed_at?: string | null;
   contract_pdf_url?: string | null;
   company?: ConfirmEventCompany | null;
+  company_names?: ConfirmEventCompany | null;
+  total_cost_for_equipment?: string | number | null;
+  event_packages?: ConfirmEventPackage[];
 };
 
 export type ConfirmEventPayment = {
@@ -123,6 +132,8 @@ export type ConfirmEventPackage = {
   total_price?: string | number | null;
   quantity?: number | null;
   notes?: string | null;
+  rig_notes?: string | null;
+  package_type_id?: string | number | null;
 };
 
 export type ConfirmEventNote = {

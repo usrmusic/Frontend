@@ -2,7 +2,7 @@ import { useAddEquipment, useEditEquipment } from "@/src/api/usersApi";
 import { useSupplierDropdown } from "@/src/api/dropdown";
 import ModalFooter from "@/src/components/common/ModalFooter";
 import Input from "@/src/components/Input";
-import { Modal } from "antd";
+import { Modal, Select } from "antd";
 import { useFormik } from "formik";
 import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
@@ -153,17 +153,17 @@ const EquipmentModal = ({ modalOpen, handleCancel, initialValues }: EquipmentPro
                     Add new supplier
                   </button>
                   {!showNewSupplier && (
-                    <select
-                      className="w-full h-10 rounded-xl px-3 text-sm bg-secondary-100"
-                      name="supplier_id"
-                      value={formik.values.supplier_id}
-                      onChange={(e) => formik.setFieldValue('supplier_id', e.target.value)}
-                    >
-                      <option value="">Select Supplier</option>
-                      {!suppliersLoading && Array.isArray(suppliers) && suppliers.map((s: any) => (
-                        <option key={s.id} value={s.id}>{s.company_name || s.name}</option>
-                      ))}
-                    </select>
+                    <Select
+                      className="flex-1"
+                      loading={suppliersLoading}
+                      value={formik.values.supplier_id || undefined}
+                      onChange={(val) => formik.setFieldValue("supplier_id", val ?? "")}
+                      placeholder="Select Supplier"
+                      options={Array.isArray(suppliers) ? suppliers.map((s: any) => ({
+                        value: s.id,
+                        label: s.company_name || s.name,
+                      })) : []}
+                    />
                   )}
                 </div>
                 <div className="mt-2">

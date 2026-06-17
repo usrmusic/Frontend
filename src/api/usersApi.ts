@@ -170,6 +170,7 @@ type PackagePayload = {
   sell_price: number;
   cost_price: number;
   package_name: string;
+  equipments?: { equipment_id: number; quantity: number; equipment_order_id?: number }[];
 };
 
 type CompanyPayload = {
@@ -717,6 +718,17 @@ export const useAddPackage = () => {
     onError: (error) => {
       console.error("add package failed:", error.message);
     },
+  });
+};
+
+export const useGetPackage = (id?: number | string) => {
+  return useQuery({
+    queryKey: ["package", "get", id],
+    queryFn: async () => {
+      const response = await AxiosInstance.get(`/package/${id}`);
+      return response.data;
+    },
+    enabled: !!id,
   });
 };
 export const useDeleteClient = () => {

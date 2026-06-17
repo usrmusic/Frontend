@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Skeleton } from "antd";
 import { DayPicker, type DayButtonProps } from "react-day-picker";
 import "react-day-picker/dist/style.css";
 import {
@@ -94,14 +95,17 @@ const getDateKey = (d?: string | Date | null) => {
 
 function CalendarWithSidebar({
   events,
+  isLoading = false,
 }: {
   events?: CalendarEvent[];
+  isLoading?: boolean;
 }) {
   const { data: auth } = useAuth();
   const router = useRouter();
   const [month, setMonth] = useState<Date>(() => startOfToday());
   const [selected, setSelected] = useState<Date>(() => startOfToday());
   const [sidebarIdx, setSidebarIdx] = useState(0);
+
   const eventsByDate = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
     (events || []).forEach((event) => {
@@ -149,6 +153,14 @@ function CalendarWithSidebar({
       });
     }
   }, [events]);
+
+  if (isLoading) {
+    return (
+      <div className="p-6">
+        <Skeleton active paragraph={{ rows: 6 }} />
+      </div>
+    );
+  }
 
   const handleSidebar = (idx: number) => {
     setSidebarIdx(idx);
@@ -235,12 +247,12 @@ function CalendarWithSidebar({
   };
 
   return (
-    <div className="flex">
-      <div className="flex flex-col w-32 py-6 pl-4 pr-2">
+    <div className="flex flex-col sm:flex-row overflow-hidden">
+      <div className="flex flex-row sm:flex-col sm:w-32 py-4 sm:py-6 px-3 sm:pl-4 sm:pr-2 gap-1 sm:gap-0 overflow-x-auto">
         {sidebarOptions.map((opt, idx) => (
           <button
             key={opt.label}
-            className={`text-left px-3 py-2 rounded-md mb-1 text-[13px] font-medium transition-all ${
+            className={`shrink-0 text-left px-3 py-2 rounded-md mb-0 sm:mb-1 text-[13px] font-medium transition-all ${
               idx === sidebarIdx
                 ? "text-white shadow-sm"
                 : "text-gray-500 hover:bg-[#e5e5e5]"
@@ -256,8 +268,8 @@ function CalendarWithSidebar({
           </button>
         ))}
       </div>
-      <div className="w-px bg-gray-200 my-6 mx-2" />
-      <div className="flex-1 py-6 pr-6 pl-2 max-w-[70%]">
+      <div className="h-px sm:h-auto sm:w-px bg-gray-200 mx-3 sm:mx-2 sm:my-6" />
+      <div className="flex-1 min-w-0 py-4 sm:py-6 pr-4 sm:pr-6 pl-2">
         <div className="flex items-center justify-between mb-2">
           <button
             aria-label="Previous month"

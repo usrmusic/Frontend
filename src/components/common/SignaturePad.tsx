@@ -23,7 +23,8 @@ type Props = {
   className?: string;
   style?: CSSProperties;
   disabled?: boolean;
-  onChange?: (isEmpty: boolean) => void;
+  /** Fires on every stroke with the current empty state and latest data URI. */
+  onChange?: (isEmpty: boolean, dataUrl: string | null) => void;
 };
 
 const SignaturePad = forwardRef<SignaturePadHandle, Props>(function SignaturePad(
@@ -44,10 +45,18 @@ const SignaturePad = forwardRef<SignaturePadHandle, Props>(function SignaturePad
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
   const emptyRef = useRef(true);
 
-  const setEmpty = (next: boolean) => {
-    if (emptyRef.current === next) return;
+  const currentDataUrl = () => {
+    if (emptyRef.current) return null;
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    return canvas.toDataURL("image/png");
+  };
+
+  // Emit current empty state + latest data URL. Expensive (serializes the
+  // canvas), so only call this when a stroke ENDS or on clear — never mid-draw.
+  const emitChange = (next: boolean) => {
     emptyRef.current = next;
-    onChange?.(next);
+    onChange?.(next, currentDataUrl());
   };
 
   const fillBackground = () => {
@@ -69,7 +78,7 @@ const SignaturePad = forwardRef<SignaturePadHandle, Props>(function SignaturePad
         if (!ctx) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         fillBackground();
-        setEmpty(true);
+        emitChange(true);
       },
       isEmpty: () => emptyRef.current,
       toDataURL: () => {
@@ -130,15 +139,21 @@ const SignaturePad = forwardRef<SignaturePadHandle, Props>(function SignaturePad
     ctx.stroke();
 
     lastPointRef.current = p;
-    setEmpty(false);
+    // Cheap, synchronous flag flip only — NO toDataURL mid-stroke (keeps drawing smooth).
+    emptyRef.current = false;
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const wasDrawing = drawingRef.current;
     drawingRef.current = false;
     lastPointRef.current = null;
     const canvas = canvasRef.current;
     if (canvas?.hasPointerCapture(e.pointerId)) {
       canvas.releasePointerCapture(e.pointerId);
+    }
+    // Emit the completed stroke's data URL once, after the stroke ends.
+    if (wasDrawing && !emptyRef.current) {
+      onChange?.(false, currentDataUrl());
     }
   };
 

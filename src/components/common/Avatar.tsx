@@ -20,10 +20,16 @@ export default function Avatar({
 }: Props) {
   const [error, setError] = useState(false);
 
-  if (src && !error) {
+  // Normalize bare filenames (e.g. "human.jpg") to "/human.jpg"
+  const resolvedSrc =
+    src && !src.match(/^(data:|https?:\/\/|\/\/)/i) && !src.startsWith("/")
+      ? `/${src}`
+      : src;
+
+  if (resolvedSrc && !error) {
     return (
       <Image
-        src={src}
+        src={resolvedSrc}
         alt={alt}
         width={size}
         height={size}

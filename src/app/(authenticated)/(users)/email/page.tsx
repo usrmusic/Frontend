@@ -29,16 +29,19 @@ const EmailPage = () => {
       title: "Name",
       dataIndex: "email_name",
       key: "email_name",
+      width: "15%",
     },
     {
       title: "Subject",
       dataIndex: "subject",
       key: "subject",
+      width: "15%",
     },
     {
       title: "Body",
       dataIndex: "body",
       key: "body",
+      width: "70%",
     },
   ];
 

@@ -1,242 +1,364 @@
 "use client";
-import Button from "@/src/components/Button";
-import { BackButton } from "@/src/components/Icons";
-import { Calendar, Tooltip, Spin } from "antd";
-import dayjs, { Dayjs } from "dayjs";
-import { MapPin, Plus, ChevronLeft, ChevronRight } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
-import { useState, useMemo, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
-import { useCalendar } from "@/src/api/calendar";
 
-// Strongly-typed shape for calendar events we render in this page
+import { useState, useEffect, useMemo } from "react";
+import dayjs from "dayjs";
+import { ChevronLeft, ChevronRight, MapPin, Plus } from "lucide-react";
+import Link from "next/link";
+import { useCalendar } from "@/src/api/calendar";
+import { BackButton } from "@/src/components/Icons";
+
+const EVENT_COLORS = [
+  { bg: "bg-[#fef3c6]", border: "border-[#fee685]" },
+  { bg: "bg-[#f3e8ff]", border: "border-[#e9d4ff]" },
+  { bg: "bg-[#dbeafe]", border: "border-[#bedbff]" },
+  { bg: "bg-[#dcfce7]", border: "border-[#b9f8cf]" },
+  { bg: "bg-[#cbfbf1]", border: "border-[#96f7e4]" },
+  { bg: "bg-[#fce7f3]", border: "border-[#fccee8]" },
+  { bg: "bg-[#ffe4e6]", border: "border-[#ffccd3]" },
+];
+
 type CalendarEvent = {
-  id?: number | string;
-  date?: string | null;
-  users_events_user_idTousers?: {
-    name?: string | null;
-    profile_photo?: string | null;
-  } | null;
-  venues?: {
-    venue?: string | null;
-  } | null;
-  [key: string]: unknown;
+  id: number | string;
+  date: string;
+  start_time?: string;
+  end_time?: string;
+  name_of_couple?: string;
+  users_events_user_idTousers?: { name?: string };
+  users_events_dj_idTousers?: { name?: string } | null;
+  venues?: { venue?: string };
 };
 
-const CalendarPage = () => {
-  const searchParams = useSearchParams();
-  const dateParam = searchParams?.get("date");
-  
-  const [value, setValue] = useState<Dayjs>(() => {
-    if (dateParam) {
-      try {
-        return dayjs(dateParam);
-      } catch {
-        return dayjs();
+function formatTime(time?: string): string {
+  if (!time) return "";
+  const parts = time.split(":");
+  const h = parseInt(parts[0], 10);
+  const m = parts[1] || "00";
+  const period = h >= 12 ? "PM" : "AM";
+  const hour = h % 12 || 12;
+  return `${hour}:${m} ${period}`;
+}
+
+function getEventDisplayName(ev: CalendarEvent): string {
+  return ev.name_of_couple || ev.users_events_user_idTousers?.name || `Event #${ev.id}`;
+}
+
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+const WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+export default function CalendarPage() {
+  const [currentMonth, setCurrentMonth] = useState(dayjs().startOf("month"));
+  const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs>(dayjs());
+  const [year, setYear] = useState(new Date().getFullYear());
+
+  useEffect(() => {
+    function onYearChange(e: Event) {
+      const ev = e as CustomEvent<{ year: number }>;
+      const y = ev?.detail?.year;
+      if (y) {
+        setYear(y);
+        setCurrentMonth((m) => m.year(y));
       }
     }
-    return dayjs();
-  });
-  const [selectedValue, setSelectedValue] = useState<Dayjs>(() => {
-    if (dateParam) {
-      try {
-        return dayjs(dateParam);
-      } catch {
-        return dayjs("2017-01-25");
-      }
-    }
-    return dayjs("2017-01-25");
-  });
+    window.addEventListener("dashboard:yearChange", onYearChange as EventListener);
+    return () => window.removeEventListener("dashboard:yearChange", onYearChange as EventListener);
+  }, []);
 
-  const [year, setYear] = useState<number>(() => value.year());
-  const { data: raw = undefined, isLoading } = useCalendar({ year });
+  const { data: rawData } = useCalendar({ year });
 
-  const events = useMemo<CalendarEvent[]>(() => {
-    if (!raw) return [];
-    if (Array.isArray(raw)) return raw as CalendarEvent[];
-    const candidate = raw as Record<string, unknown>;
-    if (Array.isArray(candidate.data as unknown[])) return candidate.data as CalendarEvent[];
-    if (Array.isArray(candidate.calendarEvents as unknown[])) return candidate.calendarEvents as CalendarEvent[];
-    if (Array.isArray(candidate.events as unknown[])) return candidate.events as CalendarEvent[];
+  const events: CalendarEvent[] = useMemo(() => {
+    if (!rawData) return [];
+    if (Array.isArray(rawData)) return rawData;
+    if (Array.isArray((rawData as { data?: unknown }).data))
+      return (rawData as { data: CalendarEvent[] }).data;
+    if (Array.isArray((rawData as { events?: unknown }).events))
+      return (rawData as { events: CalendarEvent[] }).events;
     return [];
-  }, [raw]);
+  }, [rawData]);
+
+  const eventColorMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    events.forEach((ev, i) => { map[String(ev.id)] = i; });
+    return map;
+  }, [events]);
 
   const eventsByDate = useMemo(() => {
-    const map = new Map<string, CalendarEvent[]>();
-    events.forEach((e) => {
-      if (!e?.date) return;
-      const key = dayjs(e.date).format("YYYY-MM-DD");
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(e);
+    const map: Record<string, CalendarEvent[]> = {};
+    events.forEach((ev) => {
+      const key = dayjs(ev.date).format("YYYY-MM-DD");
+      if (!map[key]) map[key] = [];
+      map[key].push(ev);
     });
     return map;
   }, [events]);
 
-  useEffect(() => {
-    const handler = (ev: Event) => {
-      const custom = ev as CustomEvent<{ year?: number }>;
-      const y = custom?.detail?.year;
-      if (typeof y === "number") setYear(y);
-    };
-    if (typeof window !== "undefined") {
-      window.addEventListener("dashboard:yearChange", handler as EventListener);
-    }
-    return () => {
-      if (typeof window !== "undefined") {
-        window.removeEventListener("dashboard:yearChange", handler as EventListener);
-      }
-    };
-  }, []);
+  const calendarCells = useMemo(() => {
+    const start = currentMonth.startOf("month");
+    const end = currentMonth.endOf("month");
+    const rawDow = start.day();
+    const offset = rawDow === 0 ? 6 : rawDow - 1;
+    const cells: { date: dayjs.Dayjs; isCurrentMonth: boolean }[] = [];
+    for (let i = offset; i > 0; i--)
+      cells.push({ date: start.subtract(i, "day"), isCurrentMonth: false });
+    for (let d = 1; d <= end.date(); d++)
+      cells.push({ date: currentMonth.date(d), isCurrentMonth: true });
+    const trailing = cells.length % 7 === 0 ? 0 : 7 - (cells.length % 7);
+    for (let i = 1; i <= trailing; i++)
+      cells.push({ date: end.add(i, "day"), isCurrentMonth: false });
+    return cells;
+  }, [currentMonth]);
 
-  useEffect(() => {
-    // when the year changes (from header), move calendar view to that year
-    if (typeof year === "number") {
-      setValue((v) => v.year(year));
-      setSelectedValue((v) => v.year(year));
-    }
-  }, [year]);
+  const selectedDateEvents = useMemo(
+    () => eventsByDate[selectedDate.format("YYYY-MM-DD")] || [],
+    [selectedDate, eventsByDate]
+  );
 
-  const onSelect = (newValue: Dayjs | null) => {
-    if (!newValue) return;
-    setValue(newValue);
-    setSelectedValue(newValue);
-  };
-
-  const onPanelChange = (newValue: Dayjs | null) => {
-    if (!newValue) return;
-    setValue(newValue);
-  };
-
-  const dateCellRender = (current: Dayjs) => {
-    const key = current.format("YYYY-MM-DD");
-    const dayEvents = eventsByDate.get(key) || [];
-    if (dayEvents.length === 0) return <div className="p-2">{current.date()}</div>;
-
-    const tooltipContent = (
-      <div className="space-y-1">
-        {dayEvents.map((ev: CalendarEvent) => (
-          <div key={ev.id} className="py-1">
-            <div className="font-semibold">{ev.users_events_user_idTousers?.name ?? "Event"}</div>
-            <div className="text-sm text-[#4A5565]">{ev.venues?.venue ?? "TBD"}</div>
-          </div>
-        ))}
-      </div>
-    );
-
-    return (
-      <Tooltip title={tooltipContent} placement="top">
-        <div className="p-2 rounded-md bg-yellow-50 h-full">
-          <div>{current.date()}</div>
-            <div className="flex mt-1 gap-1 items-center">
-            {dayEvents.slice(0, 3).map((ev: CalendarEvent) => (
-              <span key={ev.id} className="w-2 h-2 rounded-full bg-blue-500" />
-            ))}
-            {dayEvents.length > 3 && <span className="text-xs text-gray-500">+{dayEvents.length - 3}</span>}
-          </div>
-        </div>
-      </Tooltip>
-    );
-  };
-
-  const selectedKey = selectedValue.format("YYYY-MM-DD");
-  const sidebarEvents = eventsByDate.get(selectedKey) || [];
+  const rows = calendarCells.length / 7;
+  const rowClass = rows <= 5 ? "grid-rows-5" : "grid-rows-6";
 
   return (
     <div className="space-y-4 mt-4">
-      <div className="flex items-center gap-3">
-        <Link href="/dashboard" className="shrink-0">
-          <BackButton />
-        </Link>
-        <h2 className="themeH1">Calendar</h2>
+
+      {/* ── Page title row — matches other pages (completed-events, etc.) ── */}
+      <div className="flex justify-between">
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard">
+            <BackButton />
+          </Link>
+          <h2 className="themeH1">Calendar</h2>
+        </div>
       </div>
-      <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2 bg-white rounded-xl overflow-hidden p-5">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <Spin />
+
+      {/* ── Calendar wrapper — fixed viewport height, scrollable inside ── */}
+      {/* 240px = outer p-6(48) + inner p-8(64) + header(~60) + mt-4(16) + title(32) + space-y-4(16) + spare(4) */}
+      <div
+        className="flex gap-4 overflow-y-auto no-scrollbar"
+        style={{ height: "calc(100vh - 240px)", minHeight: 540 }}
+      >
+
+        {/* ────────────────────────────────────────────
+            LEFT — Monthly calendar grid
+        ──────────────────────────────────────────── */}
+        <div className="flex-1 bg-white rounded-[14.5px] shadow-[0px_0.906px_1.359px_rgba(0,0,0,0.1),0px_0.906px_0.906px_rgba(0,0,0,0.1)] flex flex-col overflow-hidden">
+
+          {/* Month navigation */}
+          <div className="flex items-center justify-between px-4 pt-4 pb-3 shrink-0">
+            <span className="text-[21.75px] font-normal text-[#0a0a0a] leading-[29px]">
+              {currentMonth.format("MMMM YYYY")}
+            </span>
+            <div className="flex items-center gap-[14.5px]">
+              <button
+                onClick={() => setCurrentMonth((m) => m.subtract(1, "month"))}
+                className="size-[18px] flex items-center justify-center text-[#0a0a0a] hover:text-primary transition-colors"
+              >
+                <ChevronLeft size={13} />
+              </button>
+              <span className="text-[12.688px] text-[#0a0a0a]">
+                {currentMonth.format("YYYY")}
+              </span>
+              <button
+                onClick={() => setCurrentMonth((m) => m.add(1, "month"))}
+                className="size-[18px] flex items-center justify-center text-[#0a0a0a] hover:text-primary transition-colors"
+              >
+                <ChevronRight size={13} />
+              </button>
             </div>
-          ) : (
-            <Calendar
-              value={value}
-              onSelect={onSelect}
-              onPanelChange={onPanelChange}
-              dateCellRender={dateCellRender}
-              headerRender={({ value: headerValue, onChange: headerOnChange }) => {
-                const month = headerValue.format("MMMM");
-                const yearText = headerValue.format("YYYY");
-                return (
-                  <div className="flex items-center justify-between px-2 mb-2">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => headerOnChange(headerValue.subtract(1, "month"))}
-                        className="p-1 rounded hover:bg-gray-100"
-                        aria-label="Previous month"
+          </div>
+
+          {/* Day-of-week headers */}
+          <div className="grid grid-cols-7 px-4 shrink-0">
+            {WEEK_DAYS.map((d) => (
+              <div
+                key={d}
+                className="text-center text-[#6a7282] text-[12.688px] leading-[32.625px]"
+              >
+                {d}
+              </div>
+            ))}
+          </div>
+
+          {/* Calendar grid — rows fill available height */}
+          <div className={`grid grid-cols-7 ${rowClass} flex-1 min-h-0 gap-px px-4 pb-4`}>
+            {calendarCells.map(({ date, isCurrentMonth }, idx) => {
+              const dateKey = date.format("YYYY-MM-DD");
+              const dayEvents = eventsByDate[dateKey] || [];
+              const isSelected = selectedDate.isSame(date, "day");
+              const isToday = date.isSame(dayjs(), "day");
+
+              return (
+                <div
+                  key={idx}
+                  onClick={() => setSelectedDate(date)}
+                  className={[
+                    "border border-[rgba(0,0,0,0.1)] rounded-[9.063px] pt-[7.854px] px-[7.854px] pb-[0.604px]",
+                    "cursor-pointer flex flex-col gap-[3.625px] transition-all overflow-hidden",
+                    isCurrentMonth ? "bg-white hover:bg-gray-50" : "bg-[#f9fafb]",
+                    isSelected ? "ring-2 ring-primary ring-inset" : "",
+                  ].join(" ")}
+                >
+                  {/* Date number */}
+                  <div className="shrink-0 h-[18.125px] flex items-center">
+                    {isToday && isCurrentMonth ? (
+                      <span className="size-5 flex items-center justify-center bg-[#2a2d32] text-white rounded-full text-[10px] font-medium">
+                        {date.date()}
+                      </span>
+                    ) : (
+                      <span
+                        className={`text-[12.688px] leading-[18.125px] ${
+                          isCurrentMonth ? "text-[#101828]" : "text-[#99a1af]"
+                        }`}
                       >
-                        <ChevronLeft />
-                      </button>
-                      <div className="font-medium">
-                        {month} {yearText}
+                        {date.date()}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Event chips */}
+                  {dayEvents.slice(0, 3).map((ev) => {
+                    const c = EVENT_COLORS[(eventColorMap[String(ev.id)] ?? 0) % EVENT_COLORS.length];
+                    const name = getEventDisplayName(ev);
+                    const time =
+                      ev.start_time && ev.end_time
+                        ? `${formatTime(ev.start_time)} - ${formatTime(ev.end_time)}`
+                        : "";
+
+                    return (
+                      <div
+                        key={ev.id}
+                        className={`${c.bg} border ${c.border} rounded-[3.625px] shrink-0`}
+                        style={{ minHeight: 27 }}
+                      >
+                        <div className="flex items-center gap-[5.438px] px-[5.44px] pt-[5.44px]" style={{ height: 14.5 }}>
+                          <div className="shrink-0 size-[14.5px] rounded-full bg-primary/30 flex items-center justify-center overflow-hidden">
+                            <span className="text-[6px] text-primary font-bold leading-none">
+                              {getInitials(name)}
+                            </span>
+                          </div>
+                          <span className="text-[#0a0a0a] text-[10.875px] leading-[14.5px] truncate">
+                            {name}
+                          </span>
+                        </div>
+                        {time && (
+                          <div className="pl-[23.56px] pb-[3px]">
+                            <span className="text-[#4a5565] text-[8px] leading-[12.083px]">
+                              {time}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                      <button
-                        onClick={() => headerOnChange(headerValue.add(1, "month"))}
-                        className="p-1 rounded hover:bg-gray-100"
-                        aria-label="Next month"
-                      >
-                        <ChevronRight />
-                      </button>
+                    );
+                  })}
+
+                  {dayEvents.length > 3 && (
+                    <span className="text-[#6b7280] text-[8px] pl-0.5">
+                      +{dayEvents.length - 3} more
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ────────────────────────────────────────────
+            RIGHT — Selected-date event panel
+        ──────────────────────────────────────────── */}
+        <div className="w-[335px] shrink-0 bg-white rounded-[15.314px] shadow-[0px_0.957px_1.436px_rgba(0,0,0,0.1),0px_0.957px_0.957px_rgba(0,0,0,0.1)] flex flex-col overflow-hidden">
+
+          {/* Panel header */}
+          <div className="px-[22.97px] pt-[22.97px] shrink-0">
+            {/* Row 1: filter label + add button */}
+            <div className="flex items-center justify-between h-[34.457px] mb-[22.97px]">
+              <button className="flex items-center gap-1 text-[13.4px] text-[#0a0a0a] font-normal">
+                Events
+                <ChevronRight size={15} />
+              </button>
+              <Link href="/enquiry" className="flex items-center gap-[8px] bg-primary hover:bg-[#7a8e7d] text-white rounded-[9.571px] px-[11.49px] h-full text-[14px] transition-colors">
+                <Plus size={14} />
+                <span>Add Event</span>
+              </Link>
+            </div>
+
+            {/* Selected date sub-header */}
+            <div className="flex items-center justify-between pb-[10px] border-b border-[rgba(0,0,0,0.1)]">
+              <span className="text-[12.5px] text-[#0a0a0a] leading-[19px]">
+                Events on {selectedDate.format("dddd, MMMM D, YYYY")}
+              </span>
+              <ChevronRight size={14} className="text-[#0a0a0a] shrink-0" />
+            </div>
+          </div>
+
+          {/* Scrollable event cards */}
+          <div className="flex-1 overflow-y-auto px-[15px] pt-3 pb-4 flex flex-col gap-3 no-scrollbar">
+            {selectedDateEvents.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-[#9ca3af] text-sm gap-2">
+                <span className="text-4xl">📅</span>
+                <span>No events on this date</span>
+              </div>
+            ) : (
+              selectedDateEvents.map((ev) => {
+                const name = getEventDisplayName(ev);
+                const venue = ev.venues?.venue || "";
+                const time =
+                  ev.start_time && ev.end_time
+                    ? `${formatTime(ev.start_time)} - ${formatTime(ev.end_time)}`
+                    : "";
+
+                return (
+                  <div
+                    key={ev.id}
+                    className="bg-white rounded-[19.055px] overflow-hidden"
+                    style={{
+                      border: "1.059px solid rgba(0,0,0,0.1)",
+                      boxShadow: "0px 4.234px 5.293px rgba(0,0,0,0.1)",
+                    }}
+                  >
+                    {/* Avatar + name / venue / time */}
+                    <div className="flex gap-[12.159px] items-start px-[14.82px] pt-[15.39px] pb-3">
+                      <div className="shrink-0 size-[40.53px] rounded-full bg-primary/20 flex items-center justify-center">
+                        <span className="text-sm text-primary font-semibold">
+                          {getInitials(name)}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[16.212px] text-[#4a5565] leading-[24.318px] font-normal truncate">
+                          {name}
+                        </p>
+                        {venue && (
+                          <p className="text-[12.703px] text-[#4a5565] leading-[20.265px] truncate">
+                            {venue}
+                          </p>
+                        )}
+                        {time && (
+                          <p className="text-[9.528px] text-[#4a5565] leading-[20.265px]">
+                            {time}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <div />
+
+                    {/* Divider + address */}
+                    <div className="border-t border-[rgba(0,0,0,0.1)]" />
+                    <div className="flex gap-[6px] items-start px-[14.82px] py-[10px]">
+                      <MapPin size={12} className="shrink-0 text-[#4a5565] mt-0.5" />
+                      <p className="text-[9.528px] text-[#4a5565] leading-[16.212px]">
+                        {venue || "No venue specified"}
+                      </p>
+                    </div>
                   </div>
                 );
-              }}
-            />
-          )}
-        </div>
-        <div className="bg-white col-span-1 rounded-xl overflow-hidden px-4 py-5">
-          <div className="flex justify-between items-center">
-            <p>Events</p>
-            <Link href="/enquiry" className="shrink-0">
-              <Button icon={<Plus size={14} />} type="primary">
-                Add Event
-              </Button>
-            </Link>
-          </div>
-          <div className="mt-6">
-            <p className="text-sm">Events on {selectedValue.format('dddd, MMMM D, YYYY')}</p>
-            <div className="mt-3">
-              {sidebarEvents.length === 0 ? (
-                <div className="text-sm text-[#4A5565] mt-3">No events for this date.</div>
-              ) : (
-                sidebarEvents.map((event: CalendarEvent) => (
-                  <div key={event.id} className="rounded-3xl border border-black/10 p-5 mb-4 last:mb-0" style={{ boxShadow: "0px 4.23px 10.59px 0px #0000001A" }}>
-                    <div className="flex gap-3">
-                      <Image
-                        src={event.users_events_user_idTousers?.profile_photo ? `/images/${event.users_events_user_idTousers.profile_photo}` : "/images/avatar.png"}
-                        alt={event.users_events_user_idTousers?.name || 'avatar'}
-                        width={40}
-                        height={40}
-                        className="rounded-full size-10"
-                      />
-                      <div className="flex-1">
-                        <p className="text-base">{event.users_events_user_idTousers?.name ?? "Unknown"}</p>
-                        <p className="text-sm text-[#4A5565] mt-2">{event.venues?.venue ?? "TBD"}</p>
-                        <hr />
-                      </div>
-                    </div>
-                    <div className="flex mt-1.5 gap-1">
-                      <MapPin size={14} color="#4A5565" className="shrink-0" />
-                      <span className="text-sm text-[#4A5565]">{event.venues?.venue ?? "TBD"}</span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+              })
+            )}
           </div>
         </div>
       </div>
     </div>
   );
-};
-
-export default CalendarPage;
+}

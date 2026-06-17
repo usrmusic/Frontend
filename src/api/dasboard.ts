@@ -19,7 +19,7 @@ type PendingPayment = {
   expected: number;
   paid: number;
   outstanding: number;
-  payment_date: string | null;
+  date: string | null;
   client_name: string | null;
   event_status_id?: number;
 };
@@ -42,6 +42,7 @@ export type DashboardDropdownItem = {
   id: number;
   status: number;
   couple_name: string | null;
+  date?: string | null;
   client: {
     id: number;
     name: string;

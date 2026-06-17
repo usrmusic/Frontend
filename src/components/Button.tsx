@@ -10,6 +10,7 @@ const Button = ({
   children,
   className,
   showShadow = true,
+  style,
   ...props
 }: BtnProps) => {
   const baseClasses = "text-sm!";
@@ -18,7 +19,11 @@ const Button = ({
     <AntdButton
       {...props}
       className={twMerge(baseClasses, className)}
-      style={{ boxShadow: showShadow ? "0px 4px 4px 0px #0000001A" : "" }}
+      style={{
+        borderRadius: 9999,
+        boxShadow: showShadow ? "0px 4px 4px 0px #0000001A" : "",
+        ...style,
+      }}
     >
       {children}
     </AntdButton>
