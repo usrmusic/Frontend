@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Spin, Select } from "antd";
+import { Spin, Select, ConfigProvider } from "antd";
 import UserAvatar from "@/src/components/common/Avatar";
 import AxiosInstance from "@/src/lib/axios";
 import { extractUser } from "@/src/lib/user";
@@ -10,14 +10,6 @@ import { useDebounce } from "@/src/hooks/useDebounce";
 import { useDashboardDropdown } from "@/src/api/dasboard";
 import { MagnifyingGlass, Plus } from "@/src/components/Icons";
 import Link from "next/link";
-
-interface Session {
-  user?: {
-    name?: string;
-    nickname?: string;
-  };
-}
-
 
 const Header = () => {
   
@@ -60,14 +52,6 @@ const Header = () => {
 
   const handleYearSelectChange = (val: string | number) => {
     const y = Number(val);
-    setYear(y);
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("dashboard:yearChange", { detail: { year: y } }));
-    }
-  };
-
-  const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const y = Number(e.target.value);
     setYear(y);
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("dashboard:yearChange", { detail: { year: y } }));
@@ -165,16 +149,18 @@ const Header = () => {
             {dropdownFetching ? <Spin size="small" /> : <MagnifyingGlass />}
           </button>
           </div>
-        <div>
-          <Select
-            value={year}
-            onChange={handleYearSelectChange}
-            options={yearOptions}
-            className="bg-white rounded-3xl text-xs"
-            classNames={{ popup: { root: "rounded-md" } }}
-            style={{ width: 120 }}
-          />
-        </div>
+        <ConfigProvider theme={{ components: { Select: { selectorBg: "transparent" } } }}>
+          <div className="bg-white rounded-full h-10 flex items-center overflow-hidden" style={{ minWidth: 110 }}>
+            <Select
+              variant="borderless"
+              value={year}
+              onChange={handleYearSelectChange}
+              options={yearOptions}
+              className="w-full text-xs"
+              classNames={{ popup: { root: "rounded-md" } }}
+            />
+          </div>
+        </ConfigProvider>
         <Link href={"/enquiry"}>
           <button className="size-12 flex items-center justify-center bg-white rounded-full">
             <Plus />

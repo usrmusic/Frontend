@@ -210,7 +210,7 @@ const SuppliersPage = () => {
           </div>
           <DatePicker
             placeholder="Date (From)"
-            className="[&_input]:bg-white!"
+            className="w-full !bg-white"
             value={dateFrom ? dayjs(dateFrom) : null}
             onChange={(_, dateString) =>
               setDateFrom(Array.isArray(dateString) ? dateString[0] || "" : dateString)
@@ -218,7 +218,7 @@ const SuppliersPage = () => {
           />
           <DatePicker
             placeholder="Date (To)"
-            className="[&_input]:bg-white!"
+            className="w-full !bg-white"
             value={dateTo ? dayjs(dateTo) : null}
             onChange={(_, dateString) =>
               setDateTo(Array.isArray(dateString) ? dateString[0] || "" : dateString)

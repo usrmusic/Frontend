@@ -99,24 +99,26 @@ export const useDeleteUpload = () => {
 //   });
 // };
 
-// src/api/upload.ts
-
-// src/api/upload.ts — update the hook return type
 export const useDownloadUpload = () => {
   return useMutation({
     mutationFn: async (
       id: number | string,
-    ): Promise<{
-      url?: string;
-      download_url?: string;
-      filename?: string; // ← add this
-      storage?: string;
-    }> => {
-      const response = await AxiosInstance.get(`/files/uploads/${id}/download`);
-      return response.data;
+    ): Promise<{ blob: Blob; filename: string }> => {
+      const response = await AxiosInstance.get(
+        `/files/uploads/${id}/download`,
+        { responseType: "blob" },
+      );
+      // Extract filename from Content-Disposition header if available
+      const cd = response.headers["content-disposition"] as string | undefined;
+      let filename = "download";
+      if (cd) {
+        const match = cd.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (match?.[1]) {
+          filename = decodeURIComponent(match[1].replace(/['"]/g, ""));
+        }
+      }
+      return { blob: response.data as Blob, filename };
     },
-    onError: () => {
-      toast.error("Download failed");
-    },
+    // No onError here — callers use mutateAsync and handle errors in their own catch blocks
   });
 };

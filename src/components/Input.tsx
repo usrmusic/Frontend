@@ -46,7 +46,7 @@ const Input = ({
           className={twMerge(
             "h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none",
             type === "password" && showToggle ? "pr-10" : "",
-            disabled && "cursor-not-allowed bg-gray-100 opacity-70",
+            disabled && "cursor-not-allowed opacity-70",
             error && "border-red-500 focus:border-red-500 focus:ring-red-500",
             className,
           )}

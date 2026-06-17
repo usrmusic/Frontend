@@ -9,7 +9,7 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
-import { Modal, Select as AntSelect, ConfigProvider } from "antd";
+import { Modal, Select as AntSelect, ConfigProvider, DatePicker, Spin } from "antd";
 import { Formik, Form, Field, FormikProps } from "formik";
 import type { FieldProps } from "formik";
 import * as Yup from "yup";
@@ -185,7 +185,7 @@ const NewEnquiryPage = () => {
   const { data: clientDropdownName } = useClientDropdown();
   const { data: venueDropdownName } = useVenueDropdown();
   const { data: djDropdownData } = useUsersDropdown();
-  const { data: packageData } = usePackageData(packageParams);
+  const { data: packageData, isLoading: isPackageLoading } = usePackageData(packageParams);
   const { data: clientDetails } = useSingleClient(!showNameInput && clientId ? clientId : null);
   const { data: equipmentDropdownData } = useEquipmentDropdown();
   const { data: supplierDropdownData } = useSupplierDropdown();
@@ -672,9 +672,12 @@ const NewEnquiryPage = () => {
                 <div className="grid grid-cols-12 gap-6">
                   <div className="col-span-12 xl:col-span-9 space-y-6">
                     <div className="flex flex-col gap-3 justify-between lg:flex-row lg:items-center">
-                      <Link href="/dashboard">
-                        <BackButton />
-                      </Link>
+                      <div className="flex items-center gap-3">
+                        <Link href="/dashboard">
+                          <BackButton />
+                        </Link>
+                        <h2 className="themeH1">{editId ? "Edit Enquiry" : "New Enquiry"}</h2>
+                      </div>
                       <div className="flex flex-wrap gap-2">
                         <Button
                           type="default"
@@ -751,22 +754,24 @@ const NewEnquiryPage = () => {
                                 ) : (
                                   <div className="flex-1">
                                     <label className="mb-1 block text-xs">Name</label>
-                                    <select
-                                      className="h-10 w-full rounded-xl border bg-secondary-100 border-gray-200 px-3 text-sm outline-none"
-                                      value={clientId != null ? String(clientId) : String(values.name ?? "")}
-                                      onChange={(e) => {
-                                        const selectedId = e.target.value;
+                                    <AntSelect
+                                      className="h-10 w-full"
+                                      placeholder="Select Name"
+                                      showSearch
+                                      allowClear
+                                      optionFilterProp="label"
+                                      disabled={isSubmitting}
+                                      value={clientId != null ? String(clientId) : (values.name ? String(values.name) : undefined)}
+                                      onChange={(val) => {
+                                        const selectedId = val ?? "";
                                         setClientId(selectedId ? Number(selectedId) : null);
                                         setFieldValue("name", String(selectedId));
                                       }}
-                                    >
-                                      <option value="">Select Name</option>
-                                      {clientDropdownName?.map((opt) => (
-                                        <option key={opt.id} value={String(opt.id)}>
-                                          {opt.name}
-                                        </option>
-                                      ))}
-                                    </select>
+                                      options={clientDropdownName?.map((opt) => ({
+                                        label: opt.name,
+                                        value: String(opt.id),
+                                      }))}
+                                    />
                                   </div>
                                 )}
                                 <Button
@@ -801,7 +806,7 @@ const NewEnquiryPage = () => {
                                     onChange={fieldProps.field.onChange}
                                     placeholder="Enter address"
                                     className="bg-secondary-100"
-                                    disabled={!showNameInput}
+                                    disabled={!showNameInput || isSubmitting}
                                     error={touched.address ? (errors.address as string | undefined) : undefined}
                                     required
                                   />
@@ -815,7 +820,7 @@ const NewEnquiryPage = () => {
                                     type="email"
                                     placeholder="Enter email"
                                     className="bg-secondary-100"
-                                    disabled={!showNameInput}
+                                    disabled={!showNameInput || isSubmitting}
                                     error={touched.email ? (errors.email as string | undefined) : undefined}
                                     required
                                     value={values.email}
@@ -836,7 +841,7 @@ const NewEnquiryPage = () => {
                                       value={values.number}
                                       placeholder="Enter contact number"
                                       className="bg-secondary-100"
-                                      disabled={!showNameInput}
+                                      disabled={!showNameInput || isSubmitting}
                                       error={touched.number ? (errors.number as string | undefined) : undefined}
                                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                         const value = e.target.value;
@@ -849,26 +854,7 @@ const NewEnquiryPage = () => {
                                   );
                                 }}
                               </Field>
-                              <Field name="tellMeMore">
-                                {(fieldProps: FieldProps) => (
-                                  <div className="space-y-1">
-                                    <label className="text-xs text-gray-500">Tell me more</label>
-                                    <textarea
-                                      {...fieldProps.field}
-                                      className="min-h-[72px] w-full rounded-xl border border-gray-200 bg-secondary-100 px-3 py-2 text-sm outline-none"
-                                      placeholder="Additional information about the enquiry"
-                                    />
-                                    {touched.tellMeMore && errors.tellMeMore && (
-                                      <div className="text-red-500 text-xs">{errors.tellMeMore}</div>
-                                    )}
-                                  </div>
-                                )}
-                              </Field>
-                            </div>
-
-                            {/* Right sub-column */}
-                            <div className="space-y-4">
-                              <Field name="venue">
+                                                            <Field name="venue">
                                 {(fieldProps: FieldProps) => (
                                   <div className="space-y-1">
                                     <div className="flex gap-2 items-end">
@@ -884,18 +870,20 @@ const NewEnquiryPage = () => {
                                       ) : (
                                         <div className="flex-1">
                                           <label className="mb-1 block text-xs">Venue</label>
-                                          <select
-                                            className="h-10 w-full rounded-xl border bg-secondary-100 border-gray-200 px-3 text-sm outline-none"
-                                            value={String(fieldProps.field.value ?? "")}
-                                            onChange={(e) => setFieldValue("venue", String(e.target.value))}
-                                          >
-                                            <option value="">Select a venue</option>
-                                            {venueDropdownName?.map((venue) => (
-                                              <option key={venue.id} value={String(venue.id)}>
-                                                {venue.venue}
-                                              </option>
-                                            ))}
-                                          </select>
+                                          <AntSelect
+                                            className="h-10 w-full"
+                                            placeholder="Select a venue"
+                                            showSearch
+                                            allowClear
+                                            optionFilterProp="label"
+                                            disabled={isSubmitting}
+                                            value={fieldProps.field.value ? String(fieldProps.field.value) : undefined}
+                                            onChange={(val) => setFieldValue("venue", val ?? "")}
+                                            options={venueDropdownName?.map((venue) => ({
+                                              label: venue.venue,
+                                              value: String(venue.id),
+                                            }))}
+                                          />
                                           {touched.venue && errors.venue && (
                                             <div className="text-red-500 text-xs mt-1">{errors.venue}</div>
                                           )}
@@ -925,23 +913,85 @@ const NewEnquiryPage = () => {
                                   </div>
                                 )}
                               </Field>
+                            </div>
+
+                            {/* Right sub-column */}
+                            <div className="space-y-4">
+                                                              <Field name="dj">
+                                  {(fieldProps: FieldProps) => (
+                                    <div className="space-y-1">
+                                      <label className="mb-1 block text-xs">Select DJ</label>
+                                      <AntSelect
+                                        className="h-10 w-full"
+                                        placeholder="Choose DJ"
+                                        showSearch
+                                        allowClear
+                                        optionFilterProp="label"
+                                        disabled={isSubmitting}
+                                        loading={isPackageLoading}
+                                        value={values.dj?.id ? String(values.dj.id) : undefined}
+                                        onChange={(val) => {
+                                          const value = Number(val);
+                                          const selectedDj = djDropdownData?.find((item) => item.id === value);
+                                          const eventDateFormatted =
+                                            packageParams.event_date ||
+                                            (values.eventDate
+                                              ? dayjs(values.eventDate).format("DD-MM-YYYY")
+                                              : dayjs().format("DD-MM-YYYY"));
+                                          setPackageParams((prev) => ({
+                                            ...prev,
+                                            staff: selectedDj?.id ?? null,
+                                            package_name: selectedDj?.package_users?.[0]?.package_name ?? "",
+                                            event_date: eventDateFormatted,
+                                          }));
+                                          setFieldValue("dj", selectedDj ?? null);
+                                        }}
+                                        options={djDropdownData?.map((dj) => ({
+                                          label: `${dj.name} (${dj.package_users?.[0]?.package_name ?? ""})`,
+                                          value: String(dj.id),
+                                        }))}
+                                      />
+                                      {touched.dj && !!djError && (
+                                        <div className="text-red-500 text-xs mt-1">{djError}</div>
+                                      )}
+                                    </div>
+                                  )}
+                                </Field>
                               <div className="grid grid-cols-2 gap-4">
                                 <Field name="eventDate">
+                                  {() => (
+                                    <div className="space-y-1">
+                                      <label className="mb-1 block text-xs">Event Date <span className="text-red-500">*</span></label>
+                                      <DatePicker
+                                        className="h-10 w-full"
+                                        placeholder="DD/MM/YYYY"
+                                        format="DD/MM/YYYY"
+                                        disabled={isPackageLoading || isSubmitting}
+                                        value={values.eventDate ? dayjs(values.eventDate) : null}
+                                        onChange={(val) => {
+                                          const iso = val ? val.toISOString() : "";
+                                          const formatted = val ? val.format("DD-MM-YYYY") : "";
+                                          setFieldValue("eventDate", iso);
+                                          setPackageParams((prev) => ({ ...prev, event_date: formatted }));
+                                        }}
+                                      />
+                                      {touched.eventDate && errors.eventDate && (
+                                        <div className="text-red-500 text-xs mt-1">{errors.eventDate as string}</div>
+                                      )}
+                                    </div>
+                                  )}
+                                </Field>
+                                                                <Field name="depositAmount">
                                   {(fieldProps: FieldProps) => (
                                     <div className="space-y-1">
                                       <Input
                                         {...fieldProps.field}
-                                        label="Event Date"
-                                        type="date"
+                                        label="Deposit Amount"
+                                        type="number"
                                         className="bg-secondary-100"
-                                        error={touched.eventDate ? (errors.eventDate as string | undefined) : undefined}
-                                        required
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                          const date = dayjs(e.target.value).format("DD-MM-YYYY");
-                                          fieldProps.field.onChange(e);
-                                          setPackageParams((prev) => ({ ...prev, event_date: date }));
-                                        }}
-                                        value={fieldProps.field.value}
+                                        placeholder="0"
+                                        disabled={isSubmitting}
+                                        error={touched.depositAmount ? (errors.depositAmount as string | undefined) : undefined}
                                       />
                                     </div>
                                   )}
@@ -957,6 +1007,7 @@ const NewEnquiryPage = () => {
                                         type="text"
                                         className="bg-secondary-100"
                                         placeholder="e.g. 7am, 7:30pm or 07:00"
+                                        disabled={isSubmitting}
                                         error={touched.startTime ? (errors.startTime as string | undefined) : undefined}
                                         required
                                         value={fieldProps.field.value}
@@ -975,6 +1026,7 @@ const NewEnquiryPage = () => {
                                         type="text"
                                         className="bg-secondary-100"
                                         placeholder="e.g. 7am, 7:30pm or 19:30"
+                                        disabled={isSubmitting}
                                         error={touched.endTime ? (errors.endTime as string | undefined) : undefined}
                                         required
                                         value={fieldProps.field.value}
@@ -985,60 +1037,21 @@ const NewEnquiryPage = () => {
                                   )}
                                 </Field>
                               </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                <Field name="dj">
-                                  {(fieldProps: FieldProps) => (
-                                    <div className="space-y-1">
-                                      <label className="mb-1 block text-xs">Select DJ</label>
-                                      <select
-                                        className="h-10 w-full rounded-xl border bg-secondary-100 border-gray-200 px-3 text-sm outline-none"
-                                        value={values.dj?.id}
-                                        onChange={(e) => {
-                                          const value = Number(e.target.value);
-                                          const selectedDj = djDropdownData?.find((item) => item.id === value);
-                                          const eventDateFormatted =
-                                            packageParams.event_date ||
-                                            (values.eventDate
-                                              ? dayjs(values.eventDate).format("DD-MM-YYYY")
-                                              : dayjs().format("DD-MM-YYYY"));
-                                          setPackageParams((prev) => ({
-                                            ...prev,
-                                            staff: selectedDj?.id ?? null,
-                                            package_name: selectedDj?.package_users?.[0]?.package_name ?? "",
-                                            event_date: eventDateFormatted,
-                                          }));
-                                          setFieldValue("dj", selectedDj);
-                                        }}
-                                        name={fieldProps.field.name}
-                                      >
-                                        <option value="">Choose DJ</option>
-                                        {djDropdownData?.map((dj) => (
-                                          <option key={dj.id} value={dj.id}>
-                                            {dj.name} {`(${dj.package_users?.[0]?.package_name})`}
-                                          </option>
-                                        ))}
-                                      </select>
-                                      {touched.dj && !!djError && (
-                                        <div className="text-red-500 text-xs mt-1">{djError}</div>
-                                      )}
-                                    </div>
-                                  )}
-                                </Field>
-                                <Field name="depositAmount">
-                                  {(fieldProps: FieldProps) => (
-                                    <div className="space-y-1">
-                                      <Input
-                                        {...fieldProps.field}
-                                        label="Deposit Amount"
-                                        type="number"
-                                        className="bg-secondary-100"
-                                        placeholder="0"
-                                        error={touched.depositAmount ? (errors.depositAmount as string | undefined) : undefined}
-                                      />
-                                    </div>
-                                  )}
-                                </Field>
-                              </div>
+                                                            <Field name="tellMeMore">
+                                {(fieldProps: FieldProps) => (
+                                  <div className="space-y-1">
+                                    <label className="text-xs text-gray-500">Tell me more</label>
+                                    <textarea
+                                      {...fieldProps.field}
+                                      className="min-h-[72px] w-full rounded-xl border border-gray-200 bg-secondary-100 px-3 py-2 text-sm outline-none"
+                                      placeholder="Additional information about the enquiry"
+                                    />
+                                    {touched.tellMeMore && errors.tellMeMore && (
+                                      <div className="text-red-500 text-xs">{errors.tellMeMore}</div>
+                                    )}
+                                  </div>
+                                )}
+                              </Field>
                             </div>
                           </div>
                         </div>
@@ -1068,6 +1081,7 @@ const NewEnquiryPage = () => {
                         }}
                         aria-hidden={!cardsOpen.startingPackage}
                       >
+                        <Spin spinning={isPackageLoading}>
                         <div className="px-6 text-xs text-gray-700">
                           <div className="mb-2 flex items-center text-[11px] text-gray-500">
                             <span className="w-6/12">Basics</span>
@@ -1114,6 +1128,7 @@ const NewEnquiryPage = () => {
                             )}
                           </div>
                         </div>
+                        </Spin>
                       </div>
                     </Card>
 
@@ -1140,6 +1155,7 @@ const NewEnquiryPage = () => {
                         }}
                         aria-hidden={!cardsOpen.extras}
                       >
+                        <Spin spinning={isPackageLoading}>
                         <div className="px-6 text-xs text-gray-700">
                           <div className="mb-2 flex items-center text-[11px] text-gray-500">
                             <span className="w-6/12">Extras</span>
@@ -1263,15 +1279,16 @@ const NewEnquiryPage = () => {
                             })}
                           </div>
                         </div>
+                        </Spin>
                       </div>
                     </Card>
 
                     {/* Add New Equipment — primary button below Extras card */}
-                    <div>
+                    <div className="flex justify-end">
                       <Button
                         type="primary"
                         onClick={() => setAddEquipModalOpen(true)}
-                        className="w-full flex items-center justify-center gap-2"
+                        className="w-auto flex items-end justify-center gap-2"
                       >
                         <PlusIcon size={15} />
                         Add New Equipment
@@ -1286,6 +1303,7 @@ const NewEnquiryPage = () => {
                       <div className="flex items-center justify-between bg-white px-6 py-4 text-black/80">
                         <h3 className="font-medium">{values.dj?.name || "At a Glance"}</h3>
                       </div>
+                      <Spin spinning={isPackageLoading}>
                       <div className="px-5 py-4 text-xs text-gray-700 space-y-2">
                         {equipmentList.length ? (
                           equipmentList.map((r, i) => (
@@ -1308,6 +1326,7 @@ const NewEnquiryPage = () => {
                           </div>
                         </div>
                       </div>
+                      </Spin>
                     </Card>
 
                     {/* Rig list card */}
@@ -1333,13 +1352,17 @@ const NewEnquiryPage = () => {
                         }}
                         aria-hidden={!cardsOpen.rigList}
                       >
+                        <Spin spinning={isPackageLoading}>
                         <div className="px-6 text-xs text-gray-700">
                           <div className="space-y-3">
                             {rigNotesList.length ? (
                               rigNotesList.map((r, idx) => (
                                 <div key={idx} className="space-y-0.5">
-                                  <p className="font-semibold text-gray-900 leading-tight">{r.name}</p>
-                                  <p className="pl-2 text-[11px] text-gray-500 leading-snug whitespace-pre-line">{r.rig_notes}</p>
+                                  <div className="flex items-center gap-2">
+                                    <SquareCheckBig size={14} className="text-primary shrink-0" />
+                                    <p className="font-semibold text-gray-900 leading-tight">{r.name}</p>
+                                  </div>
+                                  <p className="pl-6 text-[11px] text-gray-500 leading-snug whitespace-pre-line" dangerouslySetInnerHTML={{ __html: r.rig_notes ?? "" }} />
                                 </div>
                               ))
                             ) : (
@@ -1347,6 +1370,7 @@ const NewEnquiryPage = () => {
                             )}
                           </div>
                         </div>
+                        </Spin>
                       </div>
                     </Card>
                   </div>
@@ -1441,11 +1465,10 @@ const NewEnquiryPage = () => {
           {/* Do you have the equipment? */}
           <div>
             <label className="text-xs font-medium text-gray-700 mb-1 block">Do you have the equipment?</label>
-            <select
-              className="h-10 w-full rounded-xl border border-gray-200 bg-secondary-100 px-3 text-sm outline-none focus:border-primary transition-colors"
+            <AntSelect
+              className="h-10 w-full"
               value={addEquipForm.has_equipment}
-              onChange={(e) => {
-                const val = e.target.value as "yes" | "no";
+              onChange={(val: "yes" | "no") => {
                 setAddEquipForm((prev) => ({
                   ...prev,
                   has_equipment: val,
@@ -1456,10 +1479,11 @@ const NewEnquiryPage = () => {
                   supplier_id: "",
                 }));
               }}
-            >
-              <option value="no">No</option>
-              <option value="yes">Yes</option>
-            </select>
+              options={[
+                { label: "No", value: "no" },
+                { label: "Yes", value: "yes" },
+              ]}
+            />
           </div>
 
           {/* If Yes — pick from existing equipment */}
@@ -1550,7 +1574,7 @@ const NewEnquiryPage = () => {
             >
               Close
             </Button>
-            <Button type="primary" className="min-w-[90px]!" onClick={handleAddEquipmentSave}>
+            <Button type="primary" className="min-w-[90px]!" onClick={handleAddEquipmentSave} loading={addEquipmentMutation.isPending} disabled={addEquipmentMutation.isPending}>
               Save
             </Button>
           </div>
