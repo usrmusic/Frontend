@@ -120,17 +120,22 @@ const FileUploadPage = () => {
       title: "File Name",
       dataIndex: "file_name",
       key: "file_name",
+      width: 260,
+      ellipsis: true,
+      render: (name: string) => name?.split("/").pop() || name,
     },
     {
       title: "Type",
       dataIndex: "file_type",
       key: "file_type",
+      width: 90,
     },
     {
-      title: "Upload At",
+      title: "Uploaded At",
       dataIndex: "created_at",
       key: "created_at",
-      render: (date) => <>{dayjs(date).format("DD-MM-YYYY")}</>,
+      width: 180,
+      render: (date: string) => dayjs(date).format("DD/MM/YYYY"),
     },
     {
       title: "Event",
@@ -140,100 +145,64 @@ const FileUploadPage = () => {
     {
       title: "Actions",
       key: "actions",
-      render: (upload) => {
-        return (
-          <div className="flex gap-2">
-            {/* <Button size="small" type="text" showShadow={false}>
-            <Eye size={14} color="#6A7282" />
-          </Button> */}
-            <Button
-              size="small"
-              type="text"
-              showShadow={false}
-              onClick={async () => {
-                try {
-                  const res = await downloadMutation.mutateAsync(upload.id);
-                  const url = res?.url || res?.download_url || res;
-                  if (typeof url !== "string")
-                    return message.error("No download URL");
-
-                  const fallbackOpenUrl = () => {
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.target = "_blank";
-                    a.rel = "noopener noreferrer";
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                  };
-
-                  try {
-                    const response = await fetch(url, { method: "GET" });
-                    if (!response.ok) {
-                      throw new Error("Download failed");
-                    }
-                    const blob = await response.blob();
-                    const disposition =
-                      response.headers.get("content-disposition") || "";
-                    const filename =
-                      disposition
-                        ?.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)?.[1]
-                        ?.replace(/['"]/g, "") || upload.file_name;
-                    const downloadUrl = window.URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = downloadUrl;
-                    a.download = filename;
-                    a.style.display = "none";
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    setTimeout(
-                      () => window.URL.revokeObjectURL(downloadUrl),
-                      10000,
-                    );
-                  } catch (e) {
-                    message.error((e as string) ?? "Download failed");
-                    fallbackOpenUrl();
-                  }
-                } catch (e) {
-                  message.error((e as string) ?? "Download failed");
-                }
-              }}
-            >
-              <Download size={14} color="#6A7282" />
-            </Button>
-            <Button
-              size="small"
-              type="text"
-              showShadow={false}
-              onClick={() => {
-                setEditingFile(upload as UploadListRow);
-                setShowEditModal(true);
-              }}
-            >
-              <Pencil size={14} color="#6A7282" />
-            </Button>
-            <Button
-              size="small"
-              type="text"
-              showShadow={false}
-              color="danger"
-              onClick={() => {
-                Modal.confirm({
-                  title: "Delete file",
-                  content: "Are you sure you want to delete this file?",
-                  onOk: async () => {
-                    if (!upload || !upload.id) return;
-                    await deleteMutation.mutateAsync(upload.id);
-                  },
-                });
-              }}
-            >
-              <Trash2 size={14} color="#6A7282" />
-            </Button>
-          </div>
-        );
-      },
+      width: 130,
+      render: (upload) => (
+        <div className="flex gap-1">
+          <Button
+            size="small"
+            type="text"
+            showShadow={false}
+            title="Download"
+            onClick={async () => {
+              try {
+                const { blob, filename } = await downloadMutation.mutateAsync(upload.id);
+                const objectUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = objectUrl;
+                a.download = filename || upload.file_name;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(objectUrl);
+              } catch {
+                message.error("Download failed");
+              }
+            }}
+          >
+            <Download size={14} color="#6A7282" />
+          </Button>
+          <Button
+            size="small"
+            type="text"
+            showShadow={false}
+            title="Rename"
+            onClick={() => {
+              setEditingFile(upload as UploadListRow);
+              setShowEditModal(true);
+            }}
+          >
+            <Pencil size={14} color="#6A7282" />
+          </Button>
+          <Button
+            size="small"
+            type="text"
+            showShadow={false}
+            title="Delete"
+            onClick={() => {
+              Modal.confirm({
+                title: "Delete file",
+                content: "Are you sure you want to delete this file?",
+                onOk: async () => {
+                  if (!upload?.id) return;
+                  await deleteMutation.mutateAsync(upload.id);
+                },
+              });
+            }}
+          >
+            <Trash2 size={14} color="#ef4444" />
+          </Button>
+        </div>
+      ),
     },
   ];
 
@@ -276,22 +245,22 @@ const FileUploadPage = () => {
           >
             <Button icon={<Export w={16} h={16} />}>Export Data</Button>
           </CSVLink>
-          <Button icon={<MoreVertical size={18} />}></Button>
+          {/* <Button icon={<MoreVertical size={18} />}></Button> */}
         </div>
       </div>
-      <div className="flex flex-col gap-3">
-        <div className="bg-primary rounded-xl overflow-hidden p-4">
-          <div className="flex items-center max-w-[300px] gap-2 rounded-lg bg-white px-4 py-3">
+      <div className="bg-white rounded-xl overflow-hidden shadow-sm">
+        <div className="bg-primary px-4 py-3">
+          <div className="flex items-center gap-2 rounded-lg bg-white px-4 py-2">
             <MagnifyingGlass w={18} h={18} />
             <input
               type="text"
-              placeholder="Search"
-              className="w-full bg-transparent! text-sm placeholder:text-gray-500"
+              placeholder="Search file"
+              className="w-full bg-white! outline-none text-sm placeholder:text-gray-400"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-        </div> 
+        </div>
         <DataTable
           columns={columns}
           dataSource={uploadListData?.data}

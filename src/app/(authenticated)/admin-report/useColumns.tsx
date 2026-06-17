@@ -1,47 +1,77 @@
-import { TableColumnsType } from "antd";
-import { Dispatch, SetStateAction } from "react";
-import { Filters } from "./page";
+import { TableColumnsType, Select } from "antd";
 import dayjs from "dayjs";
 
 const useColumns = (
-  filters: Filters,
-  setFilters: Dispatch<SetStateAction<Filters>>,
+  colFilters: Record<string, string>,
+  setColFilters: React.Dispatch<React.SetStateAction<Record<string, string>>>,
 ) => {
+  const setFilter = (key: string, value: string) => {
+    setColFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  // Helper — returns plain JSX (not a component) so React reconciles <input> in-place
+  const textInput = (field: string, placeholder = "Filter…") => (
+    <input
+      type="text"
+      placeholder={placeholder}
+      value={colFilters[field] ?? ""}
+      onChange={(e) => setFilter(field, e.target.value)}
+      onClick={(e) => e.stopPropagation()}
+      className="mt-1 w-full border border-gray-200 rounded-lg px-2 py-0.5 text-xs font-normal bg-white! outline-none focus:border-primary placeholder:text-gray-400"
+    />
+  );
+
   const columns: TableColumnsType = [
     {
       key: "company_name",
       dataIndex: "company_name",
       title: (
         <div>
-          <p className="mb-1">Company</p>
+          <p>Company</p>
+          {textInput("company_name")}
         </div>
       ),
     },
     {
-      key: "name",
+      key: "client_name",
       dataIndex: "client_name",
       title: (
         <div>
-          <p className="mb-1">Client</p>
+          <p>Client</p>
+          {textInput("search", "Search client…")}
         </div>
       ),
     },
     {
-      key: "date",
-      dataIndex: "date",
+      key: "event_date",
+      dataIndex: "event_date",
       title: (
         <div>
-          <p className="mb-1">Event Date</p>
+          <p>Event Date</p>
+          {textInput("event_date", "DD/MM/YYYY")}
         </div>
       ),
-      render: (date) => <>{dayjs(date).format("DD-MM-YYYY")}</>,
+      render: (date) => <>{date ? dayjs(date).format("DD/MM/YYYY") : "—"}</>,
     },
     {
       key: "event_status",
       dataIndex: "event_status",
       title: (
         <div>
-          <p className="mb-1">Event Status</p>
+          <p>Event Status</p>
+          <Select
+            size="small"
+            value={colFilters["event_status"] || undefined}
+            onChange={(val) => setFilter("event_status", val ?? "")}
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            placeholder="All"
+            allowClear
+            className="mt-1 w-full"
+            options={[
+              { value: "confirmed", label: "Confirmed" },
+              { value: "completed", label: "Completed" },
+            ]}
+          />
         </div>
       ),
       render: (value: string) => {
@@ -52,9 +82,7 @@ const useColumns = (
         };
         const classes = map[value] || "bg-gray-100 text-gray-700";
         return (
-          <span
-            className={`${classes} px-3 py-1 rounded-full text-xs font-semibold inline-block`}
-          >
+          <span className={`${classes} px-3 py-1 rounded-full text-xs font-semibold inline-block`}>
             {value}
           </span>
         );
@@ -65,7 +93,8 @@ const useColumns = (
       dataIndex: "dj_name",
       title: (
         <div>
-          <p className="mb-1">DJ</p>
+          <p>DJ</p>
+          {textInput("dj_name")}
         </div>
       ),
     },
@@ -74,7 +103,8 @@ const useColumns = (
       dataIndex: "venue_name",
       title: (
         <div>
-          <p className="mb-1">Venue</p>
+          <p>Venue</p>
+          {textInput("venue_name")}
         </div>
       ),
     },
@@ -83,106 +113,80 @@ const useColumns = (
       dataIndex: "total_price",
       title: (
         <div>
-          <p className="mb-1">Total Price</p>
+          <p>Total Price</p>
+          {textInput("total_price", "£ amount")}
         </div>
       ),
+      render: (v: number) => `£${Number(v || 0).toFixed(2)}`,
     },
     {
       key: "total_cost",
       dataIndex: "total_cost",
       title: (
         <div>
-          <p className="mb-1">Cost</p>
+          <p>Cost</p>
+          {textInput("cost", "£ amount")}
         </div>
       ),
+      render: (v: number) => `£${Number(v || 0).toFixed(2)}`,
     },
     {
       key: "extra_cost",
       dataIndex: "extra_cost",
       title: (
         <div>
-          <p className="mb-1">Extra Cost</p>
+          <p>Extra Cost</p>
+          {textInput("extra_cost", "£ amount")}
         </div>
       ),
+      render: (v: number) => `£${Number(v || 0).toFixed(2)}`,
     },
     {
       key: "profit",
       dataIndex: "profit",
       title: (
         <div>
-          <p className="mb-1">Profit</p>
+          <p>Profit</p>
+          {textInput("profit", "£ amount")}
         </div>
       ),
+      render: (v: number) => `£${Number(v || 0).toFixed(2)}`,
     },
     {
       key: "payment_received",
       dataIndex: "payment_received",
       title: (
         <div>
-          <p className="mb-1">Payment Received</p>
+          <p>Payment Received</p>
+          <input
+            type="text"
+            disabled
+            placeholder="—"
+            className="mt-1 w-full border border-gray-200 rounded-lg px-2 py-0.5 text-xs font-normal bg-white! outline-none opacity-40 cursor-not-allowed"
+          />
         </div>
       ),
+      render: (v: number) => `£${Number(v || 0).toFixed(2)}`,
     },
     {
       key: "payment_remaining",
       dataIndex: "payment_remaining",
       title: (
         <div>
-          <p className="mb-1">Payment Outstanding</p>
+          <p>Payment Outstanding</p>
+          <input
+            type="text"
+            disabled
+            placeholder="—"
+            className="mt-1 w-full border border-gray-200 rounded-lg px-2 py-0.5 text-xs font-normal bg-white! outline-none opacity-40 cursor-not-allowed"
+          />
         </div>
       ),
+      render: (v: number) => `£${Number(v || 0).toFixed(2)}`,
     },
   ];
 
-  const data = [
-    {
-      key: "1",
-      company: "USI Music Ltd",
-      client: "Gugan Sangha",
-      eventDate: "02/08/2025",
-      eventStatus: "COMPLETED",
-      dj: "DJ Neetu",
-      venue: "Sandon Hall",
-      totalPrice: 9500,
-      cost: 792,
-      extraCost: 8708,
-      profit: 9500,
-      paymentReceived: 0,
-      paymentOutstanding: 0,
-    },
-    {
-      key: "2",
-      company: "USI Music Ltd",
-      client: "Margot Ghose",
-      eventDate: "25/04/2025",
-      eventStatus: "CANCELLED",
-      dj: "DJ Neetu",
-      venue: "TBC",
-      totalPrice: 8500,
-      cost: 0,
-      extraCost: 8500,
-      profit: 500,
-      paymentReceived: 0,
-      paymentOutstanding: 9000,
-    },
-    {
-      key: "3",
-      company: "USI Holding Ltd",
-      client: "Arjun Singh",
-      eventDate: "03/05/2025",
-      eventStatus: "COMPLETED",
-      dj: "DJ Neetu",
-      venue: "Rose Gardens",
-      totalPrice: 9500,
-      cost: 525,
-      extraCost: 895,
-      profit: 0,
-      paymentReceived: 0,
-      paymentOutstanding: 9500,
-    },
-  ];
-
-  return { columns, data };
+  return { columns };
 };
 
 export default useColumns;

@@ -8,6 +8,23 @@ import Image from "next/image";
 
 const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEventData; isModifyMode?: boolean; onSignatureChange?: (uri: string | null) => void }) => {
   const padRef = useRef<SignaturePadHandle | null>(null);
+
+  // Find the client signature URL across ALL contracts/signatures (not just [0]),
+  // since contract ordering isn't guaranteed and a signed contract may not be first.
+  const clientSignatureUrl = (() => {
+    if (!Array.isArray(data?.contracts)) return null;
+    for (const c of data.contracts) {
+      if (!Array.isArray(c?.signatures)) continue;
+      for (const s of c.signatures) {
+        if (s?.signature_url) return String(s.signature_url);
+      }
+    }
+    return null;
+  })();
+
+  const adminSignatureUrl =
+    data?.company_names?.admin_signature_url ?? data?.company?.admin_signature_url ?? null;
+
   return (
     <div className="md:mx-[150px] mx-10">
       
@@ -37,26 +54,80 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
             <strong>Event Date:</strong> {data?.date ? dayjs(data.date).format("DD/MM/YYYY") : "—"}
           </p>
           <p>
-            {/* <strong>Event Date:</strong> {dayjs(data.date).format("DD/MM/YYYY")} */}
+            <strong>Package Price:</strong>{" "}
+            {data?.total_cost_for_equipment != null && data.total_cost_for_equipment !== ""
+              ? `£${Number(data.total_cost_for_equipment).toLocaleString("en-GB")}`
+              : "—"}
+          </p>
+        </div>
+
+        {/* Package summary (DJ name) + details (basics then extras, with extras notes) */}
+        {Array.isArray(data?.event_packages) && data.event_packages.length > 0 && (
+          <div className="text-left mt-3">
+            <p className="font-bold">{data?.dj_name || data?.dj_package_name || ""}</p>
+            <ul className="list-disc pl-6">
+              {data.event_packages
+                .slice()
+                .sort((a, b) => Number(a.package_type_id) - Number(b.package_type_id))
+                .map((p) => {
+                  const qty = p.quantity && p.quantity > 1 ? `${p.quantity} X ` : "";
+                  const name = p.equipment?.name ?? p.name ?? p.package_name ?? "Item";
+                  return (
+                    <li key={String(p.id)}>
+                      {qty}
+                      {name}
+                      {Number(p.package_type_id) === 2 && p.notes ? (
+                        <span className="block text-sm text-gray-600 whitespace-pre-line">
+                          {p.notes}
+                        </span>
+                      ) : null}
+                    </li>
+                  );
+                })}
+            </ul>
+          </div>
+        )}
+
+        {/* Deposit + bank payment instructions (matches Laravel) */}
+        <div className="pt-3">
+          <p>
+            Deposit payable £
+            {data?.deposit_amount != null && data.deposit_amount !== ""
+              ? Number(data.deposit_amount).toLocaleString("en-GB")
+              : "—"}{" "}
+            on signature of Contract. Remaining balance of price payable 1 week before the event.
+          </p>
+          <p className="text-red-600">
+            Please make payment to: Account Name: USR Music Ltd, Account No: 10265352, Sort Code:
+            60-83-71
           </p>
         </div>
       </div>
+
+      {/* Intro paragraph (Laravel header → terms transition) */}
+      <hr className="my-6 border-0 h-0.5 bg-black" />
+      <p className="text-base text-gray-800">
+        This contract is made up of these Contract Details above and the terms and conditions below
+        (the &ldquo;Contract&rdquo;). The Contract has been entered into on the date stated at the
+        beginning of it. By signing the below you agree to have read, understood and accept the terms
+        of the Contract.
+      </p>
       {/* Signature header removed — replaced by structured signature blocks below */}
       <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
         {/* Company / Admin column */}
         <div>
-          <p className="text-[11pt] font-semibold">
-            Signed by <span className="font-bold">{data?.company?.name || "USR Music Ltd"}</span>
+          <p className="text-[11pt] font-semibold text-center">
+            Signed by <span className="font-bold">Gurpreet Sanghera</span>
             <br />
-            <span className="text-sm">for and on behalf of Company</span>
+            <span className="text-sm">for and on behalf of USR</span>
           </p>
 
           <div className="mt-3 bg-white rounded-md border border-gray-200 p-4 text-center">
             <div className="h-32 flex items-center justify-center bg-gray-50">
-              {data?.company?.admin_signature_url ? (
+              {adminSignatureUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={String(data.company.admin_signature_url)}
+                  src={String(adminSignatureUrl)}
                   alt="Company signature"
                   className="max-h-full max-w-full object-contain"
                 />
@@ -70,7 +141,7 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
 
         {/* Client column */}
         <div>
-          <p className="text-[11pt] font-semibold">
+          <p className="text-[11pt] font-semibold text-center">
             Signed by <span className="font-bold">{data?.users_events_user_idTousers?.name || "Client"}</span>
             <br />
             <span className="text-sm">for and on behalf of Client</span>
@@ -86,7 +157,7 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
                     width={360}
                     height={120}
                     className="mx-auto"
-                    onChange={(empty) => onSignatureChange?.(empty ? null : padRef.current?.toDataURL() ?? null)}
+                    onChange={(empty, dataUrl) => onSignatureChange?.(empty ? null : dataUrl)}
                   />
                   <div className="mt-2 flex justify-end">
                     <button
@@ -103,10 +174,10 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
                 </div>
               ) : (
                 // show existing client signature image if present
-                (Array.isArray(data?.contracts) && data.contracts[0] && Array.isArray(data.contracts[0].signatures) && data.contracts[0].signatures[0]?.signature_url) ? (
+                clientSignatureUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={String(data.contracts[0].signatures[0].signature_url)}
+                    src={clientSignatureUrl}
                     alt="Client signature"
                     className="max-h-full max-w-full object-contain"
                   />
@@ -273,38 +344,95 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
             <p className="pl-4">
               USR may cancel the Contract with immediate effect if:
               <br />
-              (i) You fail to make any payments...
+              (i) You fail to make any payments as specified in the Contract
+              Details; or
               <br />
-              (ii) You commit a serious breach...
+              (ii) You commit a serious breach of any term of this Contract.
+            </p>
+          </div>
+          <div className="flex">
+            <span className="font-bold w-10 shrink-0">5.5</span>
+            <p className="pl-4">
+              You may end your contract with us. However, your rights to any
+              refund of the Price, or part thereof, will depend on when you
+              decide to end your Contract or the reason in which the contract is
+              ended. If you wish to cancel your Event, for whatever reason, you
+              must contact us in writing (which can be by email to
+              info@uniquesoundz.co.uk). Unless we agree otherwise with you, your
+              cancellation will come into effect on the date that we confirm
+              receipt of your request to cancel.
+            </p>
+          </div>
+          <div className="flex">
+            <span className="font-bold w-10 shrink-0">5.6</span>
+            <p className="pl-4">
+              Except where we are at fault, if you cancel your Event or this
+              Contract, you agree that the Cancellation Costs set out in the
+              Cancellation Costs Table (below) will apply and you agree that they
+              will be payable by you to us.
+            </p>
+          </div>
+          <div className="flex">
+            <span className="font-bold w-10 shrink-0">5.7</span>
+            <p className="pl-4">
+              <strong>
+                <u>
+                  CANCELLATIONS COSTS TABLE – FOR CANCELLATIONS WHERE WE ARE NOT
+                  AT FAULT
+                </u>
+              </strong>
+              <br />
+              The below Cancellation Costs have been carefully calculated as a
+              pre-estimate only of our losses that directly result from your
+              Event cancellation. This includes the costs of Services provided to
+              you before cancellation, the unavoidable expenses we will incur and
+              our direct loss of profit (including the value of your booked date
+              and likelihood of us being able to rebook your cancelled Event).
             </p>
           </div>
         </div>
-        {/* Table */}
-        <div className="pl-14">
+        {/* Cancellation Costs Table (full, matches Laravel) */}
+        <div className="pl-14 space-y-2">
           <table className="w-full border border-gray-300 text-sm">
             <thead>
               <tr className="bg-gray-100">
                 <th className="border p-2 text-left">
                   Date of Client Cancellation
                 </th>
-                <th className="border p-2 text-left">Cancellation Costs</th>
+                <th className="border p-2 text-left">
+                  Cancellation Costs calculated as a percentage (%) of the Price
+                  payable for the Event, as confirmed in the Contract Details.
+                </th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td className="border p-2">More than 8 months</td>
-                <td className="border p-2">£1000</td>
+                <td className="border p-2">More than 8 months before Event Date</td>
+                <td className="border p-2">£1000 Cancellation Charge</td>
               </tr>
               <tr>
-                <td className="border p-2">4–8 months</td>
-                <td className="border p-2">50%</td>
+                <td className="border p-2">4–8 months before Event Date</td>
+                <td className="border p-2">50% of Price payable</td>
               </tr>
               <tr>
-                <td className="border p-2">0–3 months</td>
-                <td className="border p-2">100%</td>
+                <td className="border p-2">0–3 months before Event Date</td>
+                <td className="border p-2">100% of Price payable</td>
+              </tr>
+              <tr>
+                <td className="border p-2" colSpan={2}>
+                  Please Note: For very late cancellations you may also be
+                  required to pay compensation to us for additional unavoidable
+                  costs we incur as a result of your cancellation, if our costs
+                  exceed the above Cancellation Costs. For example, for staffing,
+                  pre-purchased products.
+                </td>
               </tr>
             </tbody>
           </table>
+          <p>
+            The above Cancellation Costs will not apply if you cancel because we
+            have breached our own obligations to you under your Contract.
+          </p>
         </div>
         {/* 6 */}
         <div className="font-bold flex">

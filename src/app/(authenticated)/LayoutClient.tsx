@@ -8,16 +8,16 @@ const EXPANDED_PX = 240; // approximate expanded width
 const GAP_PX = 16;
 
 export default function LayoutClient({ children }: PropsWithChildren) {
-  const [expanded, setExpanded] = useState<boolean>(() => {
-    try {
-      const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('sidebar-expanded') : null;
-      return raw === '1';
-    } catch {
-      return false;
-    }
-  });
+  // Always start collapsed to match SSR, then sync from localStorage after mount
+  const [expanded, setExpanded] = useState<boolean>(false);
 
   useEffect(() => {
+    try {
+      setExpanded(localStorage.getItem('sidebar-expanded') === '1');
+    } catch {
+      // ignore
+    }
+
     function onToggle(e: Event) {
       const ev = e as CustomEvent<{ expanded: boolean }>;
       if (ev?.detail && typeof ev.detail.expanded === 'boolean') setExpanded(ev.detail.expanded);

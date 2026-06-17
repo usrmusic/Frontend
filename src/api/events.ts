@@ -131,7 +131,6 @@ export const useUpdateConfirmEvent = () => {
     },
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["confirm-event", id] });
-      toast.success("Event updated successfully");
     },
   });
 };

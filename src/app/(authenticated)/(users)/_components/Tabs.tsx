@@ -15,7 +15,7 @@ const tabData = [
   { label: "Packages", href: "/packages?title=Packages", className: "w-23.5" },
   { label: "Company", href: "/company?title=Company", className: "w-23.5" },
   {
-    label: "Manange Access",
+    label: "Manage Access",
     href: "/manage-access?title=Manage%20Access",
     className: "w-33.75",
   },

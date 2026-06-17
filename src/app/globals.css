@@ -156,9 +156,25 @@ textarea {
 
 /* components override */
 .ant-select {
-  border-radius: 8px !important;
-  height: 40px;
+  border-radius: 12px !important;
   border: none;
+}
+
+/* Regular form selects: enforce 40px height via ThemeConfig controlHeight.
+   Pagination page-size selector must stay at its natural (smaller) height. */
+.ant-pagination-options .ant-select {
+  height: auto !important;
+}
+
+.green-header-modal .ant-modal-content {
+  padding: 0 !important;
+  overflow: hidden;
+  border-radius: 16px !important;
+}
+
+.green-header-modal .ant-modal-header {
+  margin-bottom: 0 !important;
+  border-radius: 16px 16px 0 0 !important;
 }
 
 @media print {

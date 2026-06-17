@@ -14,8 +14,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${raleway.variable} ${poppins.variable} antialiased`}>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${raleway.variable} ${poppins.variable} antialiased`} suppressHydrationWarning>
         <ClientProviders>{children}</ClientProviders>
       </body>
     </html>

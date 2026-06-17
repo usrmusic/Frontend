@@ -21,7 +21,7 @@ import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { deleteCookie } from "cookies-next";
-import { useState, type MouseEvent, type ReactNode } from "react";
+import { useState, useEffect, type MouseEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import Avatar from "@/src/components/common/Avatar";
@@ -62,17 +62,16 @@ const Sidebar = () => {
     visible: false,
   });
 
-  const [expanded, setExpanded] = useState<boolean>(() => {
+  // Always start collapsed to match SSR, then sync from localStorage after mount
+  const [expanded, setExpanded] = useState<boolean>(false);
+
+  useEffect(() => {
     try {
-      const raw =
-        typeof localStorage !== "undefined"
-          ? localStorage.getItem("sidebar-expanded")
-          : null;
-      return raw === "1";
+      setExpanded(localStorage.getItem("sidebar-expanded") === "1");
     } catch {
-      return false;
+      // ignore
     }
-  });
+  }, []);
 
   const handleToggle = (next: boolean) => {
     try {
@@ -135,7 +134,7 @@ const Sidebar = () => {
         { href: "/completed-events", icon: <TbReportSearch size={20} />, label: "Completed Events", permission: "complete event" },
         { href: "/file-upload", icon: <TbFileUpload size={20} />, label: "File Upload", permission: "file upload" },
         { href: "/downloads", icon: <TbFileDownload size={20} />, label: "Downloads", permission: "downloads" },
-        { href: "/suppliers-report", icon: <TbReportMedical size={20} />, label: "Suppliers Report", permission: "supplier reporting" },
+        // { href: "/suppliers-report", icon: <TbReportMedical size={20} />, label: "Suppliers Report", permission: "supplier reporting" },
         { href: "/admin-report", icon: <TbReportAnalytics size={20} />, label: "Admin Report", permission: "admin reporting" },
         { href: "/users?title=Users", icon: <Contacts />, label: "Users", permissionAny: ["user", "manage access"] },
       ],
