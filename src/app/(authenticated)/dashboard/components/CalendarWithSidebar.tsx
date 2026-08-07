@@ -2,7 +2,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "antd";
-import { DayPicker, type DayButtonProps } from "react-day-picker";
+import {
+  DayPicker,
+  getDefaultClassNames,
+  type DayButtonProps,
+} from "react-day-picker";
 import "react-day-picker/dist/style.css";
 import {
   addMonths,
@@ -65,6 +69,8 @@ type CalendarEvent = {
   users_events_dj_idTousers?: { id?: number; name?: string | null } | null;
 };
 
+const defaultClassNames = getDefaultClassNames();
+
 const getLocalMidday = (d?: string | Date | null) => {
   if (!d) return null;
   let date: Date | null = null;
@@ -116,13 +122,6 @@ function CalendarWithSidebar({
     });
     return map;
   }, [events]);
-
-  const dotDays =
-    events && events.length
-      ? (events
-          .map((e) => getLocalMidday(e.date))
-          .filter(Boolean) as Date[])
-      : [];
 
   useEffect(() => {
     if (!events || !events.length) return;
@@ -206,11 +205,24 @@ function CalendarWithSidebar({
   });
 
   const CustomDayButton = (props: DayButtonProps) => {
-    const { day, modifiers: _modifiers, ...buttonProps } = props;
+    const {
+      day,
+      modifiers: _modifiers,
+      children,
+      className,
+      ...buttonProps
+    } = props;
     const iso = getDateKey(day.date);
     const dayEvents = eventsByDate.get(iso) || [];
 
-    const button = <button {...buttonProps} />;
+    /* The event dot is rendered here rather than through `modifiersClassNames`
+       so it is guaranteed to appear on exactly the days we have events for. */
+    const button = (
+      <button {...buttonProps} className={className}>
+        {children}
+        {dayEvents.length > 0 && <span aria-hidden className="usr-event-dot" />}
+      </button>
+    );
     if (!dayEvents.length) return button;
 
     return (
@@ -321,22 +333,16 @@ function CalendarWithSidebar({
           weekStartsOn={1}
           locale={enGB}
           className="bg-transparent! w-full"
+          /* NOTE: `classNames` REPLACES react-day-picker's own class for each
+             key, so every entry must keep its `rdp-*` default — the calendar's
+             grid layout lives in globals.css and is keyed off those classes. */
           classNames={{
-            table: "w-full table-fixed border-collapse",
-            head_row: "table-row",
-            head_cell: "table-cell py-2 text-center text-[12px] text-gray-400",
-            row: "table-row",
-            cell: "table-cell align-top p-0",
-            day: "transition-all cursor-pointer text-[13px] text-gray-700",
-            day_selected:
-              "bg-primary text-blue-600 font-semibold bg-white rounded-md inline-flex items-center justify-center",
-            day_today: "bg-gray-100 text-gray-900 font-semibold rounded-md",
-            day_outside: "text-gray-300",
-            day_disabled: "text-gray-300",
-          }}
-          modifiers={{ dot: dotDays }}
-          modifiersClassNames={{
-            dot: "relative after:absolute after:left-1/2 after:-translate-x-1/2 after:bottom-2 after:w-1.5 after:h-1.5 after:rounded-full after:bg-blue-600",
+            weekday: `${defaultClassNames.weekday} py-2 text-[12px] font-normal text-gray-400`,
+            day: `${defaultClassNames.day} text-[13px] text-gray-700`,
+            day_button: `${defaultClassNames.day_button} cursor-pointer transition-colors`,
+            today: `${defaultClassNames.today} font-semibold`,
+            outside: `${defaultClassNames.outside} text-gray-300`,
+            disabled: `${defaultClassNames.disabled} text-gray-300`,
           }}
           components={{ MonthCaption: () => <></>, DayButton: CustomDayButton }}
         />
