@@ -100,58 +100,125 @@ textarea {
   /* Chrome, Safari */
 }
 
-.rdp-weekdays {
-  display: flex !important;
-  justify-content: space-between !important;
+/* ── Dashboard mini-calendar (react-day-picker v9) ──────────────────────────
+   The picker renders a real table:
+     table.rdp-month_grid
+       > thead            > tr.rdp-weekdays > th.rdp-weekday
+       > tbody.rdp-weeks  > tr.rdp-week     > td.rdp-day > button.rdp-day_button
+
+   We flatten it to CSS Grid so the seven columns are always equal fractions of
+   the card width. Grid (rather than flex + space-between, which sizes each cell
+   to its own content) keeps columns aligned with each other and stops dates
+   spilling outside the card at any window width or browser zoom level. */
+/* react-day-picker ships a blue accent by default; retint its design tokens to
+   the app's sage-green theme so selection, "today" and focus rings all match. */
+.dashboard-calendar .rdp-root {
+  --rdp-accent-color: var(--color-primary);
+  --rdp-accent-background-color: rgba(113, 153, 132, 0.12);
+  --rdp-today-color: #507160;
+  --rdp-selected-border: none;
+  --rdp-day_button-border: none;
+  --rdp-day_button-border-radius: 12px;
 }
 
-.rdp-week {
-  display: flex !important;
-  justify-content: space-between !important;
+.dashboard-calendar .rdp-root,
+.dashboard-calendar .rdp-months,
+.dashboard-calendar .rdp-month {
+  width: 100%;
+  max-width: 100%;
 }
 
-.rdp-weeks,
-.rdp-months,
-.rdp-month {
-  max-width: 100% !important;
-  width: 100% !important;
-}
-
-.rdp-root {
-  max-width: 100% !important;
-}
-
-.rdp-day_button {
-  max-width: 32px !important;
-  border-radius: 12px !important;
-}
-
-.rdp-selected .rdp-day_button {
-  background: linear-gradient(to bottom left, #89A495, #507160) !important;
-  color: #ffffff !important;
-  border: none !important;
-  font-weight: 400 !important;
-  font-size: 13px !important;
-
-}
-
-.rdp-day_button:hover {
-  background-color: #E5E5E5 !important;
-}
-
-.rdp-day_button:after {
-  bottom: 5px !important;
-}
-
-.rdp-month_grid {
-  display: block !important;
-  max-width: 100% !important;
-}
-
+.dashboard-calendar .rdp-month_grid,
 .dashboard-calendar thead,
-.dashboard-calendar tbody {
-  display: block !important;
-  max-width: 100% !important;
+.dashboard-calendar .rdp-weeks {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+}
+
+.dashboard-calendar .rdp-weekdays,
+.dashboard-calendar .rdp-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  width: 100%;
+}
+
+/* Every column is one grid track, so centring the cell content is what makes
+   each date sit directly under its weekday heading. */
+.dashboard-calendar .rdp-weekday,
+.dashboard-calendar .rdp-day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 0;
+  text-align: center;
+}
+
+/* Square, fluid day cells that shrink with the card but never exceed 32px. */
+.dashboard-calendar .rdp-day_button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 32px;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  margin-inline: auto;
+  padding: 0;
+  border: none;
+  border-radius: 12px;
+  line-height: 1;
+}
+
+.dashboard-calendar .rdp-selected .rdp-day_button {
+  background: linear-gradient(to bottom left, #89A495, #507160);
+  color: #ffffff;
+  font-weight: 400;
+  font-size: 13px;
+}
+
+/* Today's date keeps its highlight, retinted from the library's default blue to
+   the theme's sage green. `:not(.rdp-selected)` so the selected pill wins when
+   today is also the selected day. */
+.dashboard-calendar .rdp-today:not(.rdp-selected) .rdp-day_button {
+  background-color: rgba(113, 153, 132, 0.16);
+  color: #507160;
+  font-weight: 600;
+}
+
+.dashboard-calendar .rdp-day:not(.rdp-selected) .rdp-day_button:hover {
+  background-color: #E5E5E5;
+}
+
+/* "Has an event" marker, rendered inside the day button by CalendarWithSidebar.
+   It sits below the date number and is inset from the button's bottom edge so it
+   stays inside the selected pill rather than clipping against it. */
+.dashboard-calendar .usr-event-dot {
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background-color: var(--color-primary);
+  pointer-events: none;
+}
+
+/* On the selected (dark green) day the green dot would disappear. */
+.dashboard-calendar .rdp-selected .usr-event-dot {
+  background-color: #ffffff;
+}
+
+.dashboard-calendar .rdp-outside .usr-event-dot {
+  opacity: 0.4;
+}
+
+/* Nudge the date number up so it never sits on top of the dot. */
+.dashboard-calendar .rdp-day_button {
+  padding-bottom: 4px;
 }
 
 /* components override */
