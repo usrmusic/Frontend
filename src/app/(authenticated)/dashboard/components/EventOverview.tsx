@@ -92,13 +92,13 @@ export default function EventOverview({
       className="col-span-12 xl:col-span-6 p-0 overflow-hidden rounded-3xl bg-white"
       style={{ boxShadow: "0px 1px 3px 0px #0000001A" }}
     >
-      <div className="flex items-center justify-between p-5 text-white rounded-t-3xl">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-4 text-white rounded-t-3xl">
         <div className="flex items-center gap-3">
-          <h4 className="font-poppins text-base font-semibold text-gray-900">
+          <h4 className="font-poppins text-base font-semibold text-gray-900 whitespace-nowrap">
             Event Overview
           </h4>
         </div>
-        <div className="w-72">
+        <div className="w-full sm:w-64 md:w-72">
           <Input
             placeholder="Search upcoming events"
             allowClear
@@ -109,14 +109,14 @@ export default function EventOverview({
         </div>
       </div>
 
-      <div className="px-5 pb-5">
-        <div className="overflow-hidden rounded-2xl border border-gray-50 [&_.ant-table]:text-sm [&_.ant-table-thead_th]:text-sm [&_.ant-table-tbody_td]:text-sm">
+      <div className="px-4 pb-4">
+        <div className="overflow-hidden overflow-x-auto rounded-2xl border border-gray-50 [&_.ant-table]:text-sm [&_.ant-table-thead_th]:text-sm [&_.ant-table-tbody_td]:text-sm [&_.ant-table-thead_th]:whitespace-nowrap [&_.ant-table-tbody_td]:whitespace-nowrap">
           {isLoading ? (
             <div className="h-44 flex items-center justify-center">
               <Spin size="large" />
             </div>
           ) : (
-            <div className="max-h-[300px] overflow-auto no-scrollbar">
+            <div className="max-h-[220px] xl:max-h-[260px] overflow-auto no-scrollbar">
               <Table<UpcomingEventRow>
                 size="small"
                 pagination={false}

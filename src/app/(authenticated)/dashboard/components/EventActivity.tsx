@@ -19,7 +19,7 @@ export default function EventActivity({
   isLoading,
 }: EventActivityProps) {
   return (
-    <Card variant="white" className="col-span-12 lg:col-span-3 flex flex-col shadow-sm">
+    <Card variant="white" className="col-span-12 lg:col-span-3 flex flex-col shadow-sm p-4">
       <div className="mb-3 flex items-center justify-between">
         <div>
           <h4 className="font-poppins text-base font-semibold text-gray-900">
@@ -27,7 +27,7 @@ export default function EventActivity({
           </h4>
         </div>
       </div>
-      <ul className="mb-4 no-scrollbar text-sm max-h-[280px] overflow-auto">
+      <ul className="mb-4 no-scrollbar text-sm max-h-[260px] overflow-auto">
         {isLoading ? (
           <li className="flex items-center py-2">
             <Skeleton active paragraph={false} />
