@@ -121,54 +121,96 @@ textarea {
   --rdp-day_button-border-radius: 12px;
 }
 
+/* Calendar sizing is intentionally *static*, not stretched to match
+   whatever height its taller grid siblings (Open Enquiry, Event Activity)
+   happen to end up at — matching a dynamic sibling height made the calendar
+   balloon or compress unpredictably depending on how much list content those
+   cards had. Instead the row gap below is tuned so the calendar's own
+   natural content height lands close to its siblings' typical height. Any
+   small leftover mismatch from CSS Grid's row-stretch is an acceptable,
+   minor difference rather than something actively fought with flex-fill. */
 .dashboard-calendar .rdp-root,
 .dashboard-calendar .rdp-months,
 .dashboard-calendar .rdp-month {
-  width: 100%;
-  max-width: 100%;
+  width: 100% !important;
+  max-width: 100% !important;
 }
 
 .dashboard-calendar .rdp-month_grid,
-.dashboard-calendar thead,
+.dashboard-calendar thead {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
 .dashboard-calendar .rdp-weeks {
-  display: block;
-  width: 100%;
-  max-width: 100%;
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  /* The actual "increase the gap between rows" ask — this is what grows the
+     calendar's own natural height. Tuned to bring it close to its sibling
+     cards' typical height without making the rows look sparse. */
+  gap: 8px;
 }
 
 .dashboard-calendar .rdp-weekdays,
 .dashboard-calendar .rdp-week {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  width: 100%;
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  width: 100% !important;
 }
 
-/* Every column is one grid track, so centring the cell content is what makes
-   each date sit directly under its weekday heading. */
-.dashboard-calendar .rdp-weekday,
-.dashboard-calendar .rdp-day {
-  display: flex;
+/* react-day-picker's own stylesheet hard-codes `.rdp-day { width: 44px;
+   height: 44px }` (via --rdp-day-width/height). `CalendarWithSidebar.tsx`
+   imports that stylesheet directly, and Next.js bundles component-level CSS
+   *after* this root globals.css file — so at equal specificity (one class
+   vs. one class) the library's rule always wins in the final stylesheet,
+   no matter what this file says. That's what kept pinning every cell to
+   44px and spilling the grid past the card edge even after this rule was
+   "fixed" once already. `!important` is the only reliable way to win
+   against a same-specificity rule whose source order we don't control. */
+.dashboard-calendar .rdp-weekday {
+  display: flex !important;
   align-items: center;
   justify-content: center;
+  width: 100% !important;
+  height: auto !important;
   min-width: 0;
-  padding: 0;
+  /* The library also sets --rdp-weekday-padding: 0.5rem 0 on `.rdp-weekday`,
+     which — same import-order issue — adds 16px of dead vertical space per
+     header row unless this wins too. */
+  padding: 4px 0 !important;
   text-align: center;
 }
 
-/* Square, fluid day cells that shrink with the card but never exceed 32px. */
+.dashboard-calendar .rdp-day {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 100% !important;
+  height: auto !important;
+  min-width: 0;
+  padding: 0 !important;
+  text-align: center;
+}
+
+/* Square, fluid day cells that shrink with the card but never exceed 32px.
+   Same import-order problem as above (library sets a fixed 42px), so the
+   sizing properties need !important here too. */
 .dashboard-calendar .rdp-day_button {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
+  width: 100% !important;
   max-width: 32px;
-  height: auto;
+  height: auto !important;
   aspect-ratio: 1 / 1;
   margin-inline: auto;
   padding: 0;
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   line-height: 1;
 }
 

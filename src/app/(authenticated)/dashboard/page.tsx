@@ -71,7 +71,7 @@ const DashboardPage = () => {
   };
 
   return (
-    <div className="mt-8 space-y-6">
+    <div className="mt-6 space-y-4">
       {/* Stat Cards Row */}
       <StatCardsRow
         totalEvents={dashboard?.totalEvents ?? 0}
@@ -90,7 +90,7 @@ const DashboardPage = () => {
       />
 
       {/* Top grid: Event Overview + right side stats */}
-      <div className="grid grid-cols-12 gap-6 items-stretch h-full min-h-[300px]">
+      <div className="grid grid-cols-12 gap-4 items-stretch h-full min-h-0 xl:min-h-[260px]">
         {/* Event Overview */}
         <EventOverview
           events={upcomingData || []}
@@ -140,7 +140,7 @@ const DashboardPage = () => {
       </div>
 
       {/* Bottom grid: Open Enquiry + Calendar + Activities */}
-      <div className="grid grid-cols-12 gap-6 pb-4">
+      <div className="grid grid-cols-12 gap-4 pb-4">
         {/* Open Enquiry Component */}
         <OpenEnquiriesList
           enquiries={dashboard?.openEnquiries}
@@ -155,7 +155,7 @@ const DashboardPage = () => {
         {/* Calendar */}
         <Card
           variant="white"
-          className="dashboard-calendar col-span-12 lg:col-span-4 shadow-sm p-0 rounded-2xl bg-[#F6F5F0]"
+          className="dashboard-calendar col-span-12 lg:col-span-5 2xl:col-span-4 shadow-sm p-0 rounded-2xl bg-[#F6F5F0]"
         >
           <CalendarWithSidebar events={dashboard?.calendarEvents} isLoading={dashboardLoading} />
         </Card>

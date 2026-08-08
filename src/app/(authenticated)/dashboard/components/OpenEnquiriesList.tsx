@@ -86,7 +86,15 @@ export default function OpenEnquiriesList({
   const visibleCount = filteredEnquiries.length;
 
   return (
-    <Card variant="white" className="col-span-12 lg:col-span-5 shadow-sm p-4">
+    <Card
+      variant="white"
+      /* Calendar needs more room than Open Enquiry specifically in the
+         lg → 2xl band (~1024–1535px) — that's where 7 date columns get
+         cramped enough to overlap. At 2xl+ there's plenty of width either
+         way, so it reverts to the original, slightly wider Open Enquiry
+         proportions. */
+      className="col-span-12 lg:col-span-4 2xl:col-span-5 shadow-sm p-4"
+    >
       <div className="mb-3 flex items-center justify-between">
         <p className="text-base font-semibold text-gray-900">
           Open Enquiry (
@@ -116,7 +124,7 @@ export default function OpenEnquiriesList({
           ) : !filteredEnquiries?.length ? (
         <div className="text-sm text-gray-500">No open enquiries.</div>
       ) : (
-        <ul className="space-y-2 no-scrollbar text-sm max-h-[300px] overflow-auto">
+        <ul className="space-y-2 no-scrollbar text-sm max-h-[260px] overflow-auto">
           {filteredEnquiries.map((enq: OpenEnquiry, idx: number) => {
             const clientName =
               enq.users_events_user_idTousers?.name ??

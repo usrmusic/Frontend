@@ -54,7 +54,7 @@ export default function PendingPayments({
   };
 
   return (
-    <Card variant="white" className="flex flex-col h-full">
+    <Card variant="white" className="p-4 flex flex-col h-full">
       <div className="flex flex-col flex-1 justify-start h-full">
         <h4 className="mb-3 font-poppins text-base font-semibold text-gray-900 flex items-center min-h-8">Pending Payment</h4>
         {isLoading ? (
@@ -66,7 +66,7 @@ export default function PendingPayments({
             No pending payments.
           </div>
         ) : (
-          <ul className="space-y-2 no-scrollbar text-sm flex-1 max-h-[320px] overflow-auto">
+          <ul className="space-y-2 no-scrollbar text-sm flex-1 max-h-[260px] overflow-auto">
             {payments.map((p) => (
               <li
                 key={p.id}
