@@ -9,6 +9,7 @@ import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
+import { MoreVertical, X } from "lucide-react";
 import { useFormik } from "formik";
 import { Select, DatePicker, TableColumnsType, InputNumber } from "antd";
 import type { TableRowSelection } from "antd/es/table/interface";
@@ -41,6 +42,7 @@ interface CompanyOption {
 const OpenEnquiryPage = () => {
   const [params, setParams] = useState(initialParams);
   const [modalOpen, setModalOpen] = useState(false);
+  const [showSidebarDrawer, setShowSidebarDrawer] = useState(false);
   const [buttonLoading, setButtonLoading] = useState<string | null>(null);
   const [modalTemplate, setModalTemplate] = useState<unknown | null>(null);
   const [modalCompanies, setModalCompanies] = useState<Array<{
@@ -360,14 +362,23 @@ const OpenEnquiryPage = () => {
           >
             Send Quote
           </Button>
+          <Button
+            type="default"
+            htmlType="button"
+            className="themeDefaultButton"
+            onClick={() => setShowSidebarDrawer(true)}
+            aria-label="Open notes and deposit panel"
+          >
+            <MoreVertical size={14} />
+          </Button>
         </div>
       </div>
 
       {/* Main body */}
-      <div className="grid grid-cols-12 gap-6">
+      <div>
 
         {/* Table section */}
-        <div className="col-span-12 xl:col-span-9">
+        <div>
           <div className="bg-white rounded-xl overflow-hidden shadow-sm">
             {/* Green header with search */}
             <div className="bg-primary px-4 py-3">
@@ -415,114 +426,156 @@ const OpenEnquiryPage = () => {
           </div>
         </div>
 
-        {/* Sidebar */}
-        <div className="col-span-12 xl:col-span-3 flex flex-col gap-4">
+      </div>
 
-          {/* Note input + Add button */}
-          <div className="flex gap-2 items-stretch">
-            <textarea
-              placeholder="Add a note..."
-              rows={3}
-              className="flex-1 bg-white rounded-xl px-4 py-3 text-sm outline-none shadow-sm placeholder:text-gray-400 resize-none border border-transparent focus:border-primary/30 transition-colors"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
-            <button
-              className="bg-primary text-white rounded-xl px-5 text-sm font-medium shadow-sm disabled:opacity-40 transition-opacity flex items-center justify-center min-w-[52px]"
-              disabled={!selectedRowKeys.length || !note.trim() || addingNote}
-              onClick={hanldeAddNote}
-            >
-              {addingNote ? (
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
-                </svg>
-              ) : "Add"}
-            </button>
-          </div>
+      {/* Notes + Deposit drawer — opened via the 3-dot button */}
+      <div
+        className={`fixed inset-0 z-50 pointer-events-none transition-all duration-300 ${showSidebarDrawer ? "opacity-100" : "opacity-0"}`}
+        aria-hidden={!showSidebarDrawer}
+      >
+        <div
+          className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${showSidebarDrawer ? "opacity-100 pointer-events-auto" : "opacity-0"}`}
+          onClick={() => setShowSidebarDrawer(false)}
+        ></div>
 
-          {/* Recent Activities */}
-          <div className="bg-white rounded-xl overflow-hidden shadow-sm">
-            <p className="text-sm font-medium text-gray-700 px-4 pt-3 pb-2">Recent activites</p>
-            <div className="px-3 pb-3 h-56 overflow-y-auto no-scrollbar space-y-2">
-              {selectedRowData?.[0]?.event_notes?.length ? (
-                <ul className="space-y-2">
-                  {selectedRowData?.[0]?.event_notes?.map((item) => (
-                    <li
-                      key={item.id}
-                      className="text-xs text-gray-600 bg-white p-2.5 rounded-lg border-l-4 border-primary shadow-sm"
-                    >
-                      {item.notes}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="h-full flex items-center justify-center text-xs text-gray-400 italic">
-                  Select an enquiry to see notes
+        <aside
+          className={`pointer-events-auto fixed right-0 top-0 h-full w-[380px] bg-white shadow-xl z-50 transform transition-transform duration-300 ${
+            showSidebarDrawer ? "translate-x-0" : "translate-x-full"
+          }`}
+          role="dialog"
+          aria-labelledby="sidebar-drawer-title"
+        >
+          <div className="h-full flex flex-col bg-white">
+            {/* Header */}
+            <div className="p-6 border-b border-gray-200 flex justify-between items-start bg-gradient-to-r from-white to-slate-50">
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Open Enquiry</p>
+                <h3 id="sidebar-drawer-title" className="themeH1 text-lg mt-1">
+                  {(selectedRowData?.[0]?.users_events_user_idTousers as { name?: string } | undefined)?.name || "Notes & Deposit"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSidebarDrawer(false)}
+                className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                aria-label="Close drawer"
+              >
+                <X size={18} className="text-gray-600" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto scrollbar-hide">
+              <div className="p-6 space-y-6">
+
+                {/* Note input + Add button */}
+                <div className="flex gap-2 items-stretch">
+                  <textarea
+                    placeholder="Add a note..."
+                    rows={3}
+                    className="flex-1 bg-white rounded-xl px-4 py-3 text-sm outline-none shadow-sm placeholder:text-gray-400 resize-none border border-gray-200 focus:border-primary/30 transition-colors"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="bg-primary text-white rounded-xl px-5 text-sm font-medium shadow-sm disabled:opacity-40 transition-opacity flex items-center justify-center min-w-[52px]"
+                    disabled={!selectedRowKeys.length || !note.trim() || addingNote}
+                    onClick={hanldeAddNote}
+                  >
+                    {addingNote ? (
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
+                      </svg>
+                    ) : "Add"}
+                  </button>
                 </div>
-              )}
+
+                {/* Recent Activities */}
+                <div className="bg-white rounded-xl overflow-hidden border border-gray-200">
+                  <p className="text-sm font-medium text-gray-900 px-4 pt-3 pb-2">Recent activites</p>
+                  <div className="px-3 pb-3 h-56 overflow-y-auto no-scrollbar space-y-2">
+                    {selectedRowData?.[0]?.event_notes?.length ? (
+                      <ul className="space-y-2">
+                        {selectedRowData?.[0]?.event_notes?.map((item) => (
+                          <li
+                            key={item.id}
+                            className="text-xs text-gray-600 bg-white p-2.5 rounded-lg border-l-4 border-primary shadow-sm"
+                          >
+                            {item.notes}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-xs text-gray-400 italic">
+                        Select an enquiry to see notes
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Deposit / Confirm form */}
+                <div>
+                  <form className="space-y-2.5" onSubmit={formik.handleSubmit}>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Select
+                        className="w-full h-10"
+                        placeholder="Company"
+                        options={companyOptions}
+                        value={formik.values.company_name || undefined}
+                        onChange={(value) => formik.setFieldValue("company_name", value)}
+                      />
+                      <DatePicker
+                        placeholder="Date"
+                        className="w-full h-10"
+                        format="DD/MM/YYYY"
+                        value={
+                          formik.values.event_date
+                            ? dayjs(formik.values.event_date, "DD-MM-YYYY")
+                            : undefined
+                        }
+                        onChange={(val) =>
+                          formik.setFieldValue("event_date", val ? dayjs(val).format("DD-MM-YYYY") : "")
+                        }
+                        allowClear
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <InputNumber
+                        placeholder="Amount"
+                        className="w-full h-10"
+                        style={{ width: "100%" }}
+                        value={formik.values.deposit_amount ? Number(formik.values.deposit_amount) : undefined}
+                        onChange={(val) => formik.setFieldValue("deposit_amount", val ?? "")}
+                      />
+                      <Select
+                        placeholder="Payment"
+                        className="w-full h-10"
+                        value={formik.values.payment_method_id || undefined}
+                        onChange={(val) => formik.setFieldValue("payment_method_id", val)}
+                        options={[
+                          { label: "Cash", value: "1" },
+                          { label: "Bank Transfer", value: "2" },
+                          { label: "Card", value: "3" },
+                        ]}
+                      />
+                    </div>
+                    <Button
+                      type="primary"
+                      className="w-full! h-10! font-semibold"
+                      htmlType="submit"
+                      loading={confirmingEvent}
+                      disabled={!selectedRowKeys.length}
+                    >
+                      Deposit Received
+                    </Button>
+                  </form>
+                </div>
+
+              </div>
             </div>
           </div>
-
-          {/* Deposit / Confirm form */}
-          <div>
-            <form className="space-y-2.5" onSubmit={formik.handleSubmit}>
-              <div className="grid grid-cols-2 gap-2">
-                <Select
-                  className="w-full h-10"
-                  placeholder="Company"
-                  options={companyOptions}
-                  value={formik.values.company_name || undefined}
-                  onChange={(value) => formik.setFieldValue("company_name", value)}
-                />
-                <DatePicker
-                  placeholder="Date"
-                  className="w-full h-10"
-                  format="DD/MM/YYYY"
-                  value={
-                    formik.values.event_date
-                      ? dayjs(formik.values.event_date, "DD-MM-YYYY")
-                      : undefined
-                  }
-                  onChange={(val) =>
-                    formik.setFieldValue("event_date", val ? dayjs(val).format("DD-MM-YYYY") : "")
-                  }
-                  allowClear
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <InputNumber
-                  placeholder="Amount"
-                  className="w-full h-10"
-                  style={{ width: "100%" }}
-                  value={formik.values.deposit_amount ? Number(formik.values.deposit_amount) : undefined}
-                  onChange={(val) => formik.setFieldValue("deposit_amount", val ?? "")}
-                />
-                <Select
-                  placeholder="Payment"
-                  className="w-full h-10"
-                  value={formik.values.payment_method_id || undefined}
-                  onChange={(val) => formik.setFieldValue("payment_method_id", val)}
-                  options={[
-                    { label: "Cash", value: "1" },
-                    { label: "Bank Transfer", value: "2" },
-                    { label: "Card", value: "3" },
-                  ]}
-                />
-              </div>
-              <Button
-                type="primary"
-                className="w-full! h-10! font-semibold"
-                htmlType="submit"
-                loading={confirmingEvent}
-                disabled={!selectedRowKeys.length}
-              >
-                Deposit Received
-              </Button>
-            </form>
-          </div>
-
-        </div>
+        </aside>
       </div>
 
       {modalOpen && (
