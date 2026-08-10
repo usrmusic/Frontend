@@ -3,7 +3,7 @@ import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import Input from "@/src/components/Input";
 import { BackButton } from "@/src/components/Icons";
-import { PlusIcon, Save, ChevronDown, ChevronUp, Printer, SquareCheckBig, X, Send } from "lucide-react";
+import { PlusIcon, Save, ChevronDown, ChevronUp, Printer, SquareCheckBig, X, Send, MoreVertical, Plus } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -128,6 +128,7 @@ const validationSchema = Yup.object({
 const NewEnquiryPage = () => {
   const [showNameInput, setShowNameInput] = useState(false);
   const [showVenueInput, setShowVenueInput] = useState(false);
+  const [showSummaryDrawer, setShowSummaryDrawer] = useState(false);
   const [clientId, setClientId] = useState<null | number>(null);
   const [packageParams, setPackageParams] = useState<PackageParams>({
     event_date: "",
@@ -669,48 +670,50 @@ const NewEnquiryPage = () => {
             <Form>
               <div className="mt-8 space-y-6">
                 {/* Header row */}
-                <div className="grid grid-cols-12 gap-6">
-                  <div className="col-span-12 xl:col-span-9 space-y-6">
-                    <div className="flex flex-col gap-3 justify-between lg:flex-row lg:items-center">
-                      <div className="flex items-center gap-3">
-                        <Link href="/dashboard">
-                          <BackButton />
-                        </Link>
-                        <h2 className="themeH1">{editId ? "Edit Enquiry" : "New Enquiry"}</h2>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          type="default"
-                          icon={<Save size={14} />}
-                          htmlType="submit"
-                          loading={isSubmitting}
-                          disabled={!dirty || isSubmitting}
-                        >
-                          {editId ? "Update" : "Save"}
-                        </Button>
-                        <Button
-                          type="default"
-                          icon={<Printer size={14} />}
-                          onClick={() => window.print()}
-                        >
-                          Print
-                        </Button>
-                        <Button
-                          type="primary"
-                          icon={<Send size={14} />}
-                          loading={sendQuoteLoading}
-                          onClick={handleSendQuote}
-                        >
-                          Send Quote
-                        </Button>
-                      </div>
-                    </div>
+                <div className="flex flex-col gap-3 justify-between lg:flex-row lg:items-center">
+                  <div className="flex items-center gap-3">
+                    <Link href="/dashboard">
+                      <BackButton />
+                    </Link>
+                    <h2 className="themeH1">{editId ? "Edit Enquiry" : "New Enquiry"}</h2>
+                  </div>
+                  <div className="flex flex-wrap gap-2 lg:justify-end">
+                    <Button
+                      type="default"
+                      icon={<Save size={14} />}
+                      htmlType="submit"
+                      loading={isSubmitting}
+                      disabled={!dirty || isSubmitting}
+                    >
+                      {editId ? "Update" : "Save"}
+                    </Button>
+                    <Button
+                      type="default"
+                      icon={<Printer size={14} />}
+                      onClick={() => window.print()}
+                    >
+                      Print
+                    </Button>
+                    <Button
+                      type="primary"
+                      icon={<Send size={14} />}
+                      loading={sendQuoteLoading}
+                      onClick={handleSendQuote}
+                    >
+                      Send Quote
+                    </Button>
+                    <Button
+                      type="default"
+                      htmlType="button"
+                      onClick={() => setShowSummaryDrawer(true)}
+                      aria-label="Open summary"
+                    >
+                      <MoreVertical size={14} />
+                    </Button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-12 gap-6">
-                  {/* ── Left column ── */}
-                  <div className="col-span-12 xl:col-span-9 space-y-6">
+                <div className="space-y-6">
 
                     {/* Enquiry Details card — collapsible */}
                     <Card variant="white" className="p-0 overflow-hidden">
@@ -916,7 +919,7 @@ const NewEnquiryPage = () => {
                             </div>
 
                             {/* Right sub-column */}
-                            <div className="space-y-4">
+                            <div className="flex h-full flex-col gap-4">
                                                               <Field name="dj">
                                   {(fieldProps: FieldProps) => (
                                     <div className="space-y-1">
@@ -1039,11 +1042,11 @@ const NewEnquiryPage = () => {
                               </div>
                                                             <Field name="tellMeMore">
                                 {(fieldProps: FieldProps) => (
-                                  <div className="space-y-1">
-                                    <label className="text-xs text-gray-500">Tell me more</label>
+                                  <div className="flex flex-1 flex-col space-y-1">
+                                    <label className="mb-1 block text-xs">Tell me more</label>
                                     <textarea
                                       {...fieldProps.field}
-                                      className="min-h-[72px] w-full rounded-xl border border-gray-200 bg-secondary-100 px-3 py-2 text-sm outline-none"
+                                      className="min-h-[72px] w-full flex-1 rounded-xl border border-gray-200 bg-secondary-100 px-3 py-2 text-sm outline-none"
                                       placeholder="Additional information about the enquiry"
                                     />
                                     {touched.tellMeMore && errors.tellMeMore && (
@@ -1083,7 +1086,7 @@ const NewEnquiryPage = () => {
                       >
                         <Spin spinning={isPackageLoading}>
                         <div className="px-6 text-xs text-gray-700">
-                          <div className="mb-2 flex items-center text-[11px] text-gray-500">
+                          <div className="mb-2 flex items-center text-xs">
                             <span className="w-6/12">Basics</span>
                             <span className="w-2/12 text-center">Unit Price</span>
                             <span className="w-1/12 text-center">Qty</span>
@@ -1102,7 +1105,7 @@ const NewEnquiryPage = () => {
                                 return (
                                   <div
                                     key={key}
-                                    className="flex items-center rounded-2xl bg-secondary-50/60 px-3 py-2 text-xs"
+                                    className="flex items-center rounded-2xl bg-secondary-50/60 px-3 py-2 text-sm"
                                   >
                                     <div className="flex w-6/12 items-center gap-2">
                                       <input
@@ -1114,7 +1117,7 @@ const NewEnquiryPage = () => {
                                             [key]: !prev[key],
                                           }))
                                         }
-                                        className="size-4 rounded"
+                                        className="size-4 rounded accent-primary cursor-pointer"
                                       />
                                       <span>{equipment?.name}</span>
                                     </div>
@@ -1157,7 +1160,7 @@ const NewEnquiryPage = () => {
                       >
                         <Spin spinning={isPackageLoading}>
                         <div className="px-6 text-xs text-gray-700">
-                          <div className="mb-2 flex items-center text-[11px] text-gray-500">
+                          <div className="mb-2 flex items-center text-xs">
                             <span className="w-6/12">Extras</span>
                             <span className="w-2/12 text-center">Unit Price</span>
                             <span className="w-1/12 text-center">Qty</span>
@@ -1188,7 +1191,7 @@ const NewEnquiryPage = () => {
                                           [key]: !prev[key],
                                         }))
                                       }
-                                      className="size-4 rounded"
+                                      className="size-4 rounded accent-primary cursor-pointer"
                                     />
                                     <span>{extra.name}</span>
                                   </div>
@@ -1229,10 +1232,10 @@ const NewEnquiryPage = () => {
                               return (
                                 <div
                                   key={ex.tempId}
-                                  className="flex items-center rounded-2xl bg-primary/5 border border-primary/20 px-3 py-2 text-xs"
+                                  className="flex items-center rounded-2xl bg-primary/5 border border-primary/20 px-3 py-2 text-sm"
                                 >
                                   <div className="flex w-6/12 items-center gap-2">
-                                    <input type="checkbox" checked readOnly className="size-4 rounded" />
+                                    <input type="checkbox" checked readOnly className="size-4 rounded accent-primary" />
                                     <span className="font-medium text-gray-800">{ex.name}</span>
                                   </div>
                                   <div className="w-2/12 text-center">{ex.sell_price}</div>
@@ -1295,86 +1298,113 @@ const NewEnquiryPage = () => {
                       </Button>
                     </div>
                   </div>
+              </div>
 
-                  {/* ── Right column ── */}
-                  <div className="col-span-12 xl:col-span-3 space-y-6">
-                    {/* At a Glance */}
-                    <Card variant="white" className="p-0 overflow-hidden">
-                      <div className="flex items-center justify-between bg-white px-6 py-4 text-black/80">
-                        <h3 className="font-medium">{values.dj?.name || "At a Glance"}</h3>
-                      </div>
-                      <Spin spinning={isPackageLoading}>
-                      <div className="px-5 py-4 text-xs text-gray-700 space-y-2">
-                        {equipmentList.length ? (
-                          equipmentList.map((r, i) => (
-                            <div key={i} className="space-y-0.5">
-                              <div className="flex items-center gap-2">
-                                <SquareCheckBig size={15} className="flex-shrink-0 text-primary" />
-                                <p className="text-xs text-gray-800 leading-tight">{r.name}</p>
-                              </div>
-                              {r.notes && (
-                                <p className="pl-5 text-[11px] text-gray-500 leading-snug whitespace-pre-line">{r.notes}</p>
-                              )}
-                            </div>
-                          ))
-                        ) : (
-                          <p className="text-[11px] text-gray-500 py-2">No items selected</p>
-                        )}
-                        <div className="mt-3 flex justify-center pt-1">
-                          <div className="rounded-xl bg-primary px-6 py-2 text-xl font-semibold text-white text-center min-w-[110px]">
-                            {"£" + (Number(totalPrice) || 0).toLocaleString()}
-                          </div>
-                        </div>
-                      </div>
-                      </Spin>
-                    </Card>
+              {/* Summary drawer — At a Glance + Rig List, opened via the 3-dot button */}
+              <div
+                className={`fixed inset-0 z-50 pointer-events-none transition-all duration-300 ${showSummaryDrawer ? "opacity-100" : "opacity-0"}`}
+                aria-hidden={!showSummaryDrawer}
+              >
+                <div
+                  className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${showSummaryDrawer ? "opacity-100 pointer-events-auto" : "opacity-0"}`}
+                  onClick={() => setShowSummaryDrawer(false)}
+                ></div>
 
-                    {/* Rig list card */}
-                    <Card variant="white" className="p-0 overflow-hidden">
-                      <div className="flex items-center justify-between bg-white px-6 py-4 text-black/80">
-                        <h3 className="font-medium">Rig List</h3>
-                        <button
-                          type="button"
-                          className="text-black/80 hover:text-black/80 transition-colors"
-                          aria-label={cardsOpen.rigList ? "Collapse rig list" : "Expand rig list"}
-                          onClick={() => setCardsOpen((s) => ({ ...s, rigList: !s.rigList }))}
-                        >
-                          {cardsOpen.rigList ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                        </button>
+                <aside
+                  className={`pointer-events-auto fixed right-0 top-0 h-full w-[380px] bg-white shadow-xl z-50 transform transition-transform duration-300 ${
+                    showSummaryDrawer ? "translate-x-0" : "translate-x-full"
+                  }`}
+                  role="dialog"
+                  aria-labelledby="summary-drawer-title"
+                >
+                  <div className="h-full flex flex-col bg-white">
+                    {/* Header */}
+                    <div className="p-6 border-b border-gray-200 flex justify-between items-start bg-gradient-to-r from-white to-slate-50">
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">At a Glance</p>
+                        <h3 id="summary-drawer-title" className="themeH1 text-lg mt-1">
+                          {values.dj?.name || "Summary"}
+                        </h3>
                       </div>
-                      <div
-                        className="transition-all duration-300 ease-in-out overflow-hidden"
-                        style={{
-                          maxHeight: cardsOpen.rigList ? 600 : 0,
-                          paddingTop: cardsOpen.rigList ? 20 : 0,
-                          paddingBottom: cardsOpen.rigList ? 20 : 0,
-                          opacity: cardsOpen.rigList ? 1 : 0,
-                        }}
-                        aria-hidden={!cardsOpen.rigList}
+                      <button
+                        type="button"
+                        onClick={() => setShowSummaryDrawer(false)}
+                        className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                        aria-label="Close drawer"
                       >
-                        <Spin spinning={isPackageLoading}>
-                        <div className="px-6 text-xs text-gray-700">
-                          <div className="space-y-3">
-                            {rigNotesList.length ? (
-                              rigNotesList.map((r, idx) => (
-                                <div key={idx} className="space-y-0.5">
-                                  <div className="flex items-center gap-2">
-                                    <SquareCheckBig size={14} className="text-primary shrink-0" />
-                                    <p className="font-semibold text-gray-900 leading-tight">{r.name}</p>
+                        <X size={18} className="text-gray-600" />
+                      </button>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto scrollbar-hide">
+                      <div className="p-6 space-y-6">
+                        {/* At a Glance */}
+                        <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-4 border border-slate-200">
+                          <Spin spinning={isPackageLoading}>
+                            <div className="space-y-2">
+                              {equipmentList.length ? (
+                                equipmentList.map((r, i) => (
+                                  <div key={i} className="flex items-start gap-2">
+                                    <SquareCheckBig size={14} className="text-primary flex-shrink-0 mt-0.5" />
+                                    <div>
+                                      <p className="font-medium text-sm text-gray-900">{r.name}</p>
+                                      {r.notes && (
+                                        <p className="text-xs text-gray-500 italic mt-0.5 whitespace-pre-line">{r.notes}</p>
+                                      )}
+                                    </div>
                                   </div>
-                                  <p className="pl-6 text-[11px] text-gray-500 leading-snug whitespace-pre-line" dangerouslySetInnerHTML={{ __html: r.rig_notes ?? "" }} />
+                                ))
+                              ) : (
+                                <p className="text-xs text-gray-500 py-2">No items selected</p>
+                              )}
+                              <div className="pt-3 flex justify-center">
+                                <div className="rounded-xl bg-primary px-6 py-2 text-xl font-semibold text-white text-center min-w-[110px]">
+                                  {"£" + (Number(totalPrice) || 0).toLocaleString()}
                                 </div>
-                              ))
-                            ) : (
-                              <p className="text-[11px] text-gray-500">No rig notes</p>
-                            )}
-                          </div>
+                              </div>
+                            </div>
+                          </Spin>
                         </div>
-                        </Spin>
+
+                        {/* Rig List Section — plain toggle row when collapsed; the boxed
+                            panel only mounts once expanded, so no empty box lingers. */}
+                        <div>
+                          <div className="flex justify-end">
+                            <button
+                              type="button"
+                              className="flex items-center gap-1.5 text-sm font-medium text-primary"
+                              onClick={() => setCardsOpen((s) => ({ ...s, rigList: !s.rigList }))}
+                            >
+                              Rig List
+                              <Plus size={15} className={`transition-transform duration-300 ${cardsOpen.rigList ? "rotate-45" : ""}`} />
+                            </button>
+                          </div>
+                          {cardsOpen.rigList && (
+                            <div className="mt-2 bg-white rounded-xl overflow-hidden border border-gray-200">
+                              <Spin spinning={isPackageLoading}>
+                                <div className="px-4 py-4 text-xs text-gray-700 space-y-3">
+                                  {rigNotesList.length ? (
+                                    rigNotesList.map((r, idx) => (
+                                      <div key={idx} className="space-y-0.5">
+                                        <div className="flex items-center gap-2">
+                                          <SquareCheckBig size={14} className="text-primary shrink-0" />
+                                          <p className="font-semibold text-gray-900 leading-tight">{r.name}</p>
+                                        </div>
+                                        <p className="pl-6 text-[11px] text-gray-500 leading-snug whitespace-pre-line" dangerouslySetInnerHTML={{ __html: r.rig_notes ?? "" }} />
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p className="text-[11px] text-gray-500 py-2">No rig notes</p>
+                                  )}
+                                </div>
+                              </Spin>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </Card>
+                    </div>
                   </div>
-                </div>
+                </aside>
               </div>
             </Form>
           );

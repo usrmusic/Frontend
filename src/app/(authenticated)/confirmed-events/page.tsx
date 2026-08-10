@@ -18,6 +18,7 @@ import {
   FileText,
   FolderOpen,
   MoreVertical,
+  Plus,
   SquareCheckBig,
   X,
 } from "lucide-react";
@@ -506,7 +507,7 @@ const ConfirmedEventsPage = () => {
                   </label>
                   <textarea
                     name="entranceSong"
-                    className="h-24 w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
+                    className="h-20 w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
                     placeholder="Enter entrance song/style"
                     style={{ resize: "none" }}
                     value={formik.values.entranceSong}
@@ -520,7 +521,7 @@ const ConfirmedEventsPage = () => {
                   </label>
                   <textarea
                     name="cakeCutSong"
-                    className="h-24 w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
+                    className="h-20 w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
                     placeholder="Enter cake cut song"
                     style={{ resize: "none" }}
                     value={formik.values.cakeCutSong}
@@ -528,23 +529,19 @@ const ConfirmedEventsPage = () => {
                     disabled={!isModifyMode}
                   />
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs">First dance</label>
-                  <textarea
-                    name="firstDance"
-                    className="h-24 w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
-                    placeholder="Enter first dance song"
-                    style={{ resize: "none" }}
-                    value={formik.values.firstDance}
-                    onChange={formik.handleChange}
-                    disabled={!isModifyMode}
-                  />
-                </div>
+                <Input
+                  name="firstDance"
+                  label="First dance"
+                  placeholder="Enter first dance song"
+                  value={formik.values.firstDance}
+                  onChange={formik.handleChange}
+                  disabled={!isModifyMode}
+                />
                 <div>
                   <label className="mb-1 block text-xs">Do&apos;s</label>
                   <textarea
                     name="dos"
-                    className="h-24 w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
+                    className="h-20 w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
                     placeholder="Enter preferences/do's"
                     style={{ resize: "none" }}
                     value={formik.values.dos}
@@ -653,7 +650,7 @@ const ConfirmedEventsPage = () => {
                   </label>
                   <textarea
                     name="briefItinerary"
-                    className="h-[180px] w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
+                    className="h-[280px] w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
                     placeholder="Enter brief itinerary, playlist, and notes"
                     style={{ resize: "none" }}
                     value={formik.values.briefItinerary}
@@ -683,7 +680,7 @@ const ConfirmedEventsPage = () => {
                   <label className="mb-1 block text-xs">Dont&apos;s</label>
                   <textarea
                     name="donts"
-                    className="h-24 w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
+                    className="h-20 w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
                     placeholder="Enter don'ts"
                     style={{ resize: "none" }}
                     value={formik.values.donts}
@@ -894,37 +891,40 @@ const ConfirmedEventsPage = () => {
                     </div>
                   </div>
 
-                  {/* Rig List Section */}
-                  <div className="bg-white rounded-xl overflow-hidden border border-gray-200">
-                    <div
-                      className="flex items-center justify-between px-4 py-3 cursor-pointer"
-                      onClick={() => setRigOpen((s) => !s)}
-                    >
-                      <h4 className="text-sm font-medium text-gray-900">Rig List</h4>
-                      <ChevronDown size={16} className={`transition-transform duration-300 ${rigOpen ? "rotate-180" : ""}`} />
+                  {/* Rig List Section — plain anchor-style toggle when collapsed; the
+                      boxed panel only mounts once expanded, so no empty box lingers. */}
+                  <div>
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        className="flex items-center gap-1.5 text-sm font-medium text-primary"
+                        onClick={() => setRigOpen((s) => !s)}
+                      >
+                        Rig List
+                        <Plus size={15} className={`transition-transform duration-300 ${rigOpen ? "rotate-45" : ""}`} />
+                      </button>
                     </div>
-                    <div
-                      className="transition-all duration-300 ease-in-out overflow-hidden"
-                      style={{ maxHeight: rigOpen ? 600 : 0, opacity: rigOpen ? 1 : 0 }}
-                    >
-                      <div className="px-4 pb-4 text-xs text-gray-700 space-y-3">
-                        {(selectedEventData?.data?.event_packages)?.length ? (
-                          (selectedEventData?.data?.event_packages).map((p: ConfirmEventPackage) => (
-                            <div key={p.id} className="space-y-0.5">
-                              <div className="flex items-center gap-2">
-                                <SquareCheckBig size={14} className="text-primary shrink-0" />
-                                <p className="font-semibold text-gray-900 leading-tight">{p.equipment?.name || p.package_name || p.name || "Item"}</p>
+                    {rigOpen && (
+                      <div className="mt-2 bg-white rounded-xl overflow-hidden border border-gray-200">
+                        <div className="px-4 py-4 text-xs text-gray-700 space-y-3">
+                          {(selectedEventData?.data?.event_packages)?.length ? (
+                            (selectedEventData?.data?.event_packages).map((p: ConfirmEventPackage) => (
+                              <div key={p.id} className="space-y-0.5">
+                                <div className="flex items-center gap-2">
+                                  <SquareCheckBig size={14} className="text-primary shrink-0" />
+                                  <p className="font-semibold text-gray-900 leading-tight">{p.equipment?.name || p.package_name || p.name || "Item"}</p>
+                                </div>
+                                {p.rig_notes && (
+                                  <p className="pl-6 text-[11px] text-gray-500 leading-snug whitespace-pre-line">{p.rig_notes}</p>
+                                )}
                               </div>
-                              {p.rig_notes && (
-                                <p className="pl-6 text-[11px] text-gray-500 leading-snug whitespace-pre-line">{p.rig_notes}</p>
-                              )}
-                            </div>
-                          ))
-                        ) : (
-                          <p className="text-[11px] text-gray-500">No rig notes</p>
-                        )}
+                            ))
+                          ) : (
+                            <p className="text-[11px] text-gray-500 py-2">No rig notes</p>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* Payment Form Section */}
