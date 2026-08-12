@@ -5,7 +5,7 @@ import Input from "@/src/components/Input";
 import { BackButton } from "@/src/components/Icons";
 import { PlusIcon, Save, ChevronDown, ChevronUp, Printer, SquareCheckBig, X, Send, MoreVertical, Plus } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
@@ -17,7 +17,6 @@ import {
   useClientDropdown,
   useUsersDropdown,
   useVenueDropdown,
-  useEquipmentDropdown,
   useSupplierDropdown,
 } from "@/src/api/dropdown";
 import { useAddEquipment } from "@/src/api/usersApi";
@@ -128,7 +127,9 @@ const validationSchema = Yup.object({
 const NewEnquiryPage = () => {
   const [showNameInput, setShowNameInput] = useState(false);
   const [showVenueInput, setShowVenueInput] = useState(false);
-  const [showSummaryDrawer, setShowSummaryDrawer] = useState(false);
+  // Summary sidebar defaults to open once a DJ is picked (item 8); the 3-dot
+  // button lets the user hide/show it without losing the selection.
+  const [showSummaryDrawer, setShowSummaryDrawer] = useState(true);
   const [clientId, setClientId] = useState<null | number>(null);
   const [packageParams, setPackageParams] = useState<PackageParams>({
     event_date: "",
@@ -159,16 +160,18 @@ const NewEnquiryPage = () => {
   const [notesEditValues, setNotesEditValues] = useState({ notes: "", rig_notes: "" });
   const notesOnSaveRef = useRef<((notes: string, rig_notes: string) => void) | null>(null);
 
-  // Add Equipment modal
+  // Add Equipment modal — field order/types mirror the legacy system:
+  // name → cost → sell → "Do you have this Equipment?" → (Yes ? quantity : supplier)
   const [addEquipModalOpen, setAddEquipModalOpen] = useState(false);
+  const [showNewSupplier, setShowNewSupplier] = useState(false);
   const [addEquipForm, setAddEquipForm] = useState({
     has_equipment: "no" as "yes" | "no",
-    equipment_id: "" as string | number,
     name: "",
     cost_price: "",
     sell_price: "",
-    quantity: "1",
+    quantity: "",
     supplier_id: "" as string | number,
+    supplier_name: "",
   });
 
   // Send Quote modal
@@ -183,12 +186,32 @@ const NewEnquiryPage = () => {
   // Ref to capture created/edited enquiry ID for Send Quote
   const lastEnquiryIdRef = useRef<string | null>(null);
 
+  // Summary sidebar height — measured against the real viewport rather than a
+  // guessed offset. `max-h-[calc(100vh-Npx)]` alone assumed the sidebar's top
+  // was N px from the viewport top, but its actual top depends on whatever
+  // page content sits above it, so it was overflowing past the bottom of the
+  // browser window on load (before `sticky` had anything to stick against).
+  // Measuring the real top and re-deriving the cap from that keeps the whole
+  // box on-screen; only its own content scrolls internally.
+  const summarySidebarRef = useRef<HTMLDivElement>(null);
+  const [summaryMaxHeight, setSummaryMaxHeight] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = summarySidebarRef.current;
+    if (!el) return;
+    const measure = () => {
+      const top = el.getBoundingClientRect().top;
+      setSummaryMaxHeight(Math.max(240, window.innerHeight - top - 64));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  });
+
   const { data: clientDropdownName } = useClientDropdown();
   const { data: venueDropdownName } = useVenueDropdown();
   const { data: djDropdownData } = useUsersDropdown();
   const { data: packageData, isLoading: isPackageLoading } = usePackageData(packageParams);
   const { data: clientDetails } = useSingleClient(!showNameInput && clientId ? clientId : null);
-  const { data: equipmentDropdownData } = useEquipmentDropdown();
   const { data: supplierDropdownData } = useSupplierDropdown();
 
   const createEnquiry = useCreateEnquiry();
@@ -430,31 +453,59 @@ const NewEnquiryPage = () => {
     setNotesModalOpen(true);
   };
 
-  const resetAddEquipForm = () =>
-    setAddEquipForm({ has_equipment: "no", equipment_id: "", name: "", cost_price: "", sell_price: "", quantity: "1", supplier_id: "" });
+  const resetAddEquipForm = () => {
+    setAddEquipForm({ has_equipment: "no", name: "", cost_price: "", sell_price: "", quantity: "", supplier_id: "", supplier_name: "" });
+    setShowNewSupplier(false);
+  };
 
   const handleAddEquipmentSave = async () => {
+    const ownsEquipment = addEquipForm.has_equipment === "yes";
+
     if (!addEquipForm.name.trim()) {
       toast.error("Equipment name is required");
       return;
     }
-    let equipmentId = Number(addEquipForm.equipment_id) || 0;
+    if (!String(addEquipForm.cost_price).trim()) {
+      toast.error("Cost price is required");
+      return;
+    }
+    if (!String(addEquipForm.sell_price).trim()) {
+      toast.error("Sell price is required");
+      return;
+    }
+    // Legacy parity: owning the equipment requires a quantity; hiring it in
+    // requires a supplier (either picked from the list or typed in as new).
+    if (ownsEquipment && !String(addEquipForm.quantity).trim()) {
+      toast.error("Quantity is required");
+      return;
+    }
+    if (!ownsEquipment && !addEquipForm.supplier_id && !addEquipForm.supplier_name.trim()) {
+      toast.error("Supplier company name is required");
+      return;
+    }
 
-    // If no existing equipment was selected, create a new one via API
-    if (!equipmentId) {
-      try {
-        const created = await addEquipmentMutation.mutateAsync({
-          name: addEquipForm.name,
-          cost_price: Number(addEquipForm.cost_price) || 0,
-          sell_price: Number(addEquipForm.sell_price) || 0,
-          quantity: Number(addEquipForm.quantity) || 1,
-          supplier_id: Number(addEquipForm.supplier_id) || undefined,
-          status: "ACTIVE",
-        });
-        equipmentId = created?.data?.id ?? created?.id ?? 0;
-      } catch {
-        return;
-      }
+    const quantity = ownsEquipment ? Number(addEquipForm.quantity) || 1 : 1;
+
+    let equipmentId = 0;
+    try {
+      const created = await addEquipmentMutation.mutateAsync({
+        name: addEquipForm.name,
+        cost_price: Number(addEquipForm.cost_price) || 0,
+        sell_price: Number(addEquipForm.sell_price) || 0,
+        quantity,
+        status: "ACTIVE",
+        is_availabilty_check: ownsEquipment,
+        // Supplier only applies when the item is hired in. `supplier_name`
+        // makes the API create the supplier and link it in one call.
+        ...(ownsEquipment
+          ? {}
+          : addEquipForm.supplier_name.trim()
+            ? { supplier_name: addEquipForm.supplier_name.trim() }
+            : { supplier_id: Number(addEquipForm.supplier_id) || undefined }),
+      });
+      equipmentId = created?.data?.id ?? created?.id ?? 0;
+    } catch {
+      return;
     }
 
     const newExtra: CustomExtra = {
@@ -463,7 +514,7 @@ const NewEnquiryPage = () => {
       name: addEquipForm.name,
       sell_price: Number(addEquipForm.sell_price) || 0,
       cost_price: Number(addEquipForm.cost_price) || 0,
-      quantity: Number(addEquipForm.quantity) || 1,
+      quantity,
       notes: "",
       rig_notes: "",
     };
@@ -666,6 +717,74 @@ const NewEnquiryPage = () => {
             }
           };
 
+          // At a Glance + Rig List — shared between the inline sidebar (xl+,
+          // visible whenever a DJ is selected) and the slide-over drawer used
+          // as the fallback on narrower screens, so the two never drift apart.
+          const renderSummaryContent = () => (
+            <div className="p-6 space-y-3">
+              <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-4 border border-slate-200">
+                <Spin spinning={isPackageLoading}>
+                  <div className="space-y-2">
+                    {equipmentList.length ? (
+                      equipmentList.map((r, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <SquareCheckBig size={14} className="text-primary flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-medium text-sm text-gray-900">{r.name}</p>
+                            {r.notes && (
+                              <p className="text-xs text-gray-500 italic mt-0.5 whitespace-pre-line">{r.notes}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-gray-500 py-2">No items selected</p>
+                    )}
+                    <div className="pt-3 flex justify-center">
+                      <div className="rounded-xl bg-primary px-6 py-2 text-xl font-semibold text-white text-center min-w-[110px]">
+                        {"£" + (Number(totalPrice) || 0).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                </Spin>
+              </div>
+
+              {/* Rig List — plain toggle row when collapsed; the boxed panel
+                  only mounts once expanded, so no empty box lingers. */}
+              <div>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 text-sm font-medium text-primary"
+                    onClick={() => setCardsOpen((s) => ({ ...s, rigList: !s.rigList }))}
+                  >
+                    Rig List
+                    <Plus size={15} className={`transition-transform duration-300 ${cardsOpen.rigList ? "rotate-45" : ""}`} />
+                  </button>
+                </div>
+                {cardsOpen.rigList && (
+                  <Spin spinning={isPackageLoading}>
+                    <div className="mt-2 text-sm text-gray-700 space-y-3">
+                      {rigNotesList.length ? (
+                        rigNotesList.map((r, idx) => (
+                          <div key={idx} className="space-y-0.5">
+                            <div className="flex items-center gap-2">
+                              <SquareCheckBig size={14} className="text-primary shrink-0" />
+                              <p className="font-semibold text-gray-900 leading-tight">{r.name}</p>
+                            </div>
+                            <p className="pl-6 text-[11px] text-gray-500 leading-snug whitespace-pre-line" dangerouslySetInnerHTML={{ __html: r.rig_notes ?? "" }} />
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-[11px] text-gray-500 py-2">No rig notes</p>
+                      )}
+                    </div>
+                  </Spin>
+                )}
+              </div>
+            </div>
+          );
+
           return (
             <Form>
               <div className="mt-8 space-y-6">
@@ -702,22 +821,25 @@ const NewEnquiryPage = () => {
                     >
                       Send Quote
                     </Button>
+                    {/* Toggles the inline summary sidebar (only has anything to
+                        show once a DJ is picked). */}
                     <Button
                       type="default"
                       htmlType="button"
-                      onClick={() => setShowSummaryDrawer(true)}
-                      aria-label="Open summary"
+                      onClick={() => setShowSummaryDrawer((v) => !v)}
+                      aria-label={showSummaryDrawer ? "Hide summary" : "Show summary"}
                     >
                       <MoreVertical size={14} />
                     </Button>
                   </div>
                 </div>
 
-                <div className="space-y-6">
+                <div className="grid grid-cols-12 gap-6">
+                <div className={`col-span-12 space-y-6 ${values.dj?.id && showSummaryDrawer ? "xl:col-span-8" : ""}`}>
 
                     {/* Enquiry Details card — collapsible */}
                     <Card variant="white" className="p-0 overflow-hidden">
-                      <div className="flex items-center justify-between bg-primary px-6 py-4 text-white">
+                      <div className="flex items-center justify-between bg-primary px-6 h-[60px] text-white">
                         <h3 className="font-medium">Enquiry Details</h3>
                         <button
                           type="button"
@@ -736,7 +858,13 @@ const NewEnquiryPage = () => {
                         }}
                         aria-hidden={!cardsOpen.enquiryDetails}
                       >
-                        <div className="space-y-6 px-6 py-5">
+                        {/* Capped to the same total content height as Starting Package
+                            and Extras below (their cap + outer padding + column-header
+                            row ≈ 480px too), so the three cards read as equal height.
+                            This div's own py-5 padding counts toward the 480 budget,
+                            unlike theirs which sits outside the capped list — hence the
+                            slightly different number for the same visual result. */}
+                        <div className="max-h-[480px] overflow-y-auto no-scrollbar space-y-6 px-6 py-5">
                           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             {/* Left sub-column */}
                             <div className="space-y-4 pr-4 border-r border-[#CCCCCC]">
@@ -1063,7 +1191,7 @@ const NewEnquiryPage = () => {
 
                     {/* Starting Package */}
                     <Card variant="white" className="p-0 overflow-hidden border border-primary/30">
-                      <div className="flex items-center justify-between bg-primary px-6 py-4 text-white">
+                      <div className="flex items-center justify-between bg-primary px-6 h-[60px] text-white">
                         <h3 className="font-medium">Starting Package</h3>
                         <button
                           type="button"
@@ -1085,15 +1213,17 @@ const NewEnquiryPage = () => {
                         aria-hidden={!cardsOpen.startingPackage}
                       >
                         <Spin spinning={isPackageLoading}>
-                        <div className="px-6 text-xs text-gray-700">
-                          <div className="mb-2 flex items-center text-xs">
+                        <div className="px-6 text-sm text-gray-700">
+                          <div className="mb-2 flex items-center text-xs text-gray-500">
                             <span className="w-6/12">Basics</span>
                             <span className="w-2/12 text-center">Unit Price</span>
                             <span className="w-1/12 text-center">Qty</span>
                             <span className="w-1/12 text-center">Price</span>
                             <span className="w-2/12 text-center">Total Price</span>
                           </div>
-                          <div className="space-y-2">
+                          {/* Same scroll cap as Enquiry Details and Extras, so the
+                              three cards read as equal height. */}
+                          <div className="max-h-[420px] overflow-y-auto no-scrollbar space-y-2">
                             {packageData?.data?.equipments?.package_user_equipments?.map(
                               (item: PackageUserEquipment, idx: number) => {
                                 const equipment = item.equipment ?? null;
@@ -1137,7 +1267,7 @@ const NewEnquiryPage = () => {
 
                     {/* Extras */}
                     <Card variant="white" className="p-0 overflow-hidden border border-primary/30">
-                      <div className="flex items-center justify-between bg-primary px-6 py-4 text-white">
+                      <div className="flex items-center justify-between bg-primary px-6 h-[60px] text-white">
                         <h3 className="font-medium">Extras</h3>
                         <button
                           type="button"
@@ -1159,15 +1289,15 @@ const NewEnquiryPage = () => {
                         aria-hidden={!cardsOpen.extras}
                       >
                         <Spin spinning={isPackageLoading}>
-                        <div className="px-6 text-xs text-gray-700">
-                          <div className="mb-2 flex items-center text-xs">
+                        <div className="px-6 text-sm text-gray-700">
+                          <div className="mb-2 flex items-center text-xs text-gray-500">
                             <span className="w-6/12">Extras</span>
                             <span className="w-2/12 text-center">Unit Price</span>
                             <span className="w-1/12 text-center">Qty</span>
                             <span className="w-1/12 text-center">Price</span>
                             <span className="w-2/12 text-center">Notes</span>
                           </div>
-                          <div className="space-y-2 max-h-[400px] overflow-y-auto no-scrollbar">
+                          <div className="space-y-2 max-h-[420px] overflow-y-auto no-scrollbar">
                             {/* Package extras */}
                             {packageData?.data?.extras?.map((extra: ExtraItem) => {
                               const id = extra.id;
@@ -1179,7 +1309,7 @@ const NewEnquiryPage = () => {
                               return (
                                 <div
                                   key={id}
-                                  className="flex items-center rounded-2xl bg-secondary-50/60 px-3 py-2 text-xs"
+                                  className="flex items-center rounded-2xl bg-secondary-50/60 px-3 py-2 text-sm"
                                 >
                                   <div className="flex w-6/12 items-center gap-2">
                                     <input
@@ -1232,16 +1362,21 @@ const NewEnquiryPage = () => {
                               return (
                                 <div
                                   key={ex.tempId}
-                                  className="flex items-center rounded-2xl bg-primary/5 border border-primary/20 px-3 py-2 text-sm"
+                                  className="flex items-center rounded-2xl bg-secondary-50/60 px-3 py-2 text-sm"
                                 >
                                   <div className="flex w-6/12 items-center gap-2">
                                     <input type="checkbox" checked readOnly className="size-4 rounded accent-primary" />
-                                    <span className="font-medium text-gray-800">{ex.name}</span>
+                                    <span>{ex.name}</span>
                                   </div>
                                   <div className="w-2/12 text-center">{ex.sell_price}</div>
                                   <div className="w-1/12 text-center">{ex.quantity}</div>
                                   <div className="w-1/12 text-center">{price}</div>
-                                  <div className="w-2/12 flex justify-center gap-2">
+                                  {/* Same width as the predefined rows' Notes column, so the
+                                      tick sits dead-center at the exact same x-position as
+                                      theirs. The Remove button is absolutely positioned just
+                                      to its right so it doesn't shift that centering or widen
+                                      the row. */}
+                                  <div className="w-2/12 relative flex justify-center">
                                     <button
                                       type="button"
                                       title="Edit notes"
@@ -1272,7 +1407,7 @@ const NewEnquiryPage = () => {
                                           prev.filter((c) => c.tempId !== ex.tempId),
                                         )
                                       }
-                                      className="text-red-400 hover:text-red-600 transition-colors"
+                                      className="absolute left-full top-1/2 -translate-y-1/2 ml-1.5 text-red-400 hover:text-red-600 transition-colors"
                                     >
                                       <X size={14} />
                                     </button>
@@ -1298,113 +1433,43 @@ const NewEnquiryPage = () => {
                       </Button>
                     </div>
                   </div>
+
+                {/* Inline sidebar — no separate drawer/overlay. Only once a DJ is
+                    picked (item 8: "must remain visible as we build the
+                    package"), and only while the 3-dot toggle has it open.
+                    `sticky` + `max-h` caps it to the viewport instead of
+                    growing past the screen on short/low-res displays (e.g.
+                    1366x768) — its own content scrolls internally instead. */}
+                {values.dj?.id && showSummaryDrawer && (
+                  <aside className="col-span-12 xl:col-span-4">
+                    <div
+                      ref={summarySidebarRef}
+                      className="xl:sticky xl:top-6 flex flex-col bg-white rounded-2xl shadow-sm overflow-hidden"
+                      style={{ maxHeight: summaryMaxHeight ?? undefined }}
+                    >
+                      {/* Same fixed height as the Enquiry Details header so the
+                          two line up exactly, as on the Open Enquiry page. */}
+                      <div className="px-6 h-[60px] shrink-0 flex items-center justify-between border-b border-gray-200 bg-gradient-to-r from-white to-slate-50">
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide leading-tight">At a Glance</p>
+                          <h3 className="themeH1 text-base truncate leading-tight">{values.dj?.name || "Summary"}</h3>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowSummaryDrawer(false)}
+                          className="p-2 -mr-2 hover:bg-gray-200 rounded-lg transition-colors shrink-0"
+                          aria-label="Hide summary"
+                        >
+                          <X size={18} className="text-gray-600" />
+                        </button>
+                      </div>
+                      <div className="flex-1 overflow-y-auto scrollbar-hide">
+                        {renderSummaryContent()}
+                      </div>
+                    </div>
+                  </aside>
+                )}
               </div>
-
-              {/* Summary drawer — At a Glance + Rig List, opened via the 3-dot button */}
-              <div
-                className={`fixed inset-0 z-50 pointer-events-none transition-all duration-300 ${showSummaryDrawer ? "opacity-100" : "opacity-0"}`}
-                aria-hidden={!showSummaryDrawer}
-              >
-                <div
-                  className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${showSummaryDrawer ? "opacity-100 pointer-events-auto" : "opacity-0"}`}
-                  onClick={() => setShowSummaryDrawer(false)}
-                ></div>
-
-                <aside
-                  className={`pointer-events-auto fixed right-0 top-0 h-full w-[380px] bg-white shadow-xl z-50 transform transition-transform duration-300 ${
-                    showSummaryDrawer ? "translate-x-0" : "translate-x-full"
-                  }`}
-                  role="dialog"
-                  aria-labelledby="summary-drawer-title"
-                >
-                  <div className="h-full flex flex-col bg-white">
-                    {/* Header */}
-                    <div className="p-6 border-b border-gray-200 flex justify-between items-start bg-gradient-to-r from-white to-slate-50">
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">At a Glance</p>
-                        <h3 id="summary-drawer-title" className="themeH1 text-lg mt-1">
-                          {values.dj?.name || "Summary"}
-                        </h3>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setShowSummaryDrawer(false)}
-                        className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
-                        aria-label="Close drawer"
-                      >
-                        <X size={18} className="text-gray-600" />
-                      </button>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto scrollbar-hide">
-                      <div className="p-6 space-y-6">
-                        {/* At a Glance */}
-                        <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-4 border border-slate-200">
-                          <Spin spinning={isPackageLoading}>
-                            <div className="space-y-2">
-                              {equipmentList.length ? (
-                                equipmentList.map((r, i) => (
-                                  <div key={i} className="flex items-start gap-2">
-                                    <SquareCheckBig size={14} className="text-primary flex-shrink-0 mt-0.5" />
-                                    <div>
-                                      <p className="font-medium text-sm text-gray-900">{r.name}</p>
-                                      {r.notes && (
-                                        <p className="text-xs text-gray-500 italic mt-0.5 whitespace-pre-line">{r.notes}</p>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))
-                              ) : (
-                                <p className="text-xs text-gray-500 py-2">No items selected</p>
-                              )}
-                              <div className="pt-3 flex justify-center">
-                                <div className="rounded-xl bg-primary px-6 py-2 text-xl font-semibold text-white text-center min-w-[110px]">
-                                  {"£" + (Number(totalPrice) || 0).toLocaleString()}
-                                </div>
-                              </div>
-                            </div>
-                          </Spin>
-                        </div>
-
-                        {/* Rig List Section — plain toggle row when collapsed; the boxed
-                            panel only mounts once expanded, so no empty box lingers. */}
-                        <div>
-                          <div className="flex justify-end">
-                            <button
-                              type="button"
-                              className="flex items-center gap-1.5 text-sm font-medium text-primary"
-                              onClick={() => setCardsOpen((s) => ({ ...s, rigList: !s.rigList }))}
-                            >
-                              Rig List
-                              <Plus size={15} className={`transition-transform duration-300 ${cardsOpen.rigList ? "rotate-45" : ""}`} />
-                            </button>
-                          </div>
-                          {cardsOpen.rigList && (
-                            <div className="mt-2 bg-white rounded-xl overflow-hidden border border-gray-200">
-                              <Spin spinning={isPackageLoading}>
-                                <div className="px-4 py-4 text-xs text-gray-700 space-y-3">
-                                  {rigNotesList.length ? (
-                                    rigNotesList.map((r, idx) => (
-                                      <div key={idx} className="space-y-0.5">
-                                        <div className="flex items-center gap-2">
-                                          <SquareCheckBig size={14} className="text-primary shrink-0" />
-                                          <p className="font-semibold text-gray-900 leading-tight">{r.name}</p>
-                                        </div>
-                                        <p className="pl-6 text-[11px] text-gray-500 leading-snug whitespace-pre-line" dangerouslySetInnerHTML={{ __html: r.rig_notes ?? "" }} />
-                                      </div>
-                                    ))
-                                  ) : (
-                                    <p className="text-[11px] text-gray-500 py-2">No rig notes</p>
-                                  )}
-                                </div>
-                              </Spin>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </aside>
               </div>
             </Form>
           );
@@ -1492,68 +1557,10 @@ const NewEnquiryPage = () => {
         centered
       >
         <div className="space-y-4">
-          {/* Do you have the equipment? */}
           <div>
-            <label className="text-xs font-medium text-gray-700 mb-1 block">Do you have the equipment?</label>
-            <AntSelect
-              className="h-10 w-full"
-              value={addEquipForm.has_equipment}
-              onChange={(val: "yes" | "no") => {
-                setAddEquipForm((prev) => ({
-                  ...prev,
-                  has_equipment: val,
-                  equipment_id: "",
-                  name: "",
-                  cost_price: "",
-                  sell_price: "",
-                  supplier_id: "",
-                }));
-              }}
-              options={[
-                { label: "No", value: "no" },
-                { label: "Yes", value: "yes" },
-              ]}
-            />
-          </div>
-
-          {/* If Yes — pick from existing equipment */}
-          {addEquipForm.has_equipment === "yes" && (
-            <div>
-              <label className="text-xs font-medium text-gray-700 mb-1 block">Select Equipment</label>
-              <AntSelect
-                className="w-full"
-                placeholder="Select equipment"
-                allowClear
-                showSearch
-                optionFilterProp="label"
-                options={(equipmentDropdownData ?? []).map((eq: { id: number | string; name: string }) => ({
-                  label: eq.name,
-                  value: String(eq.id),
-                }))}
-                value={addEquipForm.equipment_id ? String(addEquipForm.equipment_id) : undefined}
-                onChange={(val) => {
-                  if (!val) {
-                    setAddEquipForm((prev) => ({ ...prev, equipment_id: "", name: "", cost_price: "", sell_price: "", supplier_id: "" }));
-                    return;
-                  }
-                  const eq = (equipmentDropdownData ?? []).find(
-                    (e: { id: number | string }) => String(e.id) === val,
-                  ) as { id: number | string; name: string; sell_price?: number; cost_price?: number; supplier_id?: number | string } | undefined;
-                  setAddEquipForm((prev) => ({
-                    ...prev,
-                    equipment_id: val,
-                    name: eq?.name ?? "",
-                    cost_price: String(eq?.cost_price ?? ""),
-                    sell_price: String(eq?.sell_price ?? ""),
-                    supplier_id: String(eq?.supplier_id ?? ""),
-                  }));
-                }}
-              />
-            </div>
-          )}
-
-          <div>
-            <label className="text-xs font-medium text-gray-700 mb-1 block">Equipment Name *</label>
+            <label className="text-xs font-medium text-gray-700 mb-1 block">
+              Equipment Name <span className="text-red-500">*</span>
+            </label>
             <input
               className="h-10 w-full rounded-xl border border-gray-200 bg-secondary-100 px-3 text-sm outline-none focus:border-primary transition-colors"
               placeholder="Equipment name"
@@ -1562,7 +1569,9 @@ const NewEnquiryPage = () => {
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-700 mb-1 block">Cost Price *</label>
+            <label className="text-xs font-medium text-gray-700 mb-1 block">
+              Cost Price <span className="text-red-500">*</span>
+            </label>
             <input
               type="number"
               className="h-10 w-full rounded-xl border border-gray-200 bg-secondary-100 px-3 text-sm outline-none focus:border-primary transition-colors"
@@ -1572,7 +1581,9 @@ const NewEnquiryPage = () => {
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-700 mb-1 block">Sell Price *</label>
+            <label className="text-xs font-medium text-gray-700 mb-1 block">
+              Sell Price <span className="text-red-500">*</span>
+            </label>
             <input
               type="number"
               className="h-10 w-full rounded-xl border border-gray-200 bg-secondary-100 px-3 text-sm outline-none focus:border-primary transition-colors"
@@ -1581,22 +1592,93 @@ const NewEnquiryPage = () => {
               onChange={(e) => setAddEquipForm((prev) => ({ ...prev, sell_price: e.target.value }))}
             />
           </div>
-          <div>
-            <label className="text-xs font-medium text-gray-700 mb-1 block">Supplier Company Name *</label>
-            <AntSelect
-              className="w-full"
-              placeholder="Select Suppliers"
-              allowClear
-              showSearch
-              optionFilterProp="label"
-              options={(supplierDropdownData ?? []).map((s: { id: number | string; name?: string; company_name?: string }) => ({
-                label: s.company_name ?? s.name ?? "",
-                value: String(s.id),
-              }))}
-              value={addEquipForm.supplier_id ? String(addEquipForm.supplier_id) : undefined}
-              onChange={(val) => setAddEquipForm((prev) => ({ ...prev, supplier_id: val ?? "" }))}
-            />
+
+          {/* Radio, matching the legacy system. "Yes" = we own it, so we need a
+              quantity and no supplier; "No" = hired in, so a supplier is required. */}
+          <div className="flex items-center gap-4">
+            <span className="text-xs font-medium text-gray-700">
+              Do you have this Equipment? <span className="text-red-500">*</span>
+            </span>
+            <div className="flex items-center gap-4">
+              {(["yes", "no"] as const).map((opt) => (
+                <label key={opt} className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="has_equipment"
+                    className="size-4 accent-primary cursor-pointer"
+                    checked={addEquipForm.has_equipment === opt}
+                    onChange={() =>
+                      setAddEquipForm((prev) => ({
+                        ...prev,
+                        has_equipment: opt,
+                        quantity: "",
+                        supplier_id: "",
+                        supplier_name: "",
+                      }))
+                    }
+                  />
+                  {opt === "yes" ? "Yes" : "No"}
+                </label>
+              ))}
+            </div>
           </div>
+
+          {addEquipForm.has_equipment === "yes" ? (
+            <div>
+              <label className="text-xs font-medium text-gray-700 mb-1 block">
+                Quantity <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                min={1}
+                className="h-10 w-full rounded-xl border border-gray-200 bg-secondary-100 px-3 text-sm outline-none focus:border-primary transition-colors"
+                placeholder="Enter Quantity"
+                value={addEquipForm.quantity}
+                onChange={(e) => setAddEquipForm((prev) => ({ ...prev, quantity: e.target.value }))}
+              />
+            </div>
+          ) : (
+            <div>
+              <div className="mb-1 flex items-center justify-between">
+                <label className="text-xs font-medium text-gray-700">
+                  Supplier Company Name <span className="text-red-500">*</span>
+                </label>
+                <button
+                  type="button"
+                  className="text-xs font-medium text-primary"
+                  onClick={() => {
+                    setShowNewSupplier((v) => !v);
+                    setAddEquipForm((prev) => ({ ...prev, supplier_id: "", supplier_name: "" }));
+                  }}
+                >
+                  {showNewSupplier ? "Select Existing" : "+ Add New Supplier"}
+                </button>
+              </div>
+              {showNewSupplier ? (
+                <input
+                  className="h-10 w-full rounded-xl border border-gray-200 bg-secondary-100 px-3 text-sm outline-none focus:border-primary transition-colors"
+                  placeholder="New Supplier Name"
+                  value={addEquipForm.supplier_name}
+                  onChange={(e) => setAddEquipForm((prev) => ({ ...prev, supplier_name: e.target.value }))}
+                />
+              ) : (
+                <AntSelect
+                  className="w-full"
+                  placeholder="Select Suppliers"
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                  options={(supplierDropdownData ?? []).map((s: { id: number | string; name?: string; company_name?: string }) => ({
+                    label: s.company_name ?? s.name ?? "",
+                    value: String(s.id),
+                  }))}
+                  value={addEquipForm.supplier_id ? String(addEquipForm.supplier_id) : undefined}
+                  onChange={(val) => setAddEquipForm((prev) => ({ ...prev, supplier_id: val ?? "" }))}
+                />
+              )}
+            </div>
+          )}
+
           <div className="flex justify-center gap-3 pt-2">
             <Button
               className="min-w-[90px]!"

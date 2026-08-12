@@ -94,7 +94,7 @@ export default function EventOverview({
     >
       <div className="flex flex-wrap items-center justify-between gap-3 p-4 text-white rounded-t-3xl">
         <div className="flex items-center gap-3">
-          <h4 className="font-poppins text-base font-semibold text-gray-900 whitespace-nowrap">
+          <h4 className="text-base font-semibold text-gray-900 whitespace-nowrap">
             Event Overview
           </h4>
         </div>

@@ -84,7 +84,7 @@ export default function SalesAnalytics({
   return (
     <Card variant="white" className="shadow-sm p-4 flex flex-col h-full">
       <div className="mb-2 gap-2 flex flex-col">
-        <h4 className="font-poppins text-base font-semibold text-gray-900 flex items-center min-h-8">
+        <h4 className="text-base font-semibold text-gray-900 flex items-center min-h-8">
           Sales Analytics
         </h4>
         <p className="text-sm text-gray-400">Events Progress</p>

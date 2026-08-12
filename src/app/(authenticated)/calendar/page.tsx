@@ -150,7 +150,7 @@ export default function CalendarPage() {
 
           {/* Month navigation */}
           <div className="flex items-center justify-between px-4 pt-4 pb-3 shrink-0">
-            <span className="text-[21.75px] font-normal text-[#0a0a0a] leading-[29px]">
+            <span className="text-xl font-normal text-[#0a0a0a] leading-[29px]">
               {currentMonth.format("MMMM YYYY")}
             </span>
             <div className="flex items-center gap-[14.5px]">
@@ -160,7 +160,7 @@ export default function CalendarPage() {
               >
                 <ChevronLeft size={13} />
               </button>
-              <span className="text-[12.688px] text-[#0a0a0a]">
+              <span className="text-xs text-[#0a0a0a]">
                 {currentMonth.format("YYYY")}
               </span>
               <button
@@ -177,7 +177,7 @@ export default function CalendarPage() {
             {WEEK_DAYS.map((d) => (
               <div
                 key={d}
-                className="text-center text-[#6a7282] text-[12.688px] leading-[32.625px]"
+                className="text-center text-[#6a7282] text-xs leading-[32.625px]"
               >
                 {d}
               </div>
@@ -204,14 +204,14 @@ export default function CalendarPage() {
                   ].join(" ")}
                 >
                   {/* Date number */}
-                  <div className="shrink-0 h-[18.125px] flex items-center">
+                  <div className="shrink-0 h-5 flex items-center">
                     {isToday && isCurrentMonth ? (
-                      <span className="size-5 flex items-center justify-center bg-[#2a2d32] text-white rounded-full text-[10px] font-medium">
+                      <span className="size-5 flex items-center justify-center bg-[#2a2d32] text-white rounded-full text-[11px] font-medium">
                         {date.date()}
                       </span>
                     ) : (
                       <span
-                        className={`text-[12.688px] leading-[18.125px] ${
+                        className={`text-xs leading-5 ${
                           isCurrentMonth ? "text-[#101828]" : "text-[#99a1af]"
                         }`}
                       >
@@ -232,22 +232,21 @@ export default function CalendarPage() {
                     return (
                       <div
                         key={ev.id}
-                        className={`${c.bg} border ${c.border} rounded-[3.625px] shrink-0`}
-                        style={{ minHeight: 27 }}
+                        className={`${c.bg} border ${c.border} rounded shrink-0 px-1.5 py-1`}
                       >
-                        <div className="flex items-center gap-[5.438px] px-[5.44px] pt-[5.44px]" style={{ height: 14.5 }}>
-                          <div className="shrink-0 size-[14.5px] rounded-full bg-primary/30 flex items-center justify-center overflow-hidden">
-                            <span className="text-[6px] text-primary font-bold leading-none">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <div className="shrink-0 size-4 rounded-full bg-primary/30 flex items-center justify-center overflow-hidden">
+                            <span className="text-[10px] text-primary font-bold leading-none">
                               {getInitials(name)}
                             </span>
                           </div>
-                          <span className="text-[#0a0a0a] text-[10.875px] leading-[14.5px] truncate">
+                          <span className="text-[#0a0a0a] text-xs leading-4 truncate">
                             {name}
                           </span>
                         </div>
                         {time && (
-                          <div className="pl-[23.56px] pb-[3px]">
-                            <span className="text-[#4a5565] text-[8px] leading-[12.083px]">
+                          <div className="pl-[22px]">
+                            <span className="text-[#4a5565] text-[11px] leading-4">
                               {time}
                             </span>
                           </div>
@@ -257,7 +256,7 @@ export default function CalendarPage() {
                   })}
 
                   {dayEvents.length > 3 && (
-                    <span className="text-[#6b7280] text-[8px] pl-0.5">
+                    <span className="text-[#6b7280] text-[11px] pl-0.5">
                       +{dayEvents.length - 3} more
                     </span>
                   )}
@@ -276,11 +275,11 @@ export default function CalendarPage() {
           <div className="px-[22.97px] pt-[22.97px] shrink-0">
             {/* Row 1: filter label + add button */}
             <div className="flex items-center justify-between h-[34.457px] mb-[22.97px]">
-              <button className="flex items-center gap-1 text-[13.4px] text-[#0a0a0a] font-normal">
+              <button className="flex items-center gap-1 text-sm text-[#0a0a0a] font-normal">
                 Events
                 <ChevronRight size={15} />
               </button>
-              <Link href="/enquiry" className="flex items-center gap-[8px] bg-primary hover:bg-[#7a8e7d] text-white rounded-[9.571px] px-[11.49px] h-full text-[14px] transition-colors">
+              <Link href="/enquiry" className="flex items-center gap-[8px] bg-primary hover:bg-[#7a8e7d] text-white rounded-[9.571px] px-[11.49px] h-full text-sm transition-colors">
                 <Plus size={14} />
                 <span>Add Event</span>
               </Link>
@@ -288,7 +287,7 @@ export default function CalendarPage() {
 
             {/* Selected date sub-header */}
             <div className="flex items-center justify-between pb-[10px] border-b border-[rgba(0,0,0,0.1)]">
-              <span className="text-[12.5px] text-[#0a0a0a] leading-[19px]">
+              <span className="text-xs text-[#0a0a0a] leading-[19px]">
                 Events on {selectedDate.format("dddd, MMMM D, YYYY")}
               </span>
               <ChevronRight size={14} className="text-[#0a0a0a] shrink-0" />
@@ -312,9 +311,10 @@ export default function CalendarPage() {
                     : "";
 
                 return (
-                  <div
+                  <Link
                     key={ev.id}
-                    className="bg-white rounded-[19.055px] overflow-hidden"
+                    href={`/confirmed-events?search=${encodeURIComponent(String(ev.id))}&name=${encodeURIComponent(name)}`}
+                    className="block bg-white rounded-[19.055px] overflow-hidden hover:shadow-md transition-shadow"
                     style={{
                       border: "1.059px solid rgba(0,0,0,0.1)",
                       boxShadow: "0px 4.234px 5.293px rgba(0,0,0,0.1)",
@@ -328,16 +328,16 @@ export default function CalendarPage() {
                         </span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[16.212px] text-[#4a5565] leading-[24.318px] font-normal truncate">
+                        <p className="text-base text-[#4a5565] leading-[24.318px] font-normal truncate">
                           {name}
                         </p>
                         {venue && (
-                          <p className="text-[12.703px] text-[#4a5565] leading-[20.265px] truncate">
+                          <p className="text-xs text-[#4a5565] leading-[20.265px] truncate">
                             {venue}
                           </p>
                         )}
                         {time && (
-                          <p className="text-[9.528px] text-[#4a5565] leading-[20.265px]">
+                          <p className="text-[11px] text-[#4a5565] leading-[20.265px]">
                             {time}
                           </p>
                         )}
@@ -348,11 +348,11 @@ export default function CalendarPage() {
                     <div className="border-t border-[rgba(0,0,0,0.1)]" />
                     <div className="flex gap-[6px] items-start px-[14.82px] py-[10px]">
                       <MapPin size={12} className="shrink-0 text-[#4a5565] mt-0.5" />
-                      <p className="text-[9.528px] text-[#4a5565] leading-[16.212px]">
+                      <p className="text-[11px] text-[#4a5565] leading-[16.212px]">
                         {venue || "No venue specified"}
                       </p>
                     </div>
-                  </div>
+                  </Link>
                 );
               })
             )}

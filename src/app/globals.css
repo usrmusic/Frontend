@@ -3,11 +3,6 @@
 :root {
   --background: #ffffff;
   --foreground: #2A2D32;
-  /* Define fallback font-family CSS variables so build doesn't rely on
-     next/font to inject them at build time. You can replace these with
-     locally-hosted fonts or Google Fonts <link> in the <head> if desired. */
-  --font-poppins: 'Poppins', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-raleway: 'Raleway', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 
@@ -18,6 +13,13 @@
   --color-secondary-100: #F1F1F3;
   --color-secondary-200: #EBE9E1;
   --color-gray-100: #6B7280;
+
+  /* Typography — `--font-poppins` is injected by next/font (see
+     src/lib/fonts.ts) and is owned entirely by it; we must NOT redefine it
+     here or it becomes a circular reference. We only declare `--font-sans`,
+     which Tailwind v4 turns into the `font-sans` utility and which every
+     other layer (body, Ant Design's theme token) points at. */
+  --font-sans: var(--font-poppins), system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 @theme inline {
@@ -28,7 +30,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-poppins);
+  font-family: var(--font-sans);
   font-weight: 400;
   overflow-x: hidden;
 }
@@ -65,6 +67,51 @@ textarea {
 
 .themeH1 {
   @apply font-semibold text-2xl leading-none tracking-normal;
+}
+
+/* ── Typography scale ───────────────────────────────────────────────────────
+   One scale for the whole app. Sizes were previously set ad-hoc per page
+   (135×text-sm, 108×text-xs, plus ~20 one-off pixel values such as
+   12.688px/10.875px/9.528px left over from a Figma export at 0.906 scale),
+   which is why the same kind of content rendered at a different size
+   depending on which page you were on.
+
+     page title   24px / 600    (.themeH1)
+     panel title  18px / 600
+     card heading 16px / 600
+     body, table  14px / 400    <- default
+     label, meta  12px / 500
+     fine print   11px / 400
+
+   The rules below pin the shared Ant Design primitives to that scale so a
+   table, select or date picker is the same size on every page without each
+   page having to opt in. Ant Design ships its own font-size on these
+   elements, so these need to be specific enough to win. */
+:where(.ant-table) {
+  font-size: 14px;
+}
+
+:where(.ant-table-thead) > tr > th {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+:where(.ant-select-selector, .ant-select-selection-item, .ant-select-selection-placeholder),
+:where(.ant-picker-input) > input,
+:where(.ant-input-number-input),
+:where(.ant-input),
+:where(.ant-btn) {
+  font-size: 14px;
+}
+
+/* Pagination page-size selector stays small so it doesn't dwarf the row. */
+:where(.ant-pagination) {
+  font-size: 13px;
+}
+
+:where(.ant-modal-title) {
+  font-size: 16px;
+  font-weight: 600;
 }
 
 /* Hide react-day-picker's built-in caption/navigation when rendering inside

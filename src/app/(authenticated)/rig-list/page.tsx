@@ -69,10 +69,10 @@ const Page = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
 
-        {/* LEFT — Rig list */}
-        <div className="rounded-xl overflow-hidden">
+        {/* LEFT — Rig list (kept narrower than the notes panel for now) */}
+        <div className="lg:col-span-2 rounded-xl overflow-hidden">
           {/* Header — matched height with right panel */}
           <div className="bg-primary h-[72px] flex items-center px-4">
             <Select
@@ -115,7 +115,7 @@ const Page = () => {
                         {items.length > 0 && (
                           <ul className="pl-5 space-y-1.5 mt-1">
                             {items.map((line: string, i: number) => (
-                              <li key={i} className="flex items-center gap-2 text-xs text-gray-700">
+                              <li key={i} className="flex items-center gap-2 text-sm text-gray-700">
                                 <input
                                   type="checkbox"
                                   className="size-3.5 shrink-0"
@@ -137,7 +137,7 @@ const Page = () => {
         </div>
 
         {/* RIGHT — Event notes */}
-        <div className="rounded-xl overflow-hidden bg-white flex flex-col">
+        <div className="lg:col-span-3 rounded-xl overflow-hidden bg-white flex flex-col">
           {/* Header — matched height with left panel */}
           <div className="bg-primary h-[72px] flex items-center px-5 text-white shrink-0">
             <p className="font-medium">Event Notes</p>

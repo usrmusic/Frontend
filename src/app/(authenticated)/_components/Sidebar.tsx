@@ -231,7 +231,7 @@ const Sidebar = () => {
                         onMouseEnter={(e) => showTooltip(e, c.label)}
                         onMouseMove={(e) => showTooltip(e, c.label)}
                         onMouseLeave={hideTooltip}
-                        className={`group relative flex w-full items-center justify-start gap-3 px-3 py-2 rounded-md text-[13px] hover:bg-black hover:text-white transition-colors duration-200 ${isActive ? "bg-black text-white" : "text-gray-600"}`}
+                        className={`group relative flex w-full items-center justify-start gap-3 px-3 py-2 rounded-md text-sm hover:bg-black hover:text-white transition-colors duration-200 ${isActive ? "bg-black text-white" : "text-gray-600"}`}
                       >
                         {c.icon}
                         <span className="overflow-hidden whitespace-nowrap">{c.label}</span>

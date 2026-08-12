@@ -79,7 +79,7 @@ const Header = () => {
           className="rounded-full"
         />
         <div>
-          <h3 className="text-2xl font-raleway font-medium mb-1">Hello{user?.name ? `, ${user.name}` : ''}</h3>
+          <h3 className="text-2xl font-medium mb-1">Hello{user?.name ? `, ${user.name}` : ''}</h3>
           <p className="text-gray-100">Explore information and activity about your events</p>
         </div>
       </div>
