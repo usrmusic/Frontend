@@ -264,7 +264,7 @@ function CalendarWithSidebar({
         {sidebarOptions.map((opt, idx) => (
           <button
             key={opt.label}
-            className={`shrink-0 text-left px-3 py-1.5 rounded-md text-[13px] font-medium transition-all ${
+            className={`shrink-0 text-left px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
               idx === sidebarIdx
                 ? "text-white shadow-sm"
                 : "text-gray-500 hover:bg-[#e5e5e5]"
@@ -341,8 +341,8 @@ function CalendarWithSidebar({
              key, so every entry must keep its `rdp-*` default — the calendar's
              grid layout lives in globals.css and is keyed off those classes. */
           classNames={{
-            weekday: `${defaultClassNames.weekday} py-2 text-[12px] font-normal text-gray-400`,
-            day: `${defaultClassNames.day} text-[13px] text-gray-700`,
+            weekday: `${defaultClassNames.weekday} py-2 text-xs font-normal text-gray-400`,
+            day: `${defaultClassNames.day} text-sm text-gray-700`,
             day_button: `${defaultClassNames.day_button} cursor-pointer transition-colors`,
             today: `${defaultClassNames.today} font-semibold`,
             outside: `${defaultClassNames.outside} text-gray-300`,

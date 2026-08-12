@@ -9,13 +9,13 @@ import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
-import { MoreVertical, X } from "lucide-react";
+import { MoreVertical } from "lucide-react";
 import { useFormik } from "formik";
 import { Select, DatePicker, TableColumnsType, InputNumber } from "antd";
 import type { TableRowSelection } from "antd/es/table/interface";
 import dayjs from "dayjs";
 import Link from "next/link";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "antd";
 import { useSearchParams } from "next/navigation";
@@ -42,7 +42,8 @@ interface CompanyOption {
 const OpenEnquiryPage = () => {
   const [params, setParams] = useState(initialParams);
   const [modalOpen, setModalOpen] = useState(false);
-  const [showSidebarDrawer, setShowSidebarDrawer] = useState(false);
+  // Side panel is inline and shown by default; the 3-dot button toggles it.
+  const [showSidePanel, setShowSidePanel] = useState(true);
   const [buttonLoading, setButtonLoading] = useState<string | null>(null);
   const [modalTemplate, setModalTemplate] = useState<unknown | null>(null);
   const [modalCompanies, setModalCompanies] = useState<Array<{
@@ -147,6 +148,7 @@ const OpenEnquiryPage = () => {
       dataIndex: ["users_events_user_idTousers", "name"],
       key: "name",
       width: 160,
+      ellipsis: true,
       sorter: (a, b) => {
         const an =
           (a.users_events_user_idTousers as { name?: string })?.name ?? "";
@@ -160,12 +162,14 @@ const OpenEnquiryPage = () => {
       dataIndex: ["users_events_user_idTousers", "contact_number"],
       key: "mobile",
       width: 130,
+      ellipsis: true,
     },
     {
       title: "Event Date",
       dataIndex: "date",
       key: "date",
-      width: 110,
+      width: 140,
+      ellipsis: true,
       sorter: (a, b) =>
         dayjs(a.date as string).valueOf() - dayjs(b.date as string).valueOf(),
       render: (value: string) =>
@@ -202,6 +206,24 @@ const OpenEnquiryPage = () => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (found) setSelectedRowData([found]);
   }, [enquiryData, selectedRowKeys]);
+
+  // Auto-select the first enquiry so the side panel is populated on arrival.
+  // Guarded by a ref keyed on the current search/page so it fires once per
+  // result set — otherwise clearing a row would instantly re-select it and the
+  // Edit/Delete buttons (which require an empty selection to disable) would
+  // never turn off.
+  const autoSelectedForRef = useRef<string | null>(null);
+  useEffect(() => {
+    const rows = enquiryData?.data;
+    if (!rows?.length) return;
+    const key = `${params.search}|${params.page}`;
+    if (autoSelectedForRef.current === key) return;
+    autoSelectedForRef.current = key;
+    if (selectedRowKeys.length) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedRowKeys([String(rows[0].id)]);
+    setSelectedRowData([rows[0]]);
+  }, [enquiryData, params.search, params.page, selectedRowKeys.length]);
 
   const searchParams = useSearchParams();
 
@@ -366,8 +388,8 @@ const OpenEnquiryPage = () => {
             type="default"
             htmlType="button"
             className="themeDefaultButton"
-            onClick={() => setShowSidebarDrawer(true)}
-            aria-label="Open notes and deposit panel"
+            onClick={() => setShowSidePanel((v) => !v)}
+            aria-label={showSidePanel ? "Hide notes and deposit panel" : "Show notes and deposit panel"}
           >
             <MoreVertical size={14} />
           </Button>
@@ -375,14 +397,15 @@ const OpenEnquiryPage = () => {
       </div>
 
       {/* Main body */}
-      <div>
+      <div className="grid grid-cols-12 gap-6">
 
-        {/* Table section */}
-        <div>
-          <div className="bg-white rounded-xl overflow-hidden shadow-sm">
-            {/* Green header with search */}
-            <div className="bg-primary px-4 py-3">
-              <div className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 max-w-[340px]">
+        {/* Table section — widens to full width when the side panel is hidden */}
+        <div className={showSidePanel ? "col-span-12 xl:col-span-9" : "col-span-12"}>
+          <div className="bg-white rounded-xl overflow-hidden shadow-sm [&_.ant-table-thead_th]:whitespace-nowrap [&_.ant-table-tbody_td]:whitespace-nowrap">
+            {/* Green header with search — fixed height so the side panel
+                header can line up with it exactly */}
+            <div className="bg-primary px-4 h-[60px] flex items-center">
+              <div className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 w-full max-w-[340px]">
                 <MagnifyingGlass w={18} h={18} />
                 <input
                   type="text"
@@ -426,46 +449,19 @@ const OpenEnquiryPage = () => {
           </div>
         </div>
 
-      </div>
-
-      {/* Notes + Deposit drawer — opened via the 3-dot button */}
-      <div
-        className={`fixed inset-0 z-50 pointer-events-none transition-all duration-300 ${showSidebarDrawer ? "opacity-100" : "opacity-0"}`}
-        aria-hidden={!showSidebarDrawer}
-      >
-        <div
-          className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${showSidebarDrawer ? "opacity-100 pointer-events-auto" : "opacity-0"}`}
-          onClick={() => setShowSidebarDrawer(false)}
-        ></div>
-
-        <aside
-          className={`pointer-events-auto fixed right-0 top-0 h-full w-[380px] bg-white shadow-xl z-50 transform transition-transform duration-300 ${
-            showSidebarDrawer ? "translate-x-0" : "translate-x-full"
-          }`}
-          role="dialog"
-          aria-labelledby="sidebar-drawer-title"
-        >
-          <div className="h-full flex flex-col bg-white">
-            {/* Header */}
-            <div className="p-6 border-b border-gray-200 flex justify-between items-start bg-gradient-to-r from-white to-slate-50">
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Open Enquiry</p>
-                <h3 id="sidebar-drawer-title" className="themeH1 text-lg mt-1">
+        {/* Side panel — inline, visible by default, toggled by the 3-dot button */}
+        {showSidePanel && (
+          <aside className="col-span-12 xl:col-span-3">
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+              {/* Header — same fixed height as the table's search header */}
+              <div className="px-5 h-[60px] flex flex-col justify-center border-b border-gray-200 bg-gradient-to-r from-white to-slate-50">
+                <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide leading-tight">Open Enquiry</p>
+                <h3 className="themeH1 text-base truncate leading-tight">
                   {(selectedRowData?.[0]?.users_events_user_idTousers as { name?: string } | undefined)?.name || "Notes & Deposit"}
                 </h3>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowSidebarDrawer(false)}
-                className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
-                aria-label="Close drawer"
-              >
-                <X size={18} className="text-gray-600" />
-              </button>
-            </div>
 
-            <div className="flex-1 overflow-y-auto scrollbar-hide">
-              <div className="p-6 space-y-6">
+              <div className="p-5 space-y-6">
 
                 {/* Note input + Add button */}
                 <div className="flex gap-2 items-stretch">
@@ -492,17 +488,22 @@ const OpenEnquiryPage = () => {
                 </div>
 
                 {/* Recent Activities */}
-                <div className="bg-white rounded-xl overflow-hidden border border-gray-200">
-                  <p className="text-sm font-medium text-gray-900 px-4 pt-3 pb-2">Recent activites</p>
-                  <div className="px-3 pb-3 h-56 overflow-y-auto no-scrollbar space-y-2">
+                <div>
+                  <p className="text-sm font-medium text-gray-900 pb-2">Recent activites</p>
+                  <div className="h-56 overflow-y-auto no-scrollbar">
                     {selectedRowData?.[0]?.event_notes?.length ? (
-                      <ul className="space-y-2">
+                      <ul>
                         {selectedRowData?.[0]?.event_notes?.map((item) => (
                           <li
                             key={item.id}
-                            className="text-xs text-gray-600 bg-white p-2.5 rounded-lg border-l-4 border-primary shadow-sm"
+                            className="py-2 border-b border-gray-100 last:border-0"
                           >
-                            {item.notes}
+                            {item.created_at && (
+                              <p className="text-[11px] text-gray-400 mb-0.5">
+                                {dayjs(item.created_at).format("DD/MM/YY HH:mm")}
+                              </p>
+                            )}
+                            <p className="text-xs text-gray-600">{item.notes}</p>
                           </li>
                         ))}
                       </ul>
@@ -574,8 +575,8 @@ const OpenEnquiryPage = () => {
 
               </div>
             </div>
-          </div>
-        </aside>
+          </aside>
+        )}
       </div>
 
       {modalOpen && (

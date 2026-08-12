@@ -11,7 +11,13 @@ const ThemeConfig = ({ children }: { children: ReactNode }) => {
         token: {
           colorPrimary: "#719984",
           borderRadius: 12,
-          fontFamily: "var(--font-inter)",
+          /* Was `var(--font-inter)`, a variable that is not defined anywhere in
+             the project. Ant Design therefore fell back to its own default
+             stack while plain HTML rendered in Poppins, so every form showed
+             two different typefaces side by side. Pointing it at the shared
+             token keeps AntD controls, labels and headings on one font. */
+          fontFamily: "var(--font-sans)",
+          fontSize: 14,
         },
         components: {
           Button: {

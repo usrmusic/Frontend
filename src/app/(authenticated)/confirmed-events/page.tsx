@@ -507,9 +507,8 @@ const ConfirmedEventsPage = () => {
                   </label>
                   <textarea
                     name="entranceSong"
-                    className="h-20 w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
+                    className="min-h-20 w-full resize-y rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
                     placeholder="Enter entrance song/style"
-                    style={{ resize: "none" }}
                     value={formik.values.entranceSong}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
@@ -521,9 +520,8 @@ const ConfirmedEventsPage = () => {
                   </label>
                   <textarea
                     name="cakeCutSong"
-                    className="h-20 w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
+                    className="min-h-20 w-full resize-y rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
                     placeholder="Enter cake cut song"
-                    style={{ resize: "none" }}
                     value={formik.values.cakeCutSong}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
@@ -541,9 +539,8 @@ const ConfirmedEventsPage = () => {
                   <label className="mb-1 block text-xs">Do&apos;s</label>
                   <textarea
                     name="dos"
-                    className="h-20 w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
+                    className="min-h-20 w-full resize-y rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
                     placeholder="Enter preferences/do's"
-                    style={{ resize: "none" }}
                     value={formik.values.dos}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
@@ -650,9 +647,8 @@ const ConfirmedEventsPage = () => {
                   </label>
                   <textarea
                     name="briefItinerary"
-                    className="h-[280px] w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
+                    className="min-h-[280px] w-full resize-y rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
                     placeholder="Enter brief itinerary, playlist, and notes"
-                    style={{ resize: "none" }}
                     value={formik.values.briefItinerary}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
@@ -680,9 +676,8 @@ const ConfirmedEventsPage = () => {
                   <label className="mb-1 block text-xs">Dont&apos;s</label>
                   <textarea
                     name="donts"
-                    className="h-20 w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
+                    className="min-h-20 w-full resize-y rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
                     placeholder="Enter don'ts"
-                    style={{ resize: "none" }}
                     value={formik.values.donts}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}

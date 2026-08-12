@@ -924,6 +924,10 @@ export type Equipment = {
   quantity?: number | null;
   pricing_guide?: string | null;
   rig_notes?: string | null;
+  /** "Do we own this equipment?" — when false the item is hired in from a supplier. */
+  is_availabilty_check?: boolean;
+  /** Free-text supplier name; the API creates the supplier and links it automatically. */
+  supplier_name?: string;
 };
 
 export const useEquipment = (params: QueryParams) => {

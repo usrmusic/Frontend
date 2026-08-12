@@ -56,7 +56,7 @@ export default function PendingPayments({
   return (
     <Card variant="white" className="p-4 flex flex-col h-full">
       <div className="flex flex-col flex-1 justify-start h-full">
-        <h4 className="mb-3 font-poppins text-base font-semibold text-gray-900 flex items-center min-h-8">Pending Payment</h4>
+        <h4 className="mb-3 text-base font-semibold text-gray-900 flex items-center min-h-8">Pending Payment</h4>
         {isLoading ? (
           <div className="w-full pt-3 flex items-center justify-center">
             <Skeleton active />
