@@ -900,24 +900,22 @@ const ConfirmedEventsPage = () => {
                       </button>
                     </div>
                     {rigOpen && (
-                      <div className="mt-2 bg-white rounded-xl overflow-hidden border border-gray-200">
-                        <div className="px-4 py-4 text-xs text-gray-700 space-y-3">
-                          {(selectedEventData?.data?.event_packages)?.length ? (
-                            (selectedEventData?.data?.event_packages).map((p: ConfirmEventPackage) => (
-                              <div key={p.id} className="space-y-0.5">
-                                <div className="flex items-center gap-2">
-                                  <SquareCheckBig size={14} className="text-primary shrink-0" />
-                                  <p className="font-semibold text-gray-900 leading-tight">{p.equipment?.name || p.package_name || p.name || "Item"}</p>
-                                </div>
-                                {p.rig_notes && (
-                                  <p className="pl-6 text-[11px] text-gray-500 leading-snug whitespace-pre-line">{p.rig_notes}</p>
-                                )}
+                      <div className="mt-2 text-xs text-gray-700 space-y-3">
+                        {(selectedEventData?.data?.event_packages)?.length ? (
+                          (selectedEventData?.data?.event_packages).map((p: ConfirmEventPackage) => (
+                            <div key={p.id} className="space-y-0.5">
+                              <div className="flex items-center gap-2">
+                                <SquareCheckBig size={14} className="text-primary shrink-0" />
+                                <p className="font-semibold text-gray-900 leading-tight">{p.equipment?.name || p.package_name || p.name || "Item"}</p>
                               </div>
-                            ))
-                          ) : (
-                            <p className="text-[11px] text-gray-500 py-2">No rig notes</p>
-                          )}
-                        </div>
+                              {p.rig_notes && (
+                                <p className="pl-6 text-[11px] text-gray-500 leading-snug whitespace-pre-line">{p.rig_notes}</p>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-[11px] text-gray-500 py-2">No rig notes</p>
+                        )}
                       </div>
                     )}
                   </div>
