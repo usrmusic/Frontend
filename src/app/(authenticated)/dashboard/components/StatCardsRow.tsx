@@ -55,8 +55,47 @@ const LABEL_CLASS = "text-sm 2xl:text-base truncate";
    four cards first share a row) that lands near 17px, which holds a 9-digit
    formatted amount plus the eye toggle inside a quarter-width card. `truncate`
    stays purely as a safety net for absurd values. */
-const VALUE_CLASS =
-  "text-[clamp(1rem,1.35vw,1.5rem)] leading-tight font-semibold truncate";
+const VALUE_BASE = "text-[clamp(1rem,1.35vw,1.5rem)] leading-tight font-semibold";
+const VALUE_CLASS = `${VALUE_BASE} truncate`;
+
+/* Concealing a figure (the eye toggle). The masking itself lives in
+   `.masked-figure` in globals.css — it needs `mask-image` plus its `-webkit-`
+   prefix, which is unpleasant to express as inline utilities; the comment there
+   explains why a feathered mask is what kills the boxiness that blur alone
+   always produces.
+
+   Note `truncate` is deliberately NOT applied while concealed: it means
+   overflow:hidden, which would slice the feathered halo back into a hard-edged
+   rectangle and undo the whole effect. `.masked-figure` carries its own
+   `white-space: nowrap`, which is the only part of `truncate` needed here — it
+   stops a long amount wrapping to two lines and changing the card's height as
+   you toggle. */
+const MASK_CLASS = `${VALUE_BASE} masked-figure`;
+
+function StatValue({
+  value,
+  concealed,
+  className = "",
+}: {
+  value: string;
+  concealed: boolean;
+  className?: string;
+}) {
+  return (
+    <p
+      className={`${concealed ? MASK_CLASS : VALUE_CLASS} ${className}`}
+      aria-label={concealed ? "Amount hidden" : undefined}
+    >
+      {value}
+    </p>
+  );
+}
+
+const GBP = new Intl.NumberFormat("en-GB", {
+  style: "currency",
+  currency: "GBP",
+  maximumFractionDigits: 0,
+});
 
 export default function StatCardsRow({
   totalEvents,
@@ -151,17 +190,10 @@ export default function StatCardsRow({
             <div className="flex-1 min-w-0">
               <p className={`${LABEL_CLASS} text-primary`}>Turn Over</p>
               <div className="flex items-center gap-2 min-w-0">
-                <p
-                  className={`${VALUE_CLASS} ${
-                    !showStat.turnOverStat ? "blur-sm" : ""
-                  }`}
-                >
-                  {new Intl.NumberFormat("en-GB", {
-                    style: "currency",
-                    currency: "GBP",
-                    maximumFractionDigits: 0,
-                  }).format(totalTurnover)}
-                </p>
+                <StatValue
+                  value={GBP.format(totalTurnover)}
+                  concealed={!showStat.turnOverStat}
+                />
                 {showStat.turnOverStat ? (
                   <EyeOff size={20} className="shrink-0" />
                 ) : (
@@ -195,17 +227,11 @@ export default function StatCardsRow({
             <div className="flex-1 min-w-0">
               <p className={`${LABEL_CLASS} text-white/80 mb-2`}>Profit</p>
               <div className="flex items-center gap-2 min-w-0">
-                <p
-                  className={`${VALUE_CLASS} text-white ${
-                    !showStat.profitStat ? "blur-sm" : ""
-                  }`}
-                >
-                  {new Intl.NumberFormat("en-GB", {
-                    style: "currency",
-                    currency: "GBP",
-                    maximumFractionDigits: 0,
-                  }).format(totalProfit)}
-                </p>
+                <StatValue
+                  value={GBP.format(totalProfit)}
+                  concealed={!showStat.profitStat}
+                  className="text-white"
+                />
                 {showStat.profitStat ? (
                   <EyeOff size={20} color="#fff" className="shrink-0" />
                 ) : (
