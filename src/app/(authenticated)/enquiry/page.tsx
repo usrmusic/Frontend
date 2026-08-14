@@ -5,7 +5,8 @@ import Input from "@/src/components/Input";
 import { BackButton } from "@/src/components/Icons";
 import { PlusIcon, Save, ChevronDown, ChevronUp, Printer, SquareCheckBig, X, Send, MoreVertical, Plus } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useLayoutEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
@@ -186,26 +187,55 @@ const NewEnquiryPage = () => {
   // Ref to capture created/edited enquiry ID for Send Quote
   const lastEnquiryIdRef = useRef<string | null>(null);
 
-  // Summary sidebar height — measured against the real viewport rather than a
-  // guessed offset. `max-h-[calc(100vh-Npx)]` alone assumed the sidebar's top
-  // was N px from the viewport top, but its actual top depends on whatever
-  // page content sits above it, so it was overflowing past the bottom of the
-  // browser window on load (before `sticky` had anything to stick against).
-  // Measuring the real top and re-deriving the cap from that keeps the whole
-  // box on-screen; only its own content scrolls internally.
-  const summarySidebarRef = useRef<HTMLDivElement>(null);
-  const [summaryMaxHeight, setSummaryMaxHeight] = useState<number | null>(null);
-  useLayoutEffect(() => {
-    const el = summarySidebarRef.current;
-    if (!el) return;
-    const measure = () => {
-      const top = el.getBoundingClientRect().top;
-      setSummaryMaxHeight(Math.max(240, window.innerHeight - top - 64));
+  // Summary sidebar height is now pure CSS — see the `aside` near the bottom of
+  // this file. The previous approach measured `window.innerHeight - rect.top`
+  // in a `useLayoutEffect` and it was wrong in three separate ways:
+  //
+  //   1. No dependency array, so it re-ran after *every* render.
+  //   2. `rect.top` means two different things for the same element depending on
+  //      whether `position: sticky` has engaged — its in-flow offset before, the
+  //      pinned offset after. The cap therefore changed as you scrolled.
+  //   3. It measured against `window`, but the real scrollport is the
+  //      `overflow-y-auto` box in LayoutClient, not the viewport.
+  //
+  // Mounting the panel while already scrolled down (which is exactly what
+  // happens — it only appears once a DJ is picked, by which point you have
+  // scrolled) produced a large `rect.top` and collapsed the cap to its 240px
+  // floor. That truncated the panel and cut off the Rig List row at its bottom:
+  // client-reported "awkward top gap and hiding text (e.g. the word Rig List)".
+
+  // Printing. Two sheets share one mechanism:
+  //   "enquiry" — the page header's Print button: the whole enquiry form as it
+  //               currently stands (filled or blank) plus equipment and rig notes.
+  //   "rig"     — the summary panel's Print button: rig list and notes only.
+  //
+  // The markup is portalled to <body> (see the `#print-section` block in
+  // globals.css) so it escapes the app shell's nested `overflow-y-auto` +
+  // `rounded-3xl` containers — printing it in place clipped it to the scrollport
+  // and dropped everything below the fold.
+  const [printMode, setPrintMode] = useState<"enquiry" | "rig" | null>(null);
+
+  // The print is fired from an effect rather than straight out of the click
+  // handler because the sheet's content depends on `printMode`: window.print()
+  // snapshots the DOM synchronously, so calling it in the handler would capture
+  // the markup from *before* the mode was applied — i.e. the previous sheet, or
+  // nothing at all on the first press.
+  useEffect(() => {
+    if (!printMode) return;
+    const body = document.body;
+    body.classList.add("print-scoped");
+    const cleanup = () => {
+      body.classList.remove("print-scoped");
+      window.removeEventListener("afterprint", cleanup);
+      setPrintMode(null);
     };
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  });
+    window.addEventListener("afterprint", cleanup);
+    window.print();
+    return () => {
+      body.classList.remove("print-scoped");
+      window.removeEventListener("afterprint", cleanup);
+    };
+  }, [printMode]);
 
   const { data: clientDropdownName } = useClientDropdown();
   const { data: venueDropdownName } = useVenueDropdown();
@@ -717,9 +747,19 @@ const NewEnquiryPage = () => {
             }
           };
 
-          // At a Glance + Rig List — shared between the inline sidebar (xl+,
-          // visible whenever a DJ is selected) and the slide-over drawer used
-          // as the fallback on narrower screens, so the two never drift apart.
+          // At a Glance — the scrolling body of the summary panel. The Rig List
+          // The Name and Venue fields hold either a dropdown id (when picked from
+          // the list) or free text (when entered via "Add new"), so the print
+          // sheet has to map an id back to its label — otherwise a selected
+          // client prints as a bare row id.
+          const printClientName =
+            clientDropdownName?.find((c) => String(c.id) === String(values.name))?.name ??
+            values.name;
+          const printVenueName =
+            venueDropdownName?.find((v) => String(v.id) === String(values.venue))?.venue ??
+            values.venue;
+
+          // At a Glance + Rig List — the scrolling body of the summary panel.
           const renderSummaryContent = () => (
             <div className="p-6 space-y-3">
               <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-4 border border-slate-200">
@@ -750,13 +790,18 @@ const NewEnquiryPage = () => {
               </div>
 
               {/* Rig List — plain toggle row when collapsed; the boxed panel
-                  only mounts once expanded, so no empty box lingers. */}
+                  only mounts once expanded, so no empty box lingers. Stays
+                  inside the panel's own scroll area (rather than being pinned as
+                  a footer) because this is the layout already signed off — the
+                  cropping it used to suffer from was a height bug, not a
+                  placement one, and is fixed on the `aside` below. */}
               <div>
                 <div className="flex justify-end">
                   <button
                     type="button"
                     className="flex items-center gap-1.5 text-sm font-medium text-primary"
                     onClick={() => setCardsOpen((s) => ({ ...s, rigList: !s.rigList }))}
+                    aria-expanded={cardsOpen.rigList}
                   >
                     Rig List
                     <Plus size={15} className={`transition-transform duration-300 ${cardsOpen.rigList ? "rotate-45" : ""}`} />
@@ -806,10 +851,16 @@ const NewEnquiryPage = () => {
                     >
                       {editId ? "Update" : "Save"}
                     </Button>
+                    {/* Prints the enquiry as it stands — every form field plus the
+                        package and rig notes. (This used to call a bare
+                        `window.print()`, which hit the old
+                        `body * { visibility: hidden }` rule and sent a blank
+                        sheet every time: the `#print-section` it revealed was
+                        never rendered by anything.) */}
                     <Button
                       type="default"
                       icon={<Printer size={14} />}
-                      onClick={() => window.print()}
+                      onClick={() => setPrintMode("enquiry")}
                     >
                       Print
                     </Button>
@@ -834,8 +885,11 @@ const NewEnquiryPage = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-12 gap-6">
-                <div className={`col-span-12 space-y-6 ${values.dj?.id && showSummaryDrawer ? "xl:col-span-8" : ""}`}>
+                {/* Flex rather than a 12-column grid — see the matching comment
+                    on the Open Enquiry page. The panel width the two pages share
+                    falls between two grid steps, so both state it directly. */}
+                <div className="flex flex-col xl:flex-row gap-6">
+                <div className="flex-1 min-w-0 space-y-6">
 
                     {/* Enquiry Details card — collapsible */}
                     <Card variant="white" className="p-0 overflow-hidden">
@@ -1437,16 +1491,47 @@ const NewEnquiryPage = () => {
                 {/* Inline sidebar — no separate drawer/overlay. Only once a DJ is
                     picked (item 8: "must remain visible as we build the
                     package"), and only while the 3-dot toggle has it open.
-                    `sticky` + `max-h` caps it to the viewport instead of
-                    growing past the screen on short/low-res displays (e.g.
-                    1366x768) — its own content scrolls internally instead. */}
+
+                    Sticky geometry, all in CSS, and the numbers are measured
+                    rather than guessed — see below.
+
+                    The scrollport is the `overflow-y-auto` box in LayoutClient,
+                    not the window. Two separate paddings sit above this panel:
+                    the shell's outer `p-6` (24px) and that scroll box's own
+                    `p-8` (32px). The catch is that a sticky offset resolves
+                    against the scroll container's CONTENT box, so the 32px is
+                    added to whatever `top` says — a plain `top-4` pinned the
+                    panel 72px down the viewport (24 + 32 + 16), which is the
+                    oversized head gap, and pushed its bottom edge flush against
+                    the screen so it read as cut off.
+
+                    Hence the negative offset: -24px cancels most of that 32px
+                    and lands the panel a deliberate 32px from the top. Height is
+                    then fixed at `100vh-64px` so the bottom lands 32px up from
+                    the viewport floor — an even margin top and bottom that holds
+                    at any window height, with the panel's own body scrolling
+                    inside it.
+
+                    -24px is safe: the scrollport clips at its PADDING box, which
+                    is 32px above the content box, so the panel still sits 8px
+                    inside the clip boundary. Anything past -32px would start
+                    shearing off the panel's header.
+
+                    A fixed `h-` (not `max-h-`) is deliberate — the panel keeps
+                    one constant size as you scroll instead of resizing with its
+                    contents.
+
+                    Below `xl` the panel is stacked full-width under the form, so
+                    neither the pin nor the height applies and it flows naturally.
+
+                    The aside itself must keep the grid's default
+                    `align-items: stretch` — it is the sticky element's travel
+                    space. Adding `self-start` here would shrink it to the
+                    panel's own height and the pin would have nothing to slide
+                    against. */}
                 {values.dj?.id && showSummaryDrawer && (
-                  <aside className="col-span-12 xl:col-span-4">
-                    <div
-                      ref={summarySidebarRef}
-                      className="xl:sticky xl:top-6 flex flex-col bg-white rounded-2xl shadow-sm overflow-hidden"
-                      style={{ maxHeight: summaryMaxHeight ?? undefined }}
-                    >
+                  <aside className="xl:w-[29%] xl:shrink-0">
+                    <div className="xl:sticky xl:-top-6 xl:h-[calc(100vh-64px)] flex flex-col bg-white rounded-2xl shadow-sm overflow-hidden">
                       {/* Same fixed height as the Enquiry Details header so the
                           two line up exactly, as on the Open Enquiry page. */}
                       <div className="px-6 h-[60px] shrink-0 flex items-center justify-between border-b border-gray-200 bg-gradient-to-r from-white to-slate-50">
@@ -1454,21 +1539,178 @@ const NewEnquiryPage = () => {
                           <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide leading-tight">At a Glance</p>
                           <h3 className="themeH1 text-base truncate leading-tight">{values.dj?.name || "Summary"}</h3>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setShowSummaryDrawer(false)}
-                          className="p-2 -mr-2 hover:bg-gray-200 rounded-lg transition-colors shrink-0"
-                          aria-label="Hide summary"
-                        >
-                          <X size={18} className="text-gray-600" />
-                        </button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {/* Prints the rig list and its notes only — the narrow
+                              sheet the crew actually carries. The page header's
+                              Print button covers the full enquiry. */}
+                          <button
+                            type="button"
+                            onClick={() => setPrintMode("rig")}
+                            className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                            aria-label="Print rig list"
+                            title="Print rig list and notes"
+                          >
+                            <Printer size={17} className="text-gray-600" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowSummaryDrawer(false)}
+                            className="p-2 -mr-2 hover:bg-gray-200 rounded-lg transition-colors"
+                            aria-label="Hide summary"
+                          >
+                            <X size={18} className="text-gray-600" />
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex-1 overflow-y-auto scrollbar-hide">
+                      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
                         {renderSummaryContent()}
                       </div>
                     </div>
                   </aside>
                 )}
+
+                {/* Print sheets. Rendered on <body>, hidden on screen, revealed
+                    only for the duration of a print.
+
+                    Theming is done with the brand green as *text and rules*
+                    rather than filled bars: browsers drop background colours from
+                    print output unless the user ticks "background graphics", so a
+                    green header block would come out blank on most printers while
+                    green type and rules always render. No flex/grid either — a
+                    paginated sheet breaks those across pages badly.
+
+                    `values` here is live Formik state, so an untouched form
+                    prints as a blank pro-forma with every label and its rule
+                    intact, which is what makes it usable as something to fill in
+                    by hand on site. */}
+                {printMode &&
+                  createPortal(
+                    <div id="print-section" className="p-2 text-black">
+                      <div className="mb-4 border-b-2 border-[#719984] pb-2">
+                        <h1 className="text-lg font-semibold text-[#719984]">
+                          {printMode === "rig" ? "Rig List" : "Event Enquiry"}
+                        </h1>
+                        {values.dj?.name && (
+                          <p className="text-xs">{values.dj.name}</p>
+                        )}
+                      </div>
+
+                      {printMode === "enquiry" ? (
+                        <>
+                          {/* Every field, blank ones included — an untouched
+                              form prints as a fill-in-by-hand pro-forma. */}
+                          <h2 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[#719984]">
+                            Enquiry Details
+                          </h2>
+                          <table className="mb-5 w-full text-xs">
+                            <tbody>
+                              {[
+                                ["Name", printClientName],
+                                ["Address", values.address],
+                                ["Email", values.email],
+                                ["Number", values.number],
+                                ["Venue", printVenueName],
+                                ["DJ / Package", values.dj?.name],
+                                ["Event Date", values.eventDate],
+                                ["Start Time", values.startTime],
+                                ["End Time", values.endTime],
+                                [
+                                  "Deposit Amount",
+                                  values.depositAmount
+                                    ? `£${Number(values.depositAmount).toLocaleString()}`
+                                    : "",
+                                ],
+                                ["Tell Me More", values.tellMeMore],
+                              ].map(([label, v]) => (
+                                <tr key={String(label)} className="border-b border-gray-300">
+                                  <td className="w-40 py-1.5 pr-4 align-top font-medium">
+                                    {label}
+                                  </td>
+                                  <td className="py-1.5 align-top whitespace-pre-line">
+                                    {v || "\u00a0"}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </>
+                      ) : (
+                        /* Rig sheet: just enough to identify the job, then
+                           straight into the kit. Blank rows are skipped — this
+                           sheet is a reference to work from, not a form. */
+                        <table className="mb-5 text-xs">
+                          <tbody>
+                            {[
+                              ["Client", printClientName],
+                              ["Venue", printVenueName],
+                              ["Event Date", values.eventDate],
+                              [
+                                "Time",
+                                values.startTime && values.endTime
+                                  ? `${values.startTime} – ${values.endTime}`
+                                  : values.startTime,
+                              ],
+                            ]
+                              .filter(([, v]) => Boolean(v))
+                              .map(([label, v]) => (
+                                <tr key={String(label)}>
+                                  <td className="pr-4 align-top font-medium">{label}</td>
+                                  <td className="align-top">{v}</td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      )}
+
+                      {/* Equipment belongs on BOTH sheets — it is the substance
+                          of the rig list, and making it enquiry-only is what left
+                          the rig sheet with nothing but a "No rig notes" line. */}
+                      <h2 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[#719984]">
+                        {printMode === "enquiry" ? "Package" : "Equipment"}
+                      </h2>
+                      {equipmentList.length ? (
+                        <ul className="mb-5 text-xs">
+                          {equipmentList.map((r, i) => (
+                            <li key={i} className="border-b border-gray-300 py-1.5">
+                              <span className="font-medium">{r.name}</span>
+                              {r.notes && (
+                                <span className="whitespace-pre-line italic"> — {r.notes}</span>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="mb-5 text-xs italic">No items selected</p>
+                      )}
+
+                      <h2 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[#719984]">
+                        Rig Notes
+                      </h2>
+                      {rigNotesList.length ? (
+                        <ul className="text-xs">
+                          {rigNotesList.map((r, i) => (
+                            <li key={i} className="border-b border-gray-300 py-1.5">
+                              <p className="font-medium">{r.name}</p>
+                              <p
+                                className="whitespace-pre-line"
+                                dangerouslySetInnerHTML={{ __html: r.rig_notes ?? "" }}
+                              />
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-xs italic">No rig notes</p>
+                      )}
+
+                      <p className="mt-5 border-t-2 border-[#719984] pt-2 text-sm font-semibold">
+                        Total:{" "}
+                        <span className="text-[#719984]">
+                          {"£" + (Number(totalPrice) || 0).toLocaleString()}
+                        </span>
+                      </p>
+                    </div>,
+                    document.body,
+                  )}
               </div>
               </div>
             </Form>

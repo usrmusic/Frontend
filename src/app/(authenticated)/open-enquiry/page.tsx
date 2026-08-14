@@ -185,8 +185,14 @@ const OpenEnquiryPage = () => {
     },
   ];
 
+  // Single source of truth for whether a note can be saved — the button's
+  // `disabled` and the Enter handler both read it, so the keyboard path can't
+  // fire while the button is greyed out (e.g. a double-tap of Enter mid-save
+  // posting the same note twice).
+  const canAddNote = Boolean(selectedRowKeys.length) && Boolean(note.trim()) && !addingNote;
+
   const hanldeAddNote = () => {
-    if (!note.trim()) return;
+    if (!canAddNote) return;
     addNoteMutation(
       { id: Number(selectedRowKeys[0]), note },
       {
@@ -396,11 +402,20 @@ const OpenEnquiryPage = () => {
         </div>
       </div>
 
-      {/* Main body */}
-      <div className="grid grid-cols-12 gap-6">
+      {/* Main body.
 
-        {/* Table section — widens to full width when the side panel is hidden */}
-        <div className={showSidePanel ? "col-span-12 xl:col-span-9" : "col-span-12"}>
+          Flex rather than a 12-column grid, because the panel width has to match
+          the New Enquiry page exactly and the useful value sits between two grid
+          steps: `col-span-3` (25%) is too narrow, `col-span-4` (33%) too wide.
+          Flex lets both pages state the same 29% directly instead of rounding to
+          whichever column count happens to be available. */}
+      <div className="flex flex-col xl:flex-row gap-6">
+
+        {/* Table section — takes the remaining width, and all of it when the side
+            panel is hidden. `min-w-0` is required: a flex item defaults to
+            min-width:auto, so the table's own scroll container would refuse to
+            shrink and push the panel off-screen instead. */}
+        <div className="flex-1 min-w-0">
           <div className="bg-white rounded-xl overflow-hidden shadow-sm [&_.ant-table-thead_th]:whitespace-nowrap [&_.ant-table-tbody_td]:whitespace-nowrap">
             {/* Green header with search — fixed height so the side panel
                 header can line up with it exactly */}
@@ -449,33 +464,69 @@ const OpenEnquiryPage = () => {
           </div>
         </div>
 
-        {/* Side panel — inline, visible by default, toggled by the 3-dot button */}
+        {/* Side panel — inline, visible by default, toggled by the 3-dot button.
+
+            Geometry is shared with the New Enquiry page's summary panel: same
+            `xl:col-span-4` width (it was `col-span-3` here, so the two pages
+            disagreed), same sticky pin and same fixed full height. See the long
+            comment on that page's `aside` for why the sticky offset is negative
+            — briefly, a sticky offset resolves against the scroll container's
+            content box, so the shell's `p-8` is added to whatever `top` says,
+            and -24px cancels it back to a deliberate 32px from the top of the
+            viewport with a matching 32px at the bottom. */}
         {showSidePanel && (
-          <aside className="col-span-12 xl:col-span-3">
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <aside className="xl:w-[29%] xl:shrink-0">
+            <div className="xl:sticky xl:-top-6 xl:h-[calc(100vh-64px)] flex flex-col bg-white rounded-2xl shadow-sm overflow-hidden">
               {/* Header — same fixed height as the table's search header */}
-              <div className="px-5 h-[60px] flex flex-col justify-center border-b border-gray-200 bg-gradient-to-r from-white to-slate-50">
+              <div className="px-5 h-[60px] shrink-0 flex flex-col justify-center border-b border-gray-200 bg-gradient-to-r from-white to-slate-50">
                 <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide leading-tight">Open Enquiry</p>
                 <h3 className="themeH1 text-base truncate leading-tight">
                   {(selectedRowData?.[0]?.users_events_user_idTousers as { name?: string } | undefined)?.name || "Notes & Deposit"}
                 </h3>
               </div>
 
-              <div className="p-5 space-y-6">
+              {/* The note field and the deposit form are fixed-size; the
+                  activity feed is the one part with an open-ended amount of
+                  content, so it takes the slack (`flex-1`) and the panel fills
+                  its height honestly instead of leaving dead space at the
+                  bottom. `min-h-0` on both this column and the feed is what lets
+                  them shrink below content size so the feed scrolls internally
+                  rather than pushing the deposit form off the panel. */}
+              <div className="flex-1 min-h-0 flex flex-col p-5 gap-5">
 
-                {/* Note input + Add button */}
-                <div className="flex gap-2 items-stretch">
-                  <textarea
+                {/* Note input + Add button — the signed-off layout, with the
+                    field's height brought down from a 3-row textarea to a single
+                    line and the button matched to it.
+
+                    A single-line `input` rather than a short textarea is also
+                    what makes Enter-to-save unambiguous: in a textarea Enter has
+                    to keep meaning "new line", so quick-save would need a
+                    modifier key nobody would discover. Notes on this panel are
+                    one-liners in practice, so nothing is lost.
+
+                    No "press Enter" hint is shown — Enter is a shortcut on top of
+                    the button, not the primary affordance. */}
+                <div className="flex gap-2 items-stretch h-10 shrink-0">
+                  <input
+                    type="text"
                     placeholder="Add a note..."
-                    rows={3}
-                    className="flex-1 bg-white rounded-xl px-4 py-3 text-sm outline-none shadow-sm placeholder:text-gray-400 resize-none border border-gray-200 focus:border-primary/30 transition-colors"
+                    aria-label="Add a note"
+                    className="flex-1 min-w-0 bg-white rounded-xl px-4 text-sm outline-none shadow-sm placeholder:text-gray-400 border border-gray-200 focus:border-primary/30 transition-colors"
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
+                    onKeyDown={(e) => {
+                      // `isComposing` guards IME input, where Enter commits the
+                      // candidate text rather than the field.
+                      if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+                      e.preventDefault();
+                      if (!canAddNote) return;
+                      hanldeAddNote();
+                    }}
                   />
                   <button
                     type="button"
-                    className="bg-primary text-white rounded-xl px-5 text-sm font-medium shadow-sm disabled:opacity-40 transition-opacity flex items-center justify-center min-w-[52px]"
-                    disabled={!selectedRowKeys.length || !note.trim() || addingNote}
+                    className="bg-primary text-white rounded-xl px-5 text-sm font-medium shadow-sm disabled:opacity-40 transition-opacity flex items-center justify-center min-w-[52px] shrink-0"
+                    disabled={!canAddNote}
                     onClick={hanldeAddNote}
                   >
                     {addingNote ? (
@@ -487,23 +538,32 @@ const OpenEnquiryPage = () => {
                   </button>
                 </div>
 
-                {/* Recent Activities */}
-                <div>
-                  <p className="text-sm font-medium text-gray-900 pb-2">Recent activites</p>
-                  <div className="h-56 overflow-y-auto no-scrollbar">
+                {/* Recent Activities.
+                    Separators are `gray-200` (#E5E7EB): `gray-100` (#F3F4F6) is
+                    the correct token now that globals.css no longer overrides it
+                    with #6B7280 — Tailwind's gray-*500* — but at this row height
+                    it reads as almost nothing, so this lands one step up. Visible
+                    hairline, nowhere near the heavy line it started as.
+
+                    Rows are tight on purpose: a date and a one-line note are one
+                    unit, so the padding between entries should be larger than the
+                    gap inside an entry, not equal to it. */}
+                <div className="flex-1 min-h-0 flex flex-col">
+                  <p className="shrink-0 text-sm font-medium text-gray-900 pb-2">Recent activities</p>
+                  <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
                     {selectedRowData?.[0]?.event_notes?.length ? (
                       <ul>
                         {selectedRowData?.[0]?.event_notes?.map((item) => (
                           <li
                             key={item.id}
-                            className="py-2 border-b border-gray-100 last:border-0"
+                            className="py-1.5 border-b border-gray-200 last:border-0"
                           >
                             {item.created_at && (
-                              <p className="text-[11px] text-gray-400 mb-0.5">
+                              <p className="text-[11px] leading-tight text-gray-400">
                                 {dayjs(item.created_at).format("DD/MM/YY HH:mm")}
                               </p>
                             )}
-                            <p className="text-xs text-gray-600">{item.notes}</p>
+                            <p className="text-xs leading-snug text-gray-600">{item.notes}</p>
                           </li>
                         ))}
                       </ul>
@@ -516,7 +576,7 @@ const OpenEnquiryPage = () => {
                 </div>
 
                 {/* Deposit / Confirm form */}
-                <div>
+                <div className="shrink-0">
                   <form className="space-y-2.5" onSubmit={formik.handleSubmit}>
                     <div className="grid grid-cols-2 gap-2">
                       <Select

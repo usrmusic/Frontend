@@ -80,7 +80,9 @@ const Header = () => {
         />
         <div>
           <h3 className="text-2xl font-medium mb-1">Hello{user?.name ? `, ${user.name}` : ''}</h3>
-          <p className="text-gray-100">Explore information and activity about your events</p>
+          {/* gray-500 is #6B7280 — the exact value the removed `--color-gray-100`
+              override used to supply to this one line. */}
+          <p className="text-gray-500">Explore information and activity about your events</p>
         </div>
       </div>
       <div className="flex gap-4 items-center">
