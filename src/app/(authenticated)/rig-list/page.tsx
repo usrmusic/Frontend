@@ -69,23 +69,30 @@ const Page = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+      {/* Event selector — plain white filter bar, matching Completed Events'
+          filter row rather than a colored primary bar. */}
+      <div className="grid grid-cols-4 gap-2">
+        <Select
+          value={eventId ? eventId : undefined}
+          className="w-full col-span-2 bg-white rounded-lg"
+          placeholder="Select event"
+          options={eventsptions}
+          onChange={(value) => setEventId(value || "")}
+          allowClear
+        />
+      </div>
 
-        {/* LEFT — Rig list (kept narrower than the notes panel for now) */}
-        <div className="lg:col-span-2 rounded-xl overflow-hidden">
-          {/* Header — matched height with right panel */}
-          <div className="bg-primary h-[72px] flex items-center px-4">
-            <Select
-              value={eventId ? eventId : undefined}
-              className="w-full"
-              placeholder="Select event"
-              options={eventsptions}
-              onChange={(value) => setEventId(value || "")}
-              allowClear
-            />
-          </div>
+      {/* Plain section title under the dropdown, matching the confirmed-events
+          drawer's "Rig List" label rather than a second colored header bar. */}
+      {/* <p className="text-sm font-semibold text-gray-900">Rig List</p> */}
 
-          <div className="bg-white px-5 py-4 min-h-[200px]">
+      {/* One white card, split into two halves by a vertical hairline — replaces
+          the previous two separate colour-headed panels. */}
+      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-gray-100">
+
+          {/* LEFT — Rig list */}
+          <div className="p-5 min-h-[200px]">
             {isLoading ? (
               <div className="flex justify-center py-8"><Spin /></div>
             ) : rigNotesData?.packages?.filter((pkg: any) => pkg.rig_notes || pkg.equipment?.rig_notes).length > 0 ? (
@@ -134,69 +141,64 @@ const Page = () => {
               <p className="text-sm text-gray-500">No rig notes available.</p>
             )}
           </div>
-        </div>
 
-        {/* RIGHT — Event notes */}
-        <div className="lg:col-span-3 rounded-xl overflow-hidden bg-white flex flex-col">
-          {/* Header — matched height with left panel */}
-          <div className="bg-primary h-[72px] flex items-center px-5 text-white shrink-0">
-            <p className="font-medium">Event Notes</p>
+          {/* RIGHT — Event notes */}
+          <div className="flex flex-col">
+            {/* Event info block — shown at top when event is loaded */}
+            {event && (
+              <div className="px-5 pt-5 shrink-0">
+                <div className="rounded-xl bg-secondary-200/50 border border-secondary-200 px-4 py-3 grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                  {event.venues?.venue && (
+                    <div className="col-span-2">
+                      <p className="text-xs text-gray-400 mb-0.5">Venue</p>
+                      <p className="font-medium text-gray-900 text-sm">{event.venues.venue}</p>
+                    </div>
+                  )}
+                  {event.date && (
+                    <div>
+                      <p className="text-xs text-gray-400 mb-0.5">Date</p>
+                      <p className="font-medium text-gray-900 text-sm">{dayjs(event.date).format("DD/MM/YYYY")}</p>
+                    </div>
+                  )}
+                  {(event.start_time || event.end_time) && (
+                    <div>
+                      <p className="text-xs text-gray-400 mb-0.5">Time</p>
+                      <p className="font-medium text-gray-900 text-sm">
+                        {formatTime(event.start_time)} – {formatTime(event.end_time)}
+                      </p>
+                    </div>
+                  )}
+                  {event.access_time && (
+                    <div>
+                      <p className="text-xs text-gray-400 mb-0.5">Access Time</p>
+                      <p className="font-medium text-gray-900 text-sm">
+                        {event.access_time !== "N/A" ? formatTime(event.access_time) : "N/A"}
+                      </p>
+                    </div>
+                  )}
+                  {event.users_events_dj_idTousers?.name && (
+                    <div>
+                      <p className="text-xs text-gray-400 mb-0.5">DJ</p>
+                      <p className="font-medium text-gray-900 text-sm">{event.users_events_dj_idTousers.name}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Notes textarea — inline style overrides the global textarea{background} rule */}
+            <textarea
+              name="notes"
+              id="notes"
+              placeholder="Add Notes"
+              className="flex-1 w-full resize-none px-5 py-4 outline-none text-sm text-gray-700 placeholder:text-gray-400 min-h-[200px]"
+              style={{ backgroundColor: "#fff" }}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            />
           </div>
 
-          {/* Event info block — shown at top when event is loaded */}
-          {event && (
-            <div className="px-5 pt-4 shrink-0">
-              <div className="rounded-xl bg-secondary-200/50 border border-secondary-200 px-4 py-3 grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                {event.venues?.venue && (
-                  <div className="col-span-2">
-                    <p className="text-xs text-gray-400 mb-0.5">Venue</p>
-                    <p className="font-medium text-gray-900 text-sm">{event.venues.venue}</p>
-                  </div>
-                )}
-                {event.date && (
-                  <div>
-                    <p className="text-xs text-gray-400 mb-0.5">Date</p>
-                    <p className="font-medium text-gray-900 text-sm">{dayjs(event.date).format("DD/MM/YYYY")}</p>
-                  </div>
-                )}
-                {(event.start_time || event.end_time) && (
-                  <div>
-                    <p className="text-xs text-gray-400 mb-0.5">Time</p>
-                    <p className="font-medium text-gray-900 text-sm">
-                      {formatTime(event.start_time)} – {formatTime(event.end_time)}
-                    </p>
-                  </div>
-                )}
-                {event.access_time && (
-                  <div>
-                    <p className="text-xs text-gray-400 mb-0.5">Access Time</p>
-                    <p className="font-medium text-gray-900 text-sm">
-                      {event.access_time !== "N/A" ? formatTime(event.access_time) : "N/A"}
-                    </p>
-                  </div>
-                )}
-                {event.users_events_dj_idTousers?.name && (
-                  <div>
-                    <p className="text-xs text-gray-400 mb-0.5">DJ</p>
-                    <p className="font-medium text-gray-900 text-sm">{event.users_events_dj_idTousers.name}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Notes textarea — inline style overrides the global textarea{background} rule */}
-          <textarea
-            name="notes"
-            id="notes"
-            placeholder="Add Notes"
-            className="flex-1 w-full resize-none px-5 py-4 outline-none text-sm text-gray-700 placeholder:text-gray-400 min-h-[200px]"
-            style={{ backgroundColor: "#fff" }}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-          />
         </div>
-
       </div>
     </div>
   );

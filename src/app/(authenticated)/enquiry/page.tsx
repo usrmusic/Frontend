@@ -440,7 +440,10 @@ const NewEnquiryPage = () => {
         total += Number(unit) * Number(qty);
         const override = extrasOverrides[key];
         eqList.push({ name: equipment?.name ?? "", notes: null });
-        const rigNotes = override?.rig_notes ?? "";
+        // Fall back to the equipment's own saved rig_notes, same as the Extras
+        // loop below does for `ex.rig_notes` — a preselected Basics item's rig
+        // note was never reaching here because only the override was checked.
+        const rigNotes = override?.rig_notes ?? equipment?.rig_notes ?? "";
         if (rigNotes) rnList.push({ name: equipment?.name ?? "", rig_notes: rigNotes });
       }
     }
@@ -608,9 +611,13 @@ const NewEnquiryPage = () => {
                 sell_price: Number(equipment?.sell_price ?? 0),
                 quantity: Number(it.quantity ?? 1),
               });
+              // Same fallback as the live rigNotesList computation above — without
+              // it, a Basics item relying on the equipment's own default rig note
+              // (no manual override) never got saved onto the confirmed event's
+              // own event_package.rig_notes at all.
               rig_notes_data.push({
                 equipment_id: Number(id),
-                rig_notes: override?.rig_notes?.trim() || null,
+                rig_notes: (override?.rig_notes ?? equipment?.rig_notes)?.trim() || null,
               });
             }
           }
@@ -772,7 +779,10 @@ const NewEnquiryPage = () => {
                           <div>
                             <p className="font-medium text-sm text-gray-900">{r.name}</p>
                             {r.notes && (
-                              <p className="text-xs text-gray-500 italic mt-0.5 whitespace-pre-line">{r.notes}</p>
+                              <p
+                                className="text-xs text-gray-500 italic mt-0.5 whitespace-pre-line"
+                                dangerouslySetInnerHTML={{ __html: r.notes }}
+                              />
                             )}
                           </div>
                         </div>
@@ -1273,7 +1283,7 @@ const NewEnquiryPage = () => {
                             <span className="w-2/12 text-center">Unit Price</span>
                             <span className="w-1/12 text-center">Qty</span>
                             <span className="w-1/12 text-center">Price</span>
-                            <span className="w-2/12 text-center">Total Price</span>
+                            <span className="w-2/12 text-center">Notes</span>
                           </div>
                           {/* Same scroll cap as Enquiry Details and Extras, so the
                               three cards read as equal height. */}
@@ -1674,7 +1684,13 @@ const NewEnquiryPage = () => {
                             <li key={i} className="border-b border-gray-300 py-1.5">
                               <span className="font-medium">{r.name}</span>
                               {r.notes && (
-                                <span className="whitespace-pre-line italic"> — {r.notes}</span>
+                                <>
+                                  {" — "}
+                                  <span
+                                    className="whitespace-pre-line italic"
+                                    dangerouslySetInnerHTML={{ __html: r.notes }}
+                                  />
+                                </>
                               )}
                             </li>
                           ))}
@@ -1702,12 +1718,14 @@ const NewEnquiryPage = () => {
                         <p className="text-xs italic">No rig notes</p>
                       )}
 
-                      <p className="mt-5 border-t-2 border-[#719984] pt-2 text-sm font-semibold">
-                        Total:{" "}
-                        <span className="text-[#719984]">
-                          {"£" + (Number(totalPrice) || 0).toLocaleString()}
-                        </span>
-                      </p>
+                      {printMode === "enquiry" && (
+                        <p className="mt-5 border-t-2 border-[#719984] pt-2 text-sm font-semibold">
+                          Total:{" "}
+                          <span className="text-[#719984]">
+                            {"£" + (Number(totalPrice) || 0).toLocaleString()}
+                          </span>
+                        </p>
+                      )}
                     </div>,
                     document.body,
                   )}

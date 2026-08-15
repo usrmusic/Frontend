@@ -58,20 +58,32 @@ const LABEL_CLASS = "text-sm 2xl:text-base truncate";
 const VALUE_BASE = "text-[clamp(1rem,1.35vw,1.5rem)] leading-tight font-semibold";
 const VALUE_CLASS = `${VALUE_BASE} truncate`;
 
-/* Concealing a figure (the eye toggle). The masking itself lives in
-   `.masked-figure` in globals.css — it needs `mask-image` plus its `-webkit-`
-   prefix, which is unpleasant to express as inline utilities; the comment there
-   explains why a feathered mask is what kills the boxiness that blur alone
-   always produces.
+/* ── Concealing a figure (the eye toggle) ──────────────────────────────────
+   Blur is not fixable here, and it is worth writing down why so nobody spends
+   another afternoon tuning the radius. A line of text occupies a rectangle, so
+   blurring it produces a rectangular smear — that is the whole of it. A radius
+   low enough to avoid the slab leaves the amount readable; one high enough to
+   conceal it fuses the digits into a solid bar, and a bar reads as a filled
+   box however soft its edges are. Feathering the edges with a `mask-image`
+   gradient only swaps the rectangle for an ellipse, and dropping the opacity
+   turns it into a grey smudge. All four were tried against a rendered
+   comparison; none of them stop reading as a box.
 
-   Note `truncate` is deliberately NOT applied while concealed: it means
-   overflow:hidden, which would slice the feathered halo back into a hard-edged
-   rectangle and undo the whole effect. `.masked-figure` carries its own
-   `white-space: nowrap`, which is the only part of `truncate` needed here — it
-   stops a long amount wrapping to two lines and changing the card's height as
-   you toggle. */
-const MASK_CLASS = `${VALUE_BASE} masked-figure`;
+   So the digits are replaced rather than obscured. The pound sign stays at full
+   size and full weight so the card keeps its shape and meaning, and the amount
+   becomes evenly-tracked dots set slightly smaller and optically centred — the
+   convention every banking app converged on, for exactly this reason.
 
+   Sized in `em` so it tracks `VALUE_BASE`'s `clamp()` as the viewport changes.
+
+   The dot count is fixed rather than derived from the value's length: matching
+   the length would leak the order of magnitude, which is most of what a glance
+   over your shoulder is after. It also means the concealed width is stable, so
+   toggling never nudges the card's layout.
+
+   Worth noting this conceals better than blur did as well — blurred text is
+   still sitting in the DOM to be selected, copied, or sharpened back out of a
+   screenshot. */
 function StatValue({
   value,
   concealed,
@@ -83,10 +95,19 @@ function StatValue({
 }) {
   return (
     <p
-      className={`${concealed ? MASK_CLASS : VALUE_CLASS} ${className}`}
+      className={`${VALUE_CLASS} ${className}`}
       aria-label={concealed ? "Amount hidden" : undefined}
     >
-      {value}
+      {concealed ? (
+        <>
+          £
+          <span className="ml-1 inline-block align-[0.12em] text-[0.68em] tracking-[0.18em] select-none">
+            ••••••
+          </span>
+        </>
+      ) : (
+        value
+      )}
     </p>
   );
 }
