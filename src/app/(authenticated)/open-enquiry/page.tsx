@@ -485,98 +485,20 @@ const OpenEnquiryPage = () => {
                 </h3>
               </div>
 
-              {/* The note field and the deposit form are fixed-size; the
-                  activity feed is the one part with an open-ended amount of
-                  content, so it takes the slack (`flex-1`) and the panel fills
-                  its height honestly instead of leaving dead space at the
-                  bottom. `min-h-0` on both this column and the feed is what lets
-                  them shrink below content size so the feed scrolls internally
-                  rather than pushing the deposit form off the panel. */}
-              <div className="flex-1 min-h-0 flex flex-col p-5 gap-5">
+              {/* Order: deposit/company form, then note input, then activity
+                  feed — the feed is the one part with an open-ended amount of
+                  content, so it goes last and takes the remaining space
+                  (`flex-1`) rather than pushing the form down as it grows.
+                  `min-h-0` on both this column and the feed is what lets them
+                  shrink below content size so the feed scrolls internally.
 
-                {/* Note input + Add button — the signed-off layout, with the
-                    field's height brought down from a 3-row textarea to a single
-                    line and the button matched to it.
-
-                    A single-line `input` rather than a short textarea is also
-                    what makes Enter-to-save unambiguous: in a textarea Enter has
-                    to keep meaning "new line", so quick-save would need a
-                    modifier key nobody would discover. Notes on this panel are
-                    one-liners in practice, so nothing is lost.
-
-                    No "press Enter" hint is shown — Enter is a shortcut on top of
-                    the button, not the primary affordance. */}
-                <div className="flex gap-2 items-stretch h-10 shrink-0">
-                  <input
-                    type="text"
-                    placeholder="Add a note..."
-                    aria-label="Add a note"
-                    className="flex-1 min-w-0 bg-white rounded-xl px-4 text-sm outline-none shadow-sm placeholder:text-gray-400 border border-gray-200 focus:border-primary/30 transition-colors"
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    onKeyDown={(e) => {
-                      // `isComposing` guards IME input, where Enter commits the
-                      // candidate text rather than the field.
-                      if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
-                      e.preventDefault();
-                      if (!canAddNote) return;
-                      hanldeAddNote();
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="bg-primary text-white rounded-xl px-5 text-sm font-medium shadow-sm disabled:opacity-40 transition-opacity flex items-center justify-center min-w-[52px] shrink-0"
-                    disabled={!canAddNote}
-                    onClick={hanldeAddNote}
-                  >
-                    {addingNote ? (
-                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
-                      </svg>
-                    ) : "Add"}
-                  </button>
-                </div>
-
-                {/* Recent Activities.
-                    Separators are `gray-200` (#E5E7EB): `gray-100` (#F3F4F6) is
-                    the correct token now that globals.css no longer overrides it
-                    with #6B7280 — Tailwind's gray-*500* — but at this row height
-                    it reads as almost nothing, so this lands one step up. Visible
-                    hairline, nowhere near the heavy line it started as.
-
-                    Rows are tight on purpose: a date and a one-line note are one
-                    unit, so the padding between entries should be larger than the
-                    gap inside an entry, not equal to it. */}
-                <div className="flex-1 min-h-0 flex flex-col">
-                  <p className="shrink-0 text-sm font-medium text-gray-900 pb-2">Recent activities</p>
-                  <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
-                    {selectedRowData?.[0]?.event_notes?.length ? (
-                      <ul>
-                        {selectedRowData?.[0]?.event_notes?.map((item) => (
-                          <li
-                            key={item.id}
-                            className="py-1.5 border-b border-gray-200 last:border-0"
-                          >
-                            {item.created_at && (
-                              <p className="text-[11px] leading-tight text-gray-400">
-                                {dayjs(item.created_at).format("DD/MM/YY HH:mm")}
-                              </p>
-                            )}
-                            <p className="text-xs leading-snug text-gray-600">{item.notes}</p>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <div className="h-full flex items-center justify-center text-xs text-gray-400 italic">
-                        Select an enquiry to see notes
-                      </div>
-                    )}
-                  </div>
-                </div>
+                  Sections sit in one continuous white panel, divided by
+                  hairlines (`border-b`) rather than gaps between separate
+                  cards — matching the confirmed-events drawer. */}
+              <div className="flex-1 min-h-0 flex flex-col">
 
                 {/* Deposit / Confirm form */}
-                <div className="shrink-0">
+                <div className="shrink-0 p-5 border-b border-gray-100">
                   <form className="space-y-2.5" onSubmit={formik.handleSubmit}>
                     <div className="grid grid-cols-2 gap-2">
                       <Select
@@ -631,6 +553,91 @@ const OpenEnquiryPage = () => {
                       Deposit Received
                     </Button>
                   </form>
+                </div>
+
+                {/* Note input + Add button — the signed-off layout, with the
+                    field's height brought down from a 3-row textarea to a single
+                    line and the button matched to it.
+
+                    A single-line `input` rather than a short textarea is also
+                    what makes Enter-to-save unambiguous: in a textarea Enter has
+                    to keep meaning "new line", so quick-save would need a
+                    modifier key nobody would discover. Notes on this panel are
+                    one-liners in practice, so nothing is lost.
+
+                    No "press Enter" hint is shown — Enter is a shortcut on top of
+                    the button, not the primary affordance. */}
+                {/* `h-10` lives on the input/button themselves, not this wrapper —
+                    putting a fixed height on the same element as `p-5 pb-3`
+                    padding left almost no room for content, squashing both down
+                    to a barely-visible sliver. */}
+                <div className="shrink-0 flex gap-2 items-stretch p-5 pb-3">
+                  <input
+                    type="text"
+                    placeholder="Add a note..."
+                    aria-label="Add a note"
+                    className="flex-1 min-w-0 h-10 bg-white rounded-xl px-4 text-sm outline-none shadow-sm placeholder:text-gray-400 border border-gray-200 focus:border-primary/30 transition-colors"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    onKeyDown={(e) => {
+                      // `isComposing` guards IME input, where Enter commits the
+                      // candidate text rather than the field.
+                      if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+                      e.preventDefault();
+                      if (!canAddNote) return;
+                      hanldeAddNote();
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="h-10 bg-primary text-white rounded-xl px-5 text-sm font-medium shadow-sm disabled:opacity-40 transition-opacity flex items-center justify-center min-w-[52px] shrink-0"
+                    disabled={!canAddNote}
+                    onClick={hanldeAddNote}
+                  >
+                    {addingNote ? (
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
+                      </svg>
+                    ) : "Add"}
+                  </button>
+                </div>
+
+                {/* Recent Activities.
+                    Separators are `gray-200` (#E5E7EB): `gray-100` (#F3F4F6) is
+                    the correct token now that globals.css no longer overrides it
+                    with #6B7280 — Tailwind's gray-*500* — but at this row height
+                    it reads as almost nothing, so this lands one step up. Visible
+                    hairline, nowhere near the heavy line it started as.
+
+                    Rows are tight on purpose: a date and a one-line note are one
+                    unit, so the padding between entries should be larger than the
+                    gap inside an entry, not equal to it. */}
+                <div className="flex-1 min-h-0 flex flex-col px-5 pb-5">
+                  <p className="shrink-0 text-sm font-medium text-gray-900 pb-2">Recent activities</p>
+                  <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
+                    {selectedRowData?.[0]?.event_notes?.length ? (
+                      <ul>
+                        {selectedRowData?.[0]?.event_notes?.map((item) => (
+                          <li
+                            key={item.id}
+                            className="py-1.5 border-b border-gray-200 last:border-0"
+                          >
+                            {item.created_at && (
+                              <p className="text-[11px] leading-tight text-gray-400">
+                                {dayjs(item.created_at).format("DD/MM/YY HH:mm")}
+                              </p>
+                            )}
+                            <p className="text-xs leading-snug text-gray-600">{item.notes}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-xs text-gray-400 italic">
+                        Select an enquiry to see notes
+                      </div>
+                    )}
+                  </div>
                 </div>
 
               </div>

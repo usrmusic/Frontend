@@ -19,10 +19,12 @@ import {
   FolderOpen,
   MoreVertical,
   Plus,
+  Printer,
   SquareCheckBig,
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import { CSSProperties, useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -73,6 +75,26 @@ const ConfirmedEventsPage = () => {
   const [paymentMethodId, setPaymentMethodId] = useState<string | number>("");
   const [paymentNotes, setPaymentNotes] = useState<string>("");
   const [rigOpen, setRigOpen] = useState(false); // rig list toggle
+  const [printRig, setPrintRig] = useState(false);
+
+  // window.print() reads the DOM synchronously, so it has to fire from an
+  // effect that runs after `printRig` has actually applied — see the same
+  // mechanism on the New Enquiry page.
+  useEffect(() => {
+    if (!printRig) return;
+    document.body.classList.add("print-scoped");
+    const cleanup = () => {
+      document.body.classList.remove("print-scoped");
+      window.removeEventListener("afterprint", cleanup);
+      setPrintRig(false);
+    };
+    window.addEventListener("afterprint", cleanup);
+    window.print();
+    return () => {
+      document.body.classList.remove("print-scoped");
+      window.removeEventListener("afterprint", cleanup);
+    };
+  }, [printRig]);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [refundAmount, setRefundAmount] = useState<string>("");
@@ -838,8 +860,8 @@ const ConfirmedEventsPage = () => {
                   <h3 id="drawer-title" className="themeH1 text-lg mt-1">{selectedEventData?.data?.company?.name || "USR Music Ltd"}</h3>
                   <p className="text-sm text-gray-600 mt-1">{selectedEventData?.data?.venues?.venue ?? ""}</p>
                 </div>
-                <button 
-                  onClick={() => setShowDrawer(false)} 
+                <button
+                  onClick={() => setShowDrawer(false)}
                   className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
                   aria-label="Close drawer"
                 >
@@ -856,14 +878,25 @@ const ConfirmedEventsPage = () => {
                         <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Package Summary</p>
                         <p className="font-semibold text-gray-900 mt-1">{selectedEventData?.data?.dj_package_name || "DJ Package"}</p>
                       </div>
-                      <button
-                        type="button"
-                        className="px-3 py-1.5 bg-primary hover:bg-primary/90 text-white text-xs font-medium rounded-lg transition-colors"
-                        onClick={() => router.push(`/enquiry?select=${encodeURIComponent(String(eventId))}`)}
-                        title="Edit enquiry details"
-                      >
-                        Edit
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPrintRig(true)}
+                          className="p-1.5 text-slate-500 hover:text-primary hover:bg-white rounded-lg transition-colors"
+                          aria-label="Print rig list"
+                          title="Print rig list and notes"
+                        >
+                          <Printer size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          className="px-3 py-1.5 bg-primary hover:bg-primary/90 text-white text-xs font-medium rounded-lg transition-colors"
+                          onClick={() => router.push(`/enquiry?select=${encodeURIComponent(String(eventId))}`)}
+                          title="Edit enquiry details"
+                        >
+                          Edit
+                        </button>
+                      </div>
                     </div>
 
                     {/* Equipment Names Only */}
@@ -873,10 +906,7 @@ const ConfirmedEventsPage = () => {
                           {(selectedEventData?.data?.event_packages).map((p: ConfirmEventPackage) => (
                             <div key={p.id} className="flex items-start gap-2">
                               <SquareCheckBig size={14} className="text-primary flex-shrink-0 mt-0.5" />
-                              <div>
-                                <p className="font-medium text-sm text-gray-900">{p.equipment?.name || p.package_name || p.name || "Item"}</p>
-                                {p.notes && <p className="text-xs text-gray-500 italic mt-0.5">{p.notes}</p>}
-                              </div>
+                              <p className="font-medium text-sm text-gray-900">{p.equipment?.name || p.package_name || p.name || "Item"}</p>
                             </div>
                           ))}
                         </div>
@@ -909,7 +939,10 @@ const ConfirmedEventsPage = () => {
                                 <p className="font-semibold text-gray-900 leading-tight">{p.equipment?.name || p.package_name || p.name || "Item"}</p>
                               </div>
                               {p.rig_notes && (
-                                <p className="pl-6 text-[11px] text-gray-500 leading-snug whitespace-pre-line">{p.rig_notes}</p>
+                                <p
+                                  className="pl-6 text-[11px] text-gray-500 leading-snug whitespace-pre-line"
+                                  dangerouslySetInnerHTML={{ __html: p.rig_notes }}
+                                />
                               )}
                             </div>
                           ))
@@ -1089,6 +1122,89 @@ const ConfirmedEventsPage = () => {
             </div>
           </aside>
         </div>
+
+        {/* Rig list print sheet — same mechanism and layout as the New Enquiry
+            page's rig print: portalled to <body> so it isn't clipped by the
+            drawer's own scroll container, no total price, themed in text/rules
+            rather than filled colour so it survives "background graphics" being
+            off in the print dialog. */}
+        {printRig &&
+          createPortal(
+            <div id="print-section" className="p-2 text-black">
+              <div className="mb-4 border-b-2 border-[#719984] pb-2">
+                <h1 className="text-lg font-semibold text-[#719984]">Rig List</h1>
+                {selectedEventData?.data?.dj_package_name && (
+                  <p className="text-xs">{selectedEventData.data.dj_package_name}</p>
+                )}
+              </div>
+
+              <table className="mb-5 text-xs">
+                <tbody>
+                  {[
+                    ["Client", selectedEventData?.data?.users_events_user_idTousers?.name],
+                    ["Venue", selectedEventData?.data?.venues?.venue],
+                    ["Event Date", selectedEventData?.data?.date ? dayjs(selectedEventData.data.date).format("DD/MM/YYYY") : ""],
+                    [
+                      "Time",
+                      selectedEventData?.data?.start_time && selectedEventData?.data?.end_time
+                        ? `${selectedEventData.data.start_time} – ${selectedEventData.data.end_time}`
+                        : selectedEventData?.data?.start_time,
+                    ],
+                  ]
+                    .filter(([, v]) => Boolean(v))
+                    .map(([label, v]) => (
+                      <tr key={String(label)}>
+                        <td className="pr-4 align-top font-medium">{label}</td>
+                        <td className="align-top">{v}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+
+              <h2 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[#719984]">
+                Equipment
+              </h2>
+              {(selectedEventData?.data?.event_packages)?.length ? (
+                <ul className="mb-5 text-xs">
+                  {selectedEventData.data.event_packages.map((p: ConfirmEventPackage) => (
+                    <li key={p.id} className="border-b border-gray-300 py-1.5">
+                      <span className="font-medium">{p.equipment?.name || p.package_name || p.name || "Item"}</span>
+                      {p.notes && (
+                        <>
+                          {" — "}
+                          <span
+                            className="whitespace-pre-line italic"
+                            dangerouslySetInnerHTML={{ __html: p.notes }}
+                          />
+                        </>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mb-5 text-xs italic">No items selected</p>
+              )}
+
+              <h2 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[#719984]">
+                Rig Notes
+              </h2>
+              {(selectedEventData?.data?.event_packages)?.some((p: ConfirmEventPackage) => p.rig_notes) ? (
+                <ul className="text-xs">
+                  {selectedEventData.data.event_packages
+                    .filter((p: ConfirmEventPackage) => p.rig_notes)
+                    .map((p: ConfirmEventPackage) => (
+                      <li key={p.id} className="border-b border-gray-300 py-1.5">
+                        <p className="font-medium">{p.equipment?.name || p.package_name || p.name || "Item"}</p>
+                        <p className="whitespace-pre-line" dangerouslySetInnerHTML={{ __html: p.rig_notes ?? "" }} />
+                      </li>
+                    ))}
+                </ul>
+              ) : (
+                <p className="text-xs italic">No rig notes</p>
+              )}
+            </div>,
+            document.body,
+          )}
 
         {/* Send Invoice Modal */}
         {showInvoiceModal && (
