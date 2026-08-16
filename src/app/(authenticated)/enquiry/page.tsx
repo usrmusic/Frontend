@@ -300,8 +300,61 @@ const NewEnquiryPage = () => {
     });
   }, [clientDetails, showNameInput, clientId]);
 
+  /* Reset-or-hydrate for the current editId — deliberately ONE effect, not two.
+
+     This used to be split into this effect (hydrate from enquiryItem) and a
+     separate effect that called formikRef.current.resetForm() whenever editId
+     changed. That was the actual bug: resetForm() ran SYNCHRONOUSLY inside its
+     own effect, while this effect's setValues() is deferred via
+     Promise.resolve().then(). React runs every effect for a commit in
+     definition order before yielding, so when enquiryItem is already warm in
+     the React Query cache (e.g. navigating here from Open Enquiry) both
+     effects fire in the SAME commit — and the synchronous resetForm() in the
+     later effect always executed after this effect had merely SCHEDULED its
+     update, wiping it out every time. On a hard refresh there's no warm cache,
+     so enquiryItem arrives in a later commit than the reset — different
+     commits, no race, works "by accident". That's exactly the reported
+     "works on refresh, not on click-through" split.
+
+     Fix: only one effect ever touches the form for a given editId, and it
+     decides reset-vs-hydrate itself by checking whether the fetched
+     enquiryItem actually corresponds to the currently-requested editId (its
+     `id` can lag behind editId for one render after navigating to a
+     different enquiry, since react-query keeps serving the previous cached
+     value until the new fetch resolves). */
+  const hydratedForIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!enquiryItem || !formikRef.current) return;
+    if (!formikRef.current) return;
+
+    const matchesCurrentTarget =
+      editId != null && enquiryItem != null && String(enquiryItem.id) === String(editId);
+
+    if (!matchesCurrentTarget) {
+      // Either there's no editId (fresh "new enquiry"), or enquiryItem hasn't
+      // caught up to a just-changed editId yet. Reset once per editId change
+      // so stale data from a previously-edited enquiry can't linger — but
+      // only if we haven't already reset for this target.
+      if (hydratedForIdRef.current !== editId) {
+        hydratedForIdRef.current = editId;
+        setRestoredEditSelections(false);
+        setSelectedPackageEquipments({});
+        setSelectedExtras({});
+        setCustomExtras([]);
+        setExtrasOverrides({});
+        try { formikRef.current.resetForm(); } catch {}
+        if (editId) {
+          try {
+            queryClient.invalidateQueries({ queryKey: ["enquiry-item", editId], refetchType: "all" });
+          } catch {}
+        }
+      }
+      return;
+    }
+
+    // enquiryItem now matches editId — hydrate. Mark this target as handled so
+    // a later re-run (e.g. a background refetch of the same enquiry) doesn't
+    // blow away in-progress edits by resetting again.
+    hydratedForIdRef.current = editId;
 
     const nameVal = enquiryItem.user_id
       ? String(enquiryItem.user_id)
@@ -385,34 +438,7 @@ const NewEnquiryPage = () => {
         setRestoredEditSelections(true);
       });
     } catch {}
-  }, [enquiryItem]);
-
-  // Guards against this effect re-running for the SAME editId. Without it,
-  // React Strict Mode's dev-only double-invocation calls resetForm() a second
-  // time right after the enquiryItem-hydration effect (below) has already
-  // populated the form — wiping event date/time/deposit/DJ/venue back to
-  // blank. The client-details effect (a separate, independently-timed fetch)
-  // then fills in only name/address/email/number on top of that blank state,
-  // producing the exact split symptom seen in the edit form: those four
-  // fields show correctly, everything sourced from enquiryItem does not.
-  // Keyed by editId so navigating to a genuinely different enquiry still resets.
-  const resetForEditIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (resetForEditIdRef.current === editId) return;
-    resetForEditIdRef.current = editId;
-
-    setRestoredEditSelections(false);
-    setSelectedPackageEquipments({});
-    setSelectedExtras({});
-    setCustomExtras([]);
-    setExtrasOverrides({});
-    try { formikRef.current?.resetForm(); } catch {}
-    try {
-      if (editId) {
-        queryClient.invalidateQueries({ queryKey: ["enquiry-item", editId], refetchType: "all" });
-      }
-    } catch {}
-  }, [editId, queryClient]);
+  }, [enquiryItem, editId, queryClient]);
 
   useEffect(() => {
     if (packageData?.data) {
