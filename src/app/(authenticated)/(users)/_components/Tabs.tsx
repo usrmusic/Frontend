@@ -15,11 +15,6 @@ const tabData = [
   { label: "Packages", href: "/packages?title=Packages", className: "w-23.5" },
   { label: "Company", href: "/company?title=Company", className: "w-23.5" },
   {
-    label: "DJ Colours",
-    href: "/dj-colours?title=DJ%20Colours",
-    className: "w-28",
-  },
-  {
     label: "Manage Access",
     href: "/manage-access?title=Manage%20Access",
     className: "w-33.75",

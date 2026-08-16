@@ -121,6 +121,23 @@ const UsersPage = () => {
       },
     },
     {
+      title: "Colour",
+      key: "color",
+      render: (_v, record) => {
+        const color = (record as { color?: string | null }).color;
+        return (
+          <div className="flex items-center gap-2">
+            <span
+              className="inline-block size-4 rounded-full border border-black/10 shrink-0"
+              style={{ backgroundColor: color || "#9CA3AF" }}
+              title={color || "Not set"}
+            />
+            <span className="text-xs text-gray-500 font-mono">{color || "—"}</span>
+          </div>
+        );
+      },
+    },
+    {
       title: "Action",
       fixed: "right",
       render: (data) => (
