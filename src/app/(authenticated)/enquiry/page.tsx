@@ -262,31 +262,47 @@ const NewEnquiryPage = () => {
   useEffect(() => {
     if (!clientDetails || !formikRef.current) return;
     Promise.resolve().then(() => {
-      const cur = formikRef.current?.values;
-      if (!cur) return;
-      const currentNameValue = !showNameInput && clientId != null ? String(clientId) : cur.name;
-      const newVals = {
-        ...cur,
-        name: currentNameValue,
-        address: clientDetails.address ?? cur.address,
-        email: clientDetails.email ?? cur.email,
-        number: clientDetails.contact_number ?? cur.number,
-      };
-      if (
-        cur.name !== newVals.name ||
-        cur.address !== newVals.address ||
-        cur.email !== newVals.email ||
-        cur.number !== newVals.number
-      ) {
-        formikRef.current?.setValues(newVals);
-      }
+      /* Functional updater, NOT a spread of a previously-read snapshot.
+
+         This effect and the enquiryItem-hydration effect below both defer their
+         writes with Promise.resolve().then(). Microtasks drain back-to-back
+         WITHOUT React re-rendering in between, so reading
+         `formikRef.current.values` here returns the pre-hydration (blank)
+         snapshot even when the hydration effect has already called setValues.
+         Spreading that stale snapshot wrote blanks back over venue / DJ /
+         event date / times / deposit — i.e. every field this effect does not
+         itself own — which is exactly the reported bug: client name, address,
+         email and number populate, nothing else does.
+
+         Taking `prev` from Formik guarantees we merge onto the latest state
+         regardless of which microtask ran first. */
+      formikRef.current?.setValues((prev) => {
+        const currentNameValue =
+          !showNameInput && clientId != null ? String(clientId) : prev.name;
+        const next = {
+          ...prev,
+          name: currentNameValue,
+          address: clientDetails.address ?? prev.address,
+          email: clientDetails.email ?? prev.email,
+          number: clientDetails.contact_number ?? prev.number,
+        };
+        // Return the same reference when nothing changed so Formik can skip the render.
+        if (
+          prev.name === next.name &&
+          prev.address === next.address &&
+          prev.email === next.email &&
+          prev.number === next.number
+        ) {
+          return prev;
+        }
+        return next;
+      });
     });
   }, [clientDetails, showNameInput, clientId]);
 
   useEffect(() => {
     if (!enquiryItem || !formikRef.current) return;
 
-    const cur = formikRef.current.values;
     const nameVal = enquiryItem.user_id
       ? String(enquiryItem.user_id)
       : enquiryItem.client_id
@@ -321,15 +337,18 @@ const NewEnquiryPage = () => {
       tellMeMore: enquiryItem.event_details ?? enquiryItem.details ?? "",
     };
 
-    if (JSON.stringify(cur) !== JSON.stringify(newVals)) {
-      Promise.resolve().then(() => {
-        formikRef.current?.setValues(newVals);
-        try {
-          if (nameVal) formikRef.current?.setFieldValue("name", nameVal, false);
-          if (venueVal) formikRef.current?.setFieldValue("venue", venueVal, false);
-        } catch {}
-      });
-    }
+    // The equality guard lives inside the updater rather than comparing against
+    // a synchronously-read snapshot, for the same microtask-ordering reason
+    // documented in the clientDetails effect above.
+    Promise.resolve().then(() => {
+      formikRef.current?.setValues((prev) =>
+        JSON.stringify(prev) === JSON.stringify(newVals) ? prev : newVals,
+      );
+      try {
+        if (nameVal) formikRef.current?.setFieldValue("name", nameVal, false);
+        if (venueVal) formikRef.current?.setFieldValue("venue", venueVal, false);
+      } catch {}
+    });
 
     if (enquiryItem.client_id) setClientId(Number(enquiryItem.client_id));
     if (enquiryItem.user_id) setClientId(Number(enquiryItem.user_id));
@@ -410,7 +429,23 @@ const NewEnquiryPage = () => {
       }
 
       Promise.resolve().then(() => {
-        if (editId && restoredEditSelections) {
+        /* Gate on editId ALONE, not on `restoredEditSelections`.
+
+           With a warm React Query cache this effect and the enquiryItem
+           effect can run in the same microtask drain. Because
+           `restoredEditSelections` is captured in this closure at render
+           time, it still reads false here even when the enquiryItem effect
+           has just set it true and restored the saved ticks — so the old
+           condition fell through to the hard overwrite below and wiped them.
+           That's why selected equipment appeared only after a hard refresh
+           (cold cache ⇒ the two effects land in separate ticks).
+
+           In edit mode the saved event_package rows are the source of truth,
+           so never hard-reset here: merge in any package/extra keys we don't
+           know about as unticked and leave existing entries alone. The merge
+           is idempotent, so the re-run triggered when restoredEditSelections
+           flips is harmless. */
+        if (editId) {
           setSelectedPackageEquipments((prev) => {
             const merged = { ...prev };
             for (const key of Object.keys(initPkg)) {
