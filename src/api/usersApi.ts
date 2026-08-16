@@ -497,6 +497,11 @@ export const useEditUser = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
+      // user-dropdown embeds each DJ's package_users — a role/name change (or a
+      // user newly becoming DJ-eligible) needs it refetched, and this cache is
+      // never touched by anything else (refetchOnMount/refetchOnWindowFocus are
+      // both off app-wide, so a stale entry sticks around indefinitely).
+      queryClient.invalidateQueries({ queryKey: ["user-dropdown"] });
     },
     onError: (error) => {
       console.error("edit user failed:", error.message);
@@ -551,6 +556,9 @@ export const useEditPackage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["packages"] });
+      // See useEditUser — user-dropdown carries each DJ's package_users and is
+      // never otherwise refetched (refetchOnMount/refetchOnWindowFocus off).
+      queryClient.invalidateQueries({ queryKey: ["user-dropdown"] });
     },
     onError: (error) => {
       console.error("edit package failed:", error.message);
@@ -649,6 +657,9 @@ export const useAddUser = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
+      // A brand-new DJ won't appear in the enquiry form's DJ picker at all
+      // until this refetches — see useEditUser for why nothing else does it.
+      queryClient.invalidateQueries({ queryKey: ["user-dropdown"] });
     },
     onError: (error) => {
       console.error("add user failed:", error.message);
@@ -717,6 +728,11 @@ export const useAddPackage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["packages"] });
+      // See useEditUser — without this, a package just added to a DJ won't
+      // show its equipment in the enquiry form until something else happens
+      // to evict the cache (this was the reported bug: new DJ + new package,
+      // equipment missing from both Basics and Extras when editing an enquiry).
+      queryClient.invalidateQueries({ queryKey: ["user-dropdown"] });
     },
     onError: (error) => {
       console.error("add package failed:", error.message);
@@ -836,6 +852,9 @@ export const useDeletePackage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["packages"] });
+      // See useEditUser — a deleted package must stop appearing as a DJ's
+      // package_users entry in the enquiry form's DJ picker too.
+      queryClient.invalidateQueries({ queryKey: ["user-dropdown"] });
     },
     onError: (error) => {
       console.error("delete failed:", error.message);
