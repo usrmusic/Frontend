@@ -368,7 +368,20 @@ const NewEnquiryPage = () => {
     } catch {}
   }, [enquiryItem]);
 
+  // Guards against this effect re-running for the SAME editId. Without it,
+  // React Strict Mode's dev-only double-invocation calls resetForm() a second
+  // time right after the enquiryItem-hydration effect (below) has already
+  // populated the form — wiping event date/time/deposit/DJ/venue back to
+  // blank. The client-details effect (a separate, independently-timed fetch)
+  // then fills in only name/address/email/number on top of that blank state,
+  // producing the exact split symptom seen in the edit form: those four
+  // fields show correctly, everything sourced from enquiryItem does not.
+  // Keyed by editId so navigating to a genuinely different enquiry still resets.
+  const resetForEditIdRef = useRef<string | null>(null);
   useEffect(() => {
+    if (resetForEditIdRef.current === editId) return;
+    resetForEditIdRef.current = editId;
+
     setRestoredEditSelections(false);
     setSelectedPackageEquipments({});
     setSelectedExtras({});
