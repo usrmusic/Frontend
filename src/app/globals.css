@@ -68,6 +68,43 @@ button:hover {
   display: none;
 }
 
+/* ── Concealed figures (dashboard eye toggle) ───────────────────────────────
+   These values were picked by rendering the card at a range of settings and
+   comparing, not by eye-balling the CSS — the failure mode here is subtle and
+   every intuition about it turned out to be wrong at least once.
+
+   What makes the mask read as a "box" is the blur radius crossing the point
+   where neighbouring digits merge into each other. Below that point you see a
+   fuzzy number whose shape still rises and falls; above it the glyphs fuse into
+   one continuous slab, and a slab reads as a filled box no matter how soft its
+   edges are. On this type at this size that threshold sits just under 5px:
+   4.5px is illegible but still visibly digits, 5px starts to flatten, and the
+   original `blur-sm` — 8px in Tailwind v4, up from 4px in v3, so it got heavier
+   for free during an upgrade — was well past it.
+
+   Two things that seem like they should help but make it worse:
+
+     - Reducing opacity. It doesn't soften the shape, it just greys the whole
+       thing down into a dirty smudge sitting on the card.
+     - Feathering the edges with a `mask-image` gradient. Removes the outline
+       but takes the number's legibility as text with it, so what's left reads
+       as a stain rather than a concealed figure.
+
+   What does matter besides the radius: NOT clipping. `truncate` (overflow:
+   hidden) slices the halo off flush and reinstates the hard rectangle, which is
+   why the value element drops it while concealed and this rule carries its own
+   `white-space: nowrap` instead. `padding-inline` with a matching negative
+   `margin-inline` gives the halo room to fall off inside the element without
+   the element occupying any more space. */
+.masked-figure {
+  filter: blur(4.5px);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  user-select: none;
+  padding-inline: 0.4rem;
+  margin-inline: -0.4rem;
+}
+
 /* Default field fill. This MUST stay inside `@layer base`: unlayered CSS wins
    over layered CSS in Tailwind v4 regardless of specificity, so as a bare rule
    it silently beat `bg-white` / `bg-transparent` utilities on every input and
