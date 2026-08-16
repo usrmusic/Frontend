@@ -2,7 +2,7 @@ import { useRoleDropdown } from "@/src/api/dropdown";
 import { useAddUser, useEditUser } from "@/src/api/usersApi";
 import ModalFooter from "@/src/components/common/ModalFooter";
 import Input from "@/src/components/Input";
-import { Modal, notification, Select } from "antd";
+import { ColorPicker, Modal, notification, Select } from "antd";
 import { useFormik } from "formik";
 
 interface UserData {
@@ -13,7 +13,13 @@ interface UserData {
   address: string;
   role_id: string;
   is_email_send: boolean;
+  color?: string | null;
 }
+
+// Colour only makes sense for roles that can actually be assigned as an
+// event's DJ — Staff (3) and Admin (2, since an admin can also be set as
+// dj_id — see backend's dj-colors roster query). Super Admin/Client never are.
+const DJ_ELIGIBLE_ROLES = ["2", "3"];
 
 interface UserModalProps {
   modalOpen: boolean;
@@ -39,6 +45,7 @@ const UserModal = ({
       address: initialValues?.address || "",
       role_id: initialValues?.role_id || "",
       sendEmail: initialValues?.is_email_send || false,
+      color: initialValues?.color || "",
     },
     onSubmit: (values) => {
       // handle submit logic here
@@ -137,6 +144,20 @@ const UserModal = ({
               ]}
             />
           </div>
+          {DJ_ELIGIBLE_ROLES.includes(String(formik.values.role_id)) && (
+            <div className="flex flex-col">
+              <label>Calendar Colour</label>
+              <div className="flex items-center gap-2 h-8">
+                <ColorPicker
+                  value={formik.values.color || "#9CA3AF"}
+                  onChangeComplete={(c) => formik.setFieldValue("color", c.toHexString())}
+                />
+                <span className="text-xs text-gray-500 font-mono">
+                  {formik.values.color || "Not set (grey)"}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
         <div className="mt-4">
           <ModalFooter
