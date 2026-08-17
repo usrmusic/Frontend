@@ -433,6 +433,11 @@ export const useAddConfirmPayment = () => {
     },
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["confirm-event", id] });
+      // The dashboard's Pending Payments widget reads outstanding balances
+      // from this same event — without this it would keep showing a payment
+      // just recorded (from either the confirmed-events drawer or the
+      // dashboard's own quick-add drawer) as still outstanding until next reload.
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       toast.success("Payment added successfully");
     },
   });

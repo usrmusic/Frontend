@@ -1891,6 +1891,31 @@ const NewEnquiryPage = () => {
         centered
       >
         <div className="space-y-4">
+          {/* "Do you have the equipment?" comes first, per the Figma design —
+              it decides whether the form below asks for a Quantity (we own it)
+              or a Supplier (hired in, and this equipment gets linked to them). */}
+          <div>
+            <label className="text-xs font-medium text-gray-700 mb-1 block">
+              Do you have the equipment? <span className="text-red-500">*</span>
+            </label>
+            <AntSelect
+              className="w-full"
+              value={addEquipForm.has_equipment}
+              onChange={(val: "yes" | "no") =>
+                setAddEquipForm((prev) => ({
+                  ...prev,
+                  has_equipment: val,
+                  quantity: "",
+                  supplier_id: "",
+                  supplier_name: "",
+                }))
+              }
+              options={[
+                { label: "Yes", value: "yes" },
+                { label: "No", value: "no" },
+              ]}
+            />
+          </div>
           <div>
             <label className="text-xs font-medium text-gray-700 mb-1 block">
               Equipment Name <span className="text-red-500">*</span>
@@ -1925,36 +1950,6 @@ const NewEnquiryPage = () => {
               value={addEquipForm.sell_price}
               onChange={(e) => setAddEquipForm((prev) => ({ ...prev, sell_price: e.target.value }))}
             />
-          </div>
-
-          {/* Radio, matching the legacy system. "Yes" = we own it, so we need a
-              quantity and no supplier; "No" = hired in, so a supplier is required. */}
-          <div className="flex items-center gap-4">
-            <span className="text-xs font-medium text-gray-700">
-              Do you have this Equipment? <span className="text-red-500">*</span>
-            </span>
-            <div className="flex items-center gap-4">
-              {(["yes", "no"] as const).map((opt) => (
-                <label key={opt} className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="has_equipment"
-                    className="size-4 accent-primary cursor-pointer"
-                    checked={addEquipForm.has_equipment === opt}
-                    onChange={() =>
-                      setAddEquipForm((prev) => ({
-                        ...prev,
-                        has_equipment: opt,
-                        quantity: "",
-                        supplier_id: "",
-                        supplier_name: "",
-                      }))
-                    }
-                  />
-                  {opt === "yes" ? "Yes" : "No"}
-                </label>
-              ))}
-            </div>
           </div>
 
           {addEquipForm.has_equipment === "yes" ? (

@@ -333,28 +333,27 @@ button:hover {
   background-color: #E5E5E5;
 }
 
-/* "Has an event" marker, rendered inside the day button by CalendarWithSidebar.
-   It sits below the date number and is inset from the button's bottom edge so it
-   stays inside the selected pill rather than clipping against it. */
-.dashboard-calendar .usr-event-dot {
+/* "Has an event" marker(s), rendered inside the day button by
+   CalendarWithSidebar — one dot per distinct DJ colour that day (capped at 3).
+   The row sits below the date number and is inset from the button's bottom
+   edge so it stays inside the selected pill rather than clipping against it.
+   Colour and the selected/outside restyling are set inline per-dot in JS now
+   (they're per-DJ data, not something a static class can express), so this
+   only owns layout/shape. */
+.dashboard-calendar .usr-event-dots {
   position: absolute;
   bottom: 3px;
   left: 50%;
   transform: translateX(-50%);
-  width: 4px;
-  height: 4px;
-  border-radius: 9999px;
-  background-color: var(--color-primary);
+  display: flex;
+  gap: 2px;
   pointer-events: none;
 }
 
-/* On the selected (dark green) day the green dot would disappear. */
-.dashboard-calendar .rdp-selected .usr-event-dot {
-  background-color: #ffffff;
-}
-
-.dashboard-calendar .rdp-outside .usr-event-dot {
-  opacity: 0.4;
+.dashboard-calendar .usr-event-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
 }
 
 /* Nudge the date number up so it never sits on top of the dot. */

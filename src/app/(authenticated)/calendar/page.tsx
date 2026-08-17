@@ -7,15 +7,20 @@ import Link from "next/link";
 import { useCalendar } from "@/src/api/calendar";
 import { BackButton } from "@/src/components/Icons";
 
-const EVENT_COLORS = [
-  { bg: "bg-[#fef3c6]", border: "border-[#fee685]" },
-  { bg: "bg-[#f3e8ff]", border: "border-[#e9d4ff]" },
-  { bg: "bg-[#dbeafe]", border: "border-[#bedbff]" },
-  { bg: "bg-[#dcfce7]", border: "border-[#b9f8cf]" },
-  { bg: "bg-[#cbfbf1]", border: "border-[#96f7e4]" },
-  { bg: "bg-[#fce7f3]", border: "border-[#fccee8]" },
-  { bg: "bg-[#ffe4e6]", border: "border-[#ffccd3]" },
-];
+// A DJ with no colour assigned falls back to neutral grey — matches the
+// Users table swatch and the dashboard's mini calendar.
+const DJ_FALLBACK_COLOR = "#9CA3AF";
+
+// Tints the stored DJ colour against white for the chip background/border,
+// rather than storing separate light/dark values — one hex per DJ is all
+// that's kept, everything else is derived at render time.
+function djChipStyle(hex?: string | null) {
+  const c = hex || DJ_FALLBACK_COLOR;
+  return {
+    backgroundColor: `color-mix(in srgb, ${c} 16%, white)`,
+    borderColor: `color-mix(in srgb, ${c} 42%, white)`,
+  };
+}
 
 type CalendarEvent = {
   id: number | string;
@@ -24,7 +29,7 @@ type CalendarEvent = {
   end_time?: string;
   name_of_couple?: string;
   users_events_user_idTousers?: { name?: string };
-  users_events_dj_idTousers?: { name?: string } | null;
+  users_events_dj_idTousers?: { name?: string; color?: string | null } | null;
   venues?: { venue?: string };
 };
 
@@ -82,12 +87,6 @@ export default function CalendarPage() {
       return (rawData as { events: CalendarEvent[] }).events;
     return [];
   }, [rawData]);
-
-  const eventColorMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    events.forEach((ev, i) => { map[String(ev.id)] = i; });
-    return map;
-  }, [events]);
 
   const eventsByDate = useMemo(() => {
     const map: Record<string, CalendarEvent[]> = {};
@@ -222,7 +221,6 @@ export default function CalendarPage() {
 
                   {/* Event chips */}
                   {dayEvents.slice(0, 3).map((ev) => {
-                    const c = EVENT_COLORS[(eventColorMap[String(ev.id)] ?? 0) % EVENT_COLORS.length];
                     const name = getEventDisplayName(ev);
                     const time =
                       ev.start_time && ev.end_time
@@ -232,7 +230,8 @@ export default function CalendarPage() {
                     return (
                       <div
                         key={ev.id}
-                        className={`${c.bg} border ${c.border} rounded shrink-0 px-1.5 py-1`}
+                        className="border rounded shrink-0 px-1.5 py-1"
+                        style={djChipStyle(ev.users_events_dj_idTousers?.color)}
                       >
                         <div className="flex items-center gap-1.5 min-w-0">
                           <div className="shrink-0 size-4 rounded-full bg-primary/30 flex items-center justify-center overflow-hidden">
