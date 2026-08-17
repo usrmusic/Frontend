@@ -262,31 +262,100 @@ const NewEnquiryPage = () => {
   useEffect(() => {
     if (!clientDetails || !formikRef.current) return;
     Promise.resolve().then(() => {
-      const cur = formikRef.current?.values;
-      if (!cur) return;
-      const currentNameValue = !showNameInput && clientId != null ? String(clientId) : cur.name;
-      const newVals = {
-        ...cur,
-        name: currentNameValue,
-        address: clientDetails.address ?? cur.address,
-        email: clientDetails.email ?? cur.email,
-        number: clientDetails.contact_number ?? cur.number,
-      };
-      if (
-        cur.name !== newVals.name ||
-        cur.address !== newVals.address ||
-        cur.email !== newVals.email ||
-        cur.number !== newVals.number
-      ) {
-        formikRef.current?.setValues(newVals);
-      }
+      /* Functional updater, NOT a spread of a previously-read snapshot.
+
+         This effect and the enquiryItem-hydration effect below both defer their
+         writes with Promise.resolve().then(). Microtasks drain back-to-back
+         WITHOUT React re-rendering in between, so reading
+         `formikRef.current.values` here returns the pre-hydration (blank)
+         snapshot even when the hydration effect has already called setValues.
+         Spreading that stale snapshot wrote blanks back over venue / DJ /
+         event date / times / deposit — i.e. every field this effect does not
+         itself own — which is exactly the reported bug: client name, address,
+         email and number populate, nothing else does.
+
+         Taking `prev` from Formik guarantees we merge onto the latest state
+         regardless of which microtask ran first. */
+      formikRef.current?.setValues((prev) => {
+        const currentNameValue =
+          !showNameInput && clientId != null ? String(clientId) : prev.name;
+        const next = {
+          ...prev,
+          name: currentNameValue,
+          address: clientDetails.address ?? prev.address,
+          email: clientDetails.email ?? prev.email,
+          number: clientDetails.contact_number ?? prev.number,
+        };
+        // Return the same reference when nothing changed so Formik can skip the render.
+        if (
+          prev.name === next.name &&
+          prev.address === next.address &&
+          prev.email === next.email &&
+          prev.number === next.number
+        ) {
+          return prev;
+        }
+        return next;
+      });
     });
   }, [clientDetails, showNameInput, clientId]);
 
-  useEffect(() => {
-    if (!enquiryItem || !formikRef.current) return;
+  /* Reset-or-hydrate for the current editId — deliberately ONE effect, not two.
 
-    const cur = formikRef.current.values;
+     This used to be split into this effect (hydrate from enquiryItem) and a
+     separate effect that called formikRef.current.resetForm() whenever editId
+     changed. That was the actual bug: resetForm() ran SYNCHRONOUSLY inside its
+     own effect, while this effect's setValues() is deferred via
+     Promise.resolve().then(). React runs every effect for a commit in
+     definition order before yielding, so when enquiryItem is already warm in
+     the React Query cache (e.g. navigating here from Open Enquiry) both
+     effects fire in the SAME commit — and the synchronous resetForm() in the
+     later effect always executed after this effect had merely SCHEDULED its
+     update, wiping it out every time. On a hard refresh there's no warm cache,
+     so enquiryItem arrives in a later commit than the reset — different
+     commits, no race, works "by accident". That's exactly the reported
+     "works on refresh, not on click-through" split.
+
+     Fix: only one effect ever touches the form for a given editId, and it
+     decides reset-vs-hydrate itself by checking whether the fetched
+     enquiryItem actually corresponds to the currently-requested editId (its
+     `id` can lag behind editId for one render after navigating to a
+     different enquiry, since react-query keeps serving the previous cached
+     value until the new fetch resolves). */
+  const hydratedForIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!formikRef.current) return;
+
+    const matchesCurrentTarget =
+      editId != null && enquiryItem != null && String(enquiryItem.id) === String(editId);
+
+    if (!matchesCurrentTarget) {
+      // Either there's no editId (fresh "new enquiry"), or enquiryItem hasn't
+      // caught up to a just-changed editId yet. Reset once per editId change
+      // so stale data from a previously-edited enquiry can't linger — but
+      // only if we haven't already reset for this target.
+      if (hydratedForIdRef.current !== editId) {
+        hydratedForIdRef.current = editId;
+        setRestoredEditSelections(false);
+        setSelectedPackageEquipments({});
+        setSelectedExtras({});
+        setCustomExtras([]);
+        setExtrasOverrides({});
+        try { formikRef.current.resetForm(); } catch {}
+        if (editId) {
+          try {
+            queryClient.invalidateQueries({ queryKey: ["enquiry-item", editId], refetchType: "all" });
+          } catch {}
+        }
+      }
+      return;
+    }
+
+    // enquiryItem now matches editId — hydrate. Mark this target as handled so
+    // a later re-run (e.g. a background refetch of the same enquiry) doesn't
+    // blow away in-progress edits by resetting again.
+    hydratedForIdRef.current = editId;
+
     const nameVal = enquiryItem.user_id
       ? String(enquiryItem.user_id)
       : enquiryItem.client_id
@@ -321,15 +390,18 @@ const NewEnquiryPage = () => {
       tellMeMore: enquiryItem.event_details ?? enquiryItem.details ?? "",
     };
 
-    if (JSON.stringify(cur) !== JSON.stringify(newVals)) {
-      Promise.resolve().then(() => {
-        formikRef.current?.setValues(newVals);
-        try {
-          if (nameVal) formikRef.current?.setFieldValue("name", nameVal, false);
-          if (venueVal) formikRef.current?.setFieldValue("venue", venueVal, false);
-        } catch {}
-      });
-    }
+    // The equality guard lives inside the updater rather than comparing against
+    // a synchronously-read snapshot, for the same microtask-ordering reason
+    // documented in the clientDetails effect above.
+    Promise.resolve().then(() => {
+      formikRef.current?.setValues((prev) =>
+        JSON.stringify(prev) === JSON.stringify(newVals) ? prev : newVals,
+      );
+      try {
+        if (nameVal) formikRef.current?.setFieldValue("name", nameVal, false);
+        if (venueVal) formikRef.current?.setFieldValue("venue", venueVal, false);
+      } catch {}
+    });
 
     if (enquiryItem.client_id) setClientId(Number(enquiryItem.client_id));
     if (enquiryItem.user_id) setClientId(Number(enquiryItem.user_id));
@@ -366,21 +438,7 @@ const NewEnquiryPage = () => {
         setRestoredEditSelections(true);
       });
     } catch {}
-  }, [enquiryItem]);
-
-  useEffect(() => {
-    setRestoredEditSelections(false);
-    setSelectedPackageEquipments({});
-    setSelectedExtras({});
-    setCustomExtras([]);
-    setExtrasOverrides({});
-    try { formikRef.current?.resetForm(); } catch {}
-    try {
-      if (editId) {
-        queryClient.invalidateQueries({ queryKey: ["enquiry-item", editId], refetchType: "all" });
-      }
-    } catch {}
-  }, [editId, queryClient]);
+  }, [enquiryItem, editId, queryClient]);
 
   useEffect(() => {
     if (packageData?.data) {
@@ -397,7 +455,23 @@ const NewEnquiryPage = () => {
       }
 
       Promise.resolve().then(() => {
-        if (editId && restoredEditSelections) {
+        /* Gate on editId ALONE, not on `restoredEditSelections`.
+
+           With a warm React Query cache this effect and the enquiryItem
+           effect can run in the same microtask drain. Because
+           `restoredEditSelections` is captured in this closure at render
+           time, it still reads false here even when the enquiryItem effect
+           has just set it true and restored the saved ticks — so the old
+           condition fell through to the hard overwrite below and wiped them.
+           That's why selected equipment appeared only after a hard refresh
+           (cold cache ⇒ the two effects land in separate ticks).
+
+           In edit mode the saved event_package rows are the source of truth,
+           so never hard-reset here: merge in any package/extra keys we don't
+           know about as unticked and leave existing entries alone. The merge
+           is idempotent, so the re-run triggered when restoredEditSelections
+           flips is harmless. */
+        if (editId) {
           setSelectedPackageEquipments((prev) => {
             const merged = { ...prev };
             for (const key of Object.keys(initPkg)) {
@@ -1817,6 +1891,31 @@ const NewEnquiryPage = () => {
         centered
       >
         <div className="space-y-4">
+          {/* "Do you have the equipment?" comes first, per the Figma design —
+              it decides whether the form below asks for a Quantity (we own it)
+              or a Supplier (hired in, and this equipment gets linked to them). */}
+          <div>
+            <label className="text-xs font-medium text-gray-700 mb-1 block">
+              Do you have the equipment? <span className="text-red-500">*</span>
+            </label>
+            <AntSelect
+              className="w-full"
+              value={addEquipForm.has_equipment}
+              onChange={(val: "yes" | "no") =>
+                setAddEquipForm((prev) => ({
+                  ...prev,
+                  has_equipment: val,
+                  quantity: "",
+                  supplier_id: "",
+                  supplier_name: "",
+                }))
+              }
+              options={[
+                { label: "Yes", value: "yes" },
+                { label: "No", value: "no" },
+              ]}
+            />
+          </div>
           <div>
             <label className="text-xs font-medium text-gray-700 mb-1 block">
               Equipment Name <span className="text-red-500">*</span>
@@ -1851,36 +1950,6 @@ const NewEnquiryPage = () => {
               value={addEquipForm.sell_price}
               onChange={(e) => setAddEquipForm((prev) => ({ ...prev, sell_price: e.target.value }))}
             />
-          </div>
-
-          {/* Radio, matching the legacy system. "Yes" = we own it, so we need a
-              quantity and no supplier; "No" = hired in, so a supplier is required. */}
-          <div className="flex items-center gap-4">
-            <span className="text-xs font-medium text-gray-700">
-              Do you have this Equipment? <span className="text-red-500">*</span>
-            </span>
-            <div className="flex items-center gap-4">
-              {(["yes", "no"] as const).map((opt) => (
-                <label key={opt} className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="has_equipment"
-                    className="size-4 accent-primary cursor-pointer"
-                    checked={addEquipForm.has_equipment === opt}
-                    onChange={() =>
-                      setAddEquipForm((prev) => ({
-                        ...prev,
-                        has_equipment: opt,
-                        quantity: "",
-                        supplier_id: "",
-                        supplier_name: "",
-                      }))
-                    }
-                  />
-                  {opt === "yes" ? "Yes" : "No"}
-                </label>
-              ))}
-            </div>
           </div>
 
           {addEquipForm.has_equipment === "yes" ? (

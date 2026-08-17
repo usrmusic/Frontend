@@ -1,7 +1,10 @@
 "use client";
+import { useState } from "react";
 import Card from "@/src/components/Card";
 import { Skeleton } from "antd";
 import { useRouter } from "next/navigation";
+import { CreditCard } from "lucide-react";
+import EventPaymentDrawer from "@/src/components/common/EventPaymentDrawer";
 
 export interface PendingPayment {
   id: number;
@@ -24,6 +27,10 @@ export default function PendingPayments({
   scope = 'admin',
 }: PendingPaymentsProps) {
   const router = useRouter();
+  // The exact confirmed-events drawer (package summary, rig list, Add Payment
+  // form, payment summary) — extracted into EventPaymentDrawer so it can open
+  // from here too instead of navigating away just to record a payment.
+  const [drawerEventId, setDrawerEventId] = useState<number | null>(null);
 
   const handlePaymentClick = (payment: PendingPayment) => {
     try {
@@ -83,14 +90,36 @@ export default function PendingPayments({
                     · {p.outstanding ? `£${p.outstanding}` : ""}
                   </p>
                 </div>
-                <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-rose-500">
-                  Pending
-                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  {scope !== 'personal' && (
+                    <button
+                      type="button"
+                      title="Add payment"
+                      aria-label="Add payment"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDrawerEventId(p.id);
+                      }}
+                      className="p-1.5 text-gray-400 hover:text-primary hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      <CreditCard size={15} />
+                    </button>
+                  )}
+                  <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-rose-500">
+                    Pending
+                  </span>
+                </div>
               </li>
             ))}
           </ul>
         )}
       </div>
+
+      <EventPaymentDrawer
+        eventId={String(drawerEventId ?? "")}
+        open={drawerEventId != null}
+        onClose={() => setDrawerEventId(null)}
+      />
     </Card>
   );
 }

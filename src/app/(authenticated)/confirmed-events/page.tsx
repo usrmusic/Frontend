@@ -5,26 +5,23 @@ import {
   useDownloadInvoice,
   useGetConfirmEvent,
   useUpdateConfirmEvent,
-  useAddConfirmPayment,
 } from "@/src/api/events";
 import Button from "@/src/components/Button";
 import { BackButton } from "@/src/components/Icons";
 import Input from "@/src/components/Input";
-import { Collapse, CollapseProps, Select, Spin, DatePicker, Modal, ConfigProvider } from "antd";
-import dayjs, { Dayjs } from "dayjs";
+import EventPaymentDrawer from "@/src/components/common/EventPaymentDrawer";
+import { Collapse, CollapseProps, Select, Spin, Modal } from "antd";
+import dayjs from "dayjs";
 import { useFormik } from "formik";
 import {
   ChevronDown,
   FileText,
   FolderOpen,
   MoreVertical,
-  Plus,
-  Printer,
   SquareCheckBig,
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { createPortal } from "react-dom";
 import { CSSProperties, useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -62,39 +59,17 @@ const ConfirmedEventsPage = () => {
     useCancelEvent();
   const { data: eventsDropdown } = useRigListEventsDropdown();
   const { data: selectedEventData, isLoading } = useGetConfirmEvent(eventId);
-  const { mutate: addPaymentMutation, isPending: isAddingPayment } =
-    useAddConfirmPayment();
   const router = useRouter();
   const { mutate: sendInvoiceMutation, isPending: isSendingInvoice } =
     useSendConfirmInvoice();
   const { mutate: refundMutation, isPending: isProcessingRefund } =
     useRefundConfirmEvent();
   const queryClient = useQueryClient();
-  const [paymentAmount, setPaymentAmount] = useState<string>("");
-  const [paymentDate, setPaymentDate] = useState<Dayjs | null>(dayjs());
-  const [paymentMethodId, setPaymentMethodId] = useState<string | number>("");
-  const [paymentNotes, setPaymentNotes] = useState<string>("");
-  const [rigOpen, setRigOpen] = useState(false); // rig list toggle
-  const [printRig, setPrintRig] = useState(false);
-
-  // window.print() reads the DOM synchronously, so it has to fire from an
-  // effect that runs after `printRig` has actually applied — see the same
-  // mechanism on the New Enquiry page.
-  useEffect(() => {
-    if (!printRig) return;
-    document.body.classList.add("print-scoped");
-    const cleanup = () => {
-      document.body.classList.remove("print-scoped");
-      window.removeEventListener("afterprint", cleanup);
-      setPrintRig(false);
-    };
-    window.addEventListener("afterprint", cleanup);
-    window.print();
-    return () => {
-      document.body.classList.remove("print-scoped");
-      window.removeEventListener("afterprint", cleanup);
-    };
-  }, [printRig]);
+  // Payment form state, rig-list toggle/print, and the print effect now live
+  // inside EventPaymentDrawer (src/components/common/EventPaymentDrawer.tsx) —
+  // extracted so the dashboard's Pending Payments card can open the exact same
+  // drawer. Grepped clean before removal: none of these were referenced
+  // anywhere on this page outside the drawer's own markup.
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [refundAmount, setRefundAmount] = useState<string>("");
@@ -835,376 +810,11 @@ const ConfirmedEventsPage = () => {
         style={{ background: "transparent" }}
         items={getItems(panelStyle)}
       />
-      {/* Slide-over drawer for payments */}
-      <div
-        className={`fixed inset-0 z-50 pointer-events-none transition-all duration-300 ${showDrawer ? "opacity-100" : "opacity-0"}`}
-          aria-hidden={!showDrawer}
-        >
-          <div
-            className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${showDrawer ? "opacity-100 pointer-events-auto" : "opacity-0"}`}
-            onClick={() => setShowDrawer(false)}
-          ></div>
-
-          <aside
-            className={`pointer-events-auto fixed right-0 top-0 h-full w-[420px] bg-white shadow-xl z-50 transform transition-transform duration-300 ${
-              showDrawer ? "translate-x-0" : "translate-x-full"
-            }`}
-            role="dialog"
-            aria-labelledby="drawer-title"
-          >
-            <div className="h-full flex flex-col bg-white">
-              {/* Header */}
-              <div className="p-6 border-b border-gray-200 flex justify-between items-start bg-gradient-to-r from-white to-slate-50">
-                <div>
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Event Payment</p>
-                  <h3 id="drawer-title" className="themeH1 text-lg mt-1">{selectedEventData?.data?.company?.name || "USR Music Ltd"}</h3>
-                  <p className="text-sm text-gray-600 mt-1">{selectedEventData?.data?.venues?.venue ?? ""}</p>
-                </div>
-                <button
-                  onClick={() => setShowDrawer(false)}
-                  className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
-                  aria-label="Close drawer"
-                >
-                  <X size={18} className="text-gray-600" />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto scrollbar-hide">
-                <div className="p-6 space-y-6">
-                  {/* Package Summary Section */}
-                  <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-4 border border-slate-200">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Package Summary</p>
-                        <p className="font-semibold text-gray-900 mt-1">{selectedEventData?.data?.dj_package_name || "DJ Package"}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setPrintRig(true)}
-                          className="p-1.5 text-slate-500 hover:text-primary hover:bg-white rounded-lg transition-colors"
-                          aria-label="Print rig list"
-                          title="Print rig list and notes"
-                        >
-                          <Printer size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          className="px-3 py-1.5 bg-primary hover:bg-primary/90 text-white text-xs font-medium rounded-lg transition-colors"
-                          onClick={() => router.push(`/enquiry?select=${encodeURIComponent(String(eventId))}`)}
-                          title="Edit enquiry details"
-                        >
-                          Edit
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Equipment Names Only */}
-                    <div className="space-y-2 pt-3 border-t border-slate-200">
-                      {(selectedEventData?.data?.event_packages)?.length ? (
-                        <div className="space-y-1">
-                          {(selectedEventData?.data?.event_packages).map((p: ConfirmEventPackage) => (
-                            <div key={p.id} className="flex items-start gap-2">
-                              <SquareCheckBig size={14} className="text-primary flex-shrink-0 mt-0.5" />
-                              <p className="font-medium text-sm text-gray-900">{p.equipment?.name || p.package_name || p.name || "Item"}</p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-gray-500 py-2">No equipment items</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Rig List Section — plain anchor-style toggle when collapsed; the
-                      boxed panel only mounts once expanded, so no empty box lingers. */}
-                  <div>
-                    <div className="flex justify-end">
-                      <button
-                        type="button"
-                        className="flex items-center gap-1.5 text-sm font-medium text-primary"
-                        onClick={() => setRigOpen((s) => !s)}
-                      >
-                        Rig List
-                        <Plus size={15} className={`transition-transform duration-300 ${rigOpen ? "rotate-45" : ""}`} />
-                      </button>
-                    </div>
-                    {rigOpen && (
-                      <div className="mt-2 text-xs text-gray-700 space-y-3">
-                        {(selectedEventData?.data?.event_packages)?.length ? (
-                          (selectedEventData?.data?.event_packages).map((p: ConfirmEventPackage) => (
-                            <div key={p.id} className="space-y-0.5">
-                              <div className="flex items-center gap-2">
-                                <SquareCheckBig size={14} className="text-primary shrink-0" />
-                                <p className="font-semibold text-gray-900 leading-tight">{p.equipment?.name || p.package_name || p.name || "Item"}</p>
-                              </div>
-                              {p.rig_notes && (
-                                <p
-                                  className="pl-6 text-[11px] text-gray-500 leading-snug whitespace-pre-line"
-                                  dangerouslySetInnerHTML={{ __html: p.rig_notes }}
-                                />
-                              )}
-                            </div>
-                          ))
-                        ) : (
-                          <p className="text-[11px] text-gray-500 py-2">No rig notes</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Payment Form Section */}
-                  <div className="space-y-4">
-                    <h4 className="text-sm font-semibold text-gray-900">Add Payment</h4>
-                    
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        if (!eventId) return toast.error("No event selected");
-                        const dateIso = paymentDate ? paymentDate.toISOString() : new Date().toISOString();
-                        addPaymentMutation({
-                          id: eventId,
-                          payload: {
-                            payment_method_id: paymentMethodId ? Number(paymentMethodId) : undefined,
-                            amount: Number(paymentAmount || 0),
-                            date: dateIso,
-                            notes: paymentNotes || undefined,
-                          },
-                        }, {
-                          onSuccess: () => {
-                            setShowDrawer(false);
-                            setPaymentAmount("");
-                            setPaymentDate(dayjs());
-                            setPaymentMethodId("");
-                            setPaymentNotes("");
-                          },
-                        });
-                      }}
-                      className="space-y-4"
-                    >
-                      {/* Amount Input */}
-                      <Input
-                        label="Amount"
-                        type="number"
-                        placeholder="0.00"
-                        min={0}
-                        required
-                        value={paymentAmount}
-                        onChange={(e) => setPaymentAmount(e.target.value)}
-                      />
-
-                      {/* Date & Payment Method */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="mb-1 text-xs block">Date</label>
-                          <DatePicker
-                            placeholder="DD/MM/YYYY"
-                            className="w-full"
-                            format="DD-MM-YYYY"
-                            value={paymentDate}
-                            onChange={(val) => setPaymentDate(val)}
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-1 text-xs block">Method</label>
-                          <ConfigProvider theme={{ token: { borderRadius: 12 } }}>
-                            <Select
-                              placeholder="Select method"
-                              className="w-full"
-                              value={paymentMethodId ? String(paymentMethodId) : undefined}
-                              onChange={(val) => setPaymentMethodId(val)}
-                              options={[
-                                { label: "Cash", value: "1" },
-                                { label: "Bank Transfer", value: "2" },
-                                { label: "Card", value: "3" },
-                              ]}
-                            />
-                          </ConfigProvider>
-                        </div>
-                      </div>
-
-                      {/* Notes */}
-                      {/* <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">Notes</label>
-                        <textarea
-                          name="notes"
-                          className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors resize-none"
-                          rows={3}
-                          placeholder="Add payment notes..."
-                          value={paymentNotes}
-                          onChange={(e) => setPaymentNotes(e.target.value)}
-                        />
-                      </div> */}
-
-                      {/* Submit Buttons */}
-                      <div className="flex gap-2 pt-2">
-                        <button 
-                          type="submit" 
-                          className="flex-1 px-4 py-2.5 bg-primary hover:bg-primary/90 text-white font-medium rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                          disabled={isAddingPayment}
-                        >
-                          {isAddingPayment ? "Saving..." : "Add Payment"}
-                        </button>
-                        {/* <button 
-                          type="button" 
-                          onClick={() => setShowDrawer(false)} 
-                          className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
-                        >
-                          Cancel
-                        </button> */}
-                      </div>
-                    </form>
-                  </div>
-
-                  {/* Payment Summary */}
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 space-y-3">
-                    <h4 className="text-sm font-semibold text-emerald-900">Payment Summary</h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Total Amount:</span>
-                        <span className="font-semibold text-gray-900">
-                          £{(Number(selectedEventData?.data?.total_cost_for_equipment) || ((selectedEventData?.data?.event_packages || []).reduce((s: number, p: ConfirmEventPackage) => s + Number(p.total_price || p.sell_price || 0), 0))).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Deposit Received:</span>
-                        <span className="font-semibold text-gray-900">
-                          £{adjustedPaidAmount.toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="pt-2 border-t border-emerald-200 flex justify-between">
-                        <span className="font-semibold text-emerald-900">Outstanding:</span>
-                        <span className="font-bold text-emerald-900">
-                          £{(
-                            (Number(selectedEventData?.data?.total_cost_for_equipment) || ((selectedEventData?.data?.event_packages || []).reduce((s: number, p: ConfirmEventPackage) => s + Number(p.total_price || p.sell_price || 0), 0))) - adjustedPaidAmount
-                          ).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  {/* <div className="space-y-3 border-t border-gray-200 pt-4">
-                    <button
-                      onClick={async () => {
-                        setButtonLoading("send-invoice");
-                        try {
-                          const data = await fetchEmailTemplate(
-                            String(eventId),
-                            "SEND INVOICE-CONFIRMED",
-                          );
-                          setInvoiceTemplate({
-                            subject: data?.email?.subject || `Invoice for event #${eventId}`,
-                            body: data?.email?.body || `Please find your invoice attached.`,
-                          });
-                          setShowInvoiceModal(true);
-                        } catch {
-                          toast.error("Failed to load invoice template");
-                        } finally {
-                          setButtonLoading(null);
-                        }
-                      }}
-                      disabled={isProcessingRefund || isSendingInvoice}
-                      className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      {buttonLoading === "send-invoice" ? "Loading..." : "Send Invoice"}
-                    </button>
-                    <button
-                      onClick={() => setShowRefundModal(true)}
-                      disabled={isProcessingRefund || isSendingInvoice}
-                      className="w-full px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      {isProcessingRefund ? "Processing..." : "Refund"}
-                    </button>
-                  </div> */}
-                </div>
-              </div>
-            </div>
-          </aside>
-        </div>
-
-        {/* Rig list print sheet — same mechanism and layout as the New Enquiry
-            page's rig print: portalled to <body> so it isn't clipped by the
-            drawer's own scroll container, no total price, themed in text/rules
-            rather than filled colour so it survives "background graphics" being
-            off in the print dialog. */}
-        {printRig &&
-          createPortal(
-            <div id="print-section" className="p-2 text-black">
-              <div className="mb-4 border-b-2 border-[#719984] pb-2">
-                <h1 className="text-lg font-semibold text-[#719984]">Rig List</h1>
-                {selectedEventData?.data?.dj_package_name && (
-                  <p className="text-xs">{selectedEventData.data.dj_package_name}</p>
-                )}
-              </div>
-
-              <table className="mb-5 text-xs">
-                <tbody>
-                  {[
-                    ["Client", selectedEventData?.data?.users_events_user_idTousers?.name],
-                    ["Venue", selectedEventData?.data?.venues?.venue],
-                    ["Event Date", selectedEventData?.data?.date ? dayjs(selectedEventData.data.date).format("DD/MM/YYYY") : ""],
-                    [
-                      "Time",
-                      selectedEventData?.data?.start_time && selectedEventData?.data?.end_time
-                        ? `${selectedEventData.data.start_time} – ${selectedEventData.data.end_time}`
-                        : selectedEventData?.data?.start_time,
-                    ],
-                  ]
-                    .filter(([, v]) => Boolean(v))
-                    .map(([label, v]) => (
-                      <tr key={String(label)}>
-                        <td className="pr-4 align-top font-medium">{label}</td>
-                        <td className="align-top">{v}</td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-
-              <h2 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[#719984]">
-                Equipment
-              </h2>
-              {(selectedEventData?.data?.event_packages)?.length ? (
-                <ul className="mb-5 text-xs">
-                  {selectedEventData.data.event_packages.map((p: ConfirmEventPackage) => (
-                    <li key={p.id} className="border-b border-gray-300 py-1.5">
-                      <span className="font-medium">{p.equipment?.name || p.package_name || p.name || "Item"}</span>
-                      {p.notes && (
-                        <>
-                          {" — "}
-                          <span
-                            className="whitespace-pre-line italic"
-                            dangerouslySetInnerHTML={{ __html: p.notes }}
-                          />
-                        </>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mb-5 text-xs italic">No items selected</p>
-              )}
-
-              <h2 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[#719984]">
-                Rig Notes
-              </h2>
-              {(selectedEventData?.data?.event_packages)?.some((p: ConfirmEventPackage) => p.rig_notes) ? (
-                <ul className="text-xs">
-                  {selectedEventData.data.event_packages
-                    .filter((p: ConfirmEventPackage) => p.rig_notes)
-                    .map((p: ConfirmEventPackage) => (
-                      <li key={p.id} className="border-b border-gray-300 py-1.5">
-                        <p className="font-medium">{p.equipment?.name || p.package_name || p.name || "Item"}</p>
-                        <p className="whitespace-pre-line" dangerouslySetInnerHTML={{ __html: p.rig_notes ?? "" }} />
-                      </li>
-                    ))}
-                </ul>
-              ) : (
-                <p className="text-xs italic">No rig notes</p>
-              )}
-            </div>,
-            document.body,
-          )}
+      <EventPaymentDrawer
+        eventId={eventId}
+        open={showDrawer}
+        onClose={() => setShowDrawer(false)}
+      />
 
         {/* Send Invoice Modal */}
         {showInvoiceModal && (

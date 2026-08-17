@@ -78,6 +78,25 @@ export const useOpenEnquiryList = (params: QueryParams) => {
   });
 };
 
+// Business-wide event counts (Total / Open / Closed) — not scoped to this
+// page's own open-enquiry dataset. Open = OPEN + CONFIRMED (booked but not
+// yet finished), Closed = COMPLETED + CANCELLED. See getStatusCounts in
+// enquiry.controller.js for the exact status-id grouping.
+export interface StatusCounts {
+  total: number;
+  open: number;
+  closed: number;
+}
+export const useEnquiryStatusCounts = () => {
+  return useQuery({
+    queryKey: ["enquiry-status-counts"],
+    queryFn: async (): Promise<StatusCounts> => {
+      const response = await AxiosInstance.get(`/enquiry/status-counts`);
+      return response.data;
+    },
+  });
+};
+
 export const useSendBrochure = () => {
   return useMutation({
     mutationFn: async (payload: SendBrochurePayload) => {

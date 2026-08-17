@@ -66,8 +66,12 @@ type CalendarEvent = {
   title?: string;
   couple_name?: string | null;
   venues?: { venue?: string | null } | null;
-  users_events_dj_idTousers?: { id?: number; name?: string | null } | null;
+  users_events_dj_idTousers?: { id?: number; name?: string | null; color?: string | null } | null;
 };
+
+// Matches the Users table swatch and the full /calendar page's fallback — a
+// DJ with no colour assigned reads as neutral grey rather than blending in.
+const DJ_FALLBACK_COLOR = "#9CA3AF";
 
 const defaultClassNames = getDefaultClassNames();
 
@@ -207,7 +211,7 @@ function CalendarWithSidebar({
   const CustomDayButton = (props: DayButtonProps) => {
     const {
       day,
-      modifiers: _modifiers,
+      modifiers,
       children,
       className,
       ...buttonProps
@@ -215,12 +219,40 @@ function CalendarWithSidebar({
     const iso = getDateKey(day.date);
     const dayEvents = eventsByDate.get(iso) || [];
 
-    /* The event dot is rendered here rather than through `modifiersClassNames`
-       so it is guaranteed to appear on exactly the days we have events for. */
+    /* One dot per DISTINCT DJ colour that day (deduped — two bookings for the
+       same DJ still show one dot), capped at 3 so a busy day never grows the
+       row past the day cell. Colour comes from the DJ assigned to each event;
+       unassigned/uncoloured DJs fall back to neutral grey, matching the full
+       calendar page and the Users table swatch.
+
+       Rendered with inline styles rather than the old fixed-colour CSS class,
+       since the colour is per-DJ data, not something a static class can
+       express. `.rdp-selected`/`.rdp-outside` used to restyle the dot via CSS
+       descendant selectors; that's replicated here from `modifiers` so a
+       selected (white-background) day still shows a legible white dot and an
+       outside-month day still dims. */
+    const dotColors = Array.from(
+      new Set(dayEvents.map((ev) => ev.users_events_dj_idTousers?.color || DJ_FALLBACK_COLOR)),
+    ).slice(0, 3);
+
     const button = (
       <button {...buttonProps} className={className}>
         {children}
-        {dayEvents.length > 0 && <span aria-hidden className="usr-event-dot" />}
+        {dotColors.length > 0 && (
+          <span
+            aria-hidden
+            className="usr-event-dots"
+            style={{ opacity: modifiers.outside ? 0.4 : 1 }}
+          >
+            {dotColors.map((color, i) => (
+              <span
+                key={i}
+                className="usr-event-dot"
+                style={{ backgroundColor: modifiers.selected ? "#ffffff" : color }}
+              />
+            ))}
+          </span>
+        )}
       </button>
     );
     if (!dayEvents.length) return button;
