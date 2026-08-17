@@ -788,15 +788,26 @@ const OpenEnquiryPage = () => {
 
             Geometry is shared with the New Enquiry page's summary panel: same
             `xl:col-span-4` width (it was `col-span-3` here, so the two pages
-            disagreed), same sticky pin and same fixed full height. See the long
-            comment on that page's `aside` for why the sticky offset is negative
-            — briefly, a sticky offset resolves against the scroll container's
-            content box, so the shell's `p-8` is added to whatever `top` says,
-            and -24px cancels it back to a deliberate 32px from the top of the
-            viewport with a matching 32px at the bottom. */}
+            disagreed).
+
+            Height is deliberately NOT viewport-based (`100vh`) — mobile
+            browsers in "Desktop site" mode still report their own real,
+            address-bar-shrunk viewport height, so a `100vh`-derived box
+            overflows well past the actual visible area ("goes to the end").
+            Instead this relies on plain flexbox stretch: the outer container
+            is `flex xl:flex-row` with default `align-items: stretch`, so once
+            it's row layout (xl and up) the aside is automatically stretched
+            to match the left column's real height — i.e. it ends exactly
+            where the table ends, on any screen (1280 or a wider "desktop
+            view" on mobile alike). `h-full` on the inner div consumes that
+            stretched height so the sticky pin + internal scroll regions below
+            have something concrete to work against. Below xl the container
+            stacks in a column, so there's nothing to stretch to match — the
+            panel just takes its natural content height, which is correct
+            there already. */}
         {showSidePanel && (
           <aside className="xl:w-[29%] xl:shrink-0">
-            <div className="xl:sticky xl:-top-6 xl:h-[calc(100vh-64px)] flex flex-col bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="h-full xl:sticky xl:-top-6 flex flex-col bg-white rounded-2xl shadow-sm overflow-hidden">
               {/* Header — name, with the derived status directly underneath
                   it (matching the reference design's stacked layout). No
                   phone/edit/overflow icon buttons here — the table's own
