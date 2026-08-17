@@ -853,10 +853,71 @@ const OpenEnquiryPage = () => {
                 </button>
               </div>
 
+              {/* Record Deposit — shared, persistent action pinned right
+                  under the tabs (visible regardless of which tab is active),
+                  matching the original pre-redesign position. */}
+              <div className="shrink-0 p-5 border-b border-gray-100">
+                <p className="text-sm font-semibold text-gray-900 mb-2.5">Record Deposit</p>
+                <form className="space-y-2.5" onSubmit={formik.handleSubmit}>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select
+                      className="w-full h-10"
+                      placeholder="Company"
+                      options={companyOptions}
+                      value={formik.values.company_name || undefined}
+                      onChange={(value) => formik.setFieldValue("company_name", value)}
+                    />
+                    <DatePicker
+                      placeholder="Date"
+                      className="w-full h-10"
+                      format="DD/MM/YYYY"
+                      value={
+                        formik.values.event_date
+                          ? dayjs(formik.values.event_date, "DD-MM-YYYY")
+                          : undefined
+                      }
+                      onChange={(val) =>
+                        formik.setFieldValue("event_date", val ? dayjs(val).format("DD-MM-YYYY") : "")
+                      }
+                      allowClear
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <InputNumber
+                      placeholder="Amount"
+                      className="w-full h-10"
+                      style={{ width: "100%" }}
+                      value={formik.values.deposit_amount ? Number(formik.values.deposit_amount) : undefined}
+                      onChange={(val) => formik.setFieldValue("deposit_amount", val ?? "")}
+                    />
+                    <Select
+                      placeholder="Payment"
+                      className="w-full h-10"
+                      value={formik.values.payment_method_id || undefined}
+                      onChange={(val) => formik.setFieldValue("payment_method_id", val)}
+                      options={[
+                        { label: "Cash", value: "1" },
+                        { label: "BACS", value: "2" },
+                        { label: "Other", value: "3" },
+                      ]}
+                    />
+                  </div>
+                  <Button
+                    type="primary"
+                    className="w-full! h-10! font-semibold"
+                    htmlType="submit"
+                    loading={confirmingEvent}
+                    disabled={!selectedRowKeys.length}
+                  >
+                    Deposit Received
+                  </Button>
+                </form>
+              </div>
+
               <div className="flex-1 min-h-0 flex flex-col">
-                {/* Tab content — scrolls independently of the Add Note bar
-                    below, which is a PERSISTENT bottom action visible on both
-                    tabs (matching the reference design: it stays put whether
+                {/* Tab content — scrolls independently of Record Deposit
+                    above, which is a PERSISTENT element pinned under the tabs
+                    (matching the reference design: it stays put whether
                     Details or Notes is the active tab, rather than only
                     appearing under Notes). */}
                 {activeTab === "details" ? (
@@ -977,69 +1038,6 @@ const OpenEnquiryPage = () => {
                     </div>
                   </div>
                 )}
-              </div>
-
-              {/* Record Deposit — a PERSISTENT bottom action visible on both
-                  tabs (matching how Add Note previously worked in that spot),
-                  since recording a deposit is relevant regardless of which
-                  tab you're looking at. The real payment feature the client
-                  asked to keep, unchanged. */}
-              <div className="shrink-0 p-5 border-t border-gray-100">
-                <p className="text-sm font-semibold text-gray-900 mb-2.5">Record Deposit</p>
-                <form className="space-y-2.5" onSubmit={formik.handleSubmit}>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Select
-                      className="w-full h-10"
-                      placeholder="Company"
-                      options={companyOptions}
-                      value={formik.values.company_name || undefined}
-                      onChange={(value) => formik.setFieldValue("company_name", value)}
-                    />
-                    <DatePicker
-                      placeholder="Date"
-                      className="w-full h-10"
-                      format="DD/MM/YYYY"
-                      value={
-                        formik.values.event_date
-                          ? dayjs(formik.values.event_date, "DD-MM-YYYY")
-                          : undefined
-                      }
-                      onChange={(val) =>
-                        formik.setFieldValue("event_date", val ? dayjs(val).format("DD-MM-YYYY") : "")
-                      }
-                      allowClear
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <InputNumber
-                      placeholder="Amount"
-                      className="w-full h-10"
-                      style={{ width: "100%" }}
-                      value={formik.values.deposit_amount ? Number(formik.values.deposit_amount) : undefined}
-                      onChange={(val) => formik.setFieldValue("deposit_amount", val ?? "")}
-                    />
-                    <Select
-                      placeholder="Payment"
-                      className="w-full h-10"
-                      value={formik.values.payment_method_id || undefined}
-                      onChange={(val) => formik.setFieldValue("payment_method_id", val)}
-                      options={[
-                        { label: "Cash", value: "1" },
-                        { label: "BACS", value: "2" },
-                        { label: "Other", value: "3" },
-                      ]}
-                    />
-                  </div>
-                  <Button
-                    type="primary"
-                    className="w-full! h-10! font-semibold"
-                    htmlType="submit"
-                    loading={confirmingEvent}
-                    disabled={!selectedRowKeys.length}
-                  >
-                    Deposit Received
-                  </Button>
-                </form>
               </div>
             </div>
           </aside>
