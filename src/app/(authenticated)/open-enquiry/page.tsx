@@ -22,7 +22,7 @@ import {
   Plus,
 } from "lucide-react";
 import { useFormik } from "formik";
-import { Select, DatePicker, TableColumnsType, InputNumber, Popover } from "antd";
+import { Select, DatePicker, TableColumnsType, InputNumber, Popover, Spin } from "antd";
 import type { TableRowSelection } from "antd/es/table/interface";
 import dayjs from "dayjs";
 import Link from "next/link";
@@ -180,7 +180,7 @@ const OpenEnquiryPage = () => {
   const eventTypeSourceParams = { page: 1, limit: 100, search: "" };
   const { data: allEnquiryData } = useOpenEnquiryList(eventTypeSourceParams);
   const { data: companyNameOptions } = useCompanyDropdown();
-  const { data: statusCounts } = useEnquiryStatusCounts();
+  const { data: statusCounts, isLoading: isLoadingStatusCounts } = useEnquiryStatusCounts();
 
   const { mutate: addNoteMutation, isPending: addingNote } = useAddNote();
   const { mutate: confirmEventMutation, isPending: confirmingEvent } =
@@ -621,21 +621,33 @@ const OpenEnquiryPage = () => {
             <Card variant="white" className="p-5 flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Total</p>
-                <p className="text-3xl font-semibold text-gray-900 mt-1">{statusCounts?.total ?? "—"}</p>
+                {isLoadingStatusCounts ? (
+                  <Spin size="small" className="mt-2 block" />
+                ) : (
+                  <p className="text-3xl font-semibold text-gray-900 mt-1">{statusCounts?.total ?? "—"}</p>
+                )}
               </div>
               <Sparkline id="oe-spark-total" stroke="#10b981" />
             </Card>
             <Card variant="white" className="p-5 flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Open</p>
-                <p className="text-3xl font-semibold text-gray-900 mt-1">{statusCounts?.open ?? "—"}</p>
+                {isLoadingStatusCounts ? (
+                  <Spin size="small" className="mt-2 block" />
+                ) : (
+                  <p className="text-3xl font-semibold text-gray-900 mt-1">{statusCounts?.open ?? "—"}</p>
+                )}
               </div>
               <Sparkline id="oe-spark-open" stroke="#3b82f6" />
             </Card>
             <Card variant="white" className="p-5 flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Closed</p>
-                <p className="text-3xl font-semibold text-gray-900 mt-1">{statusCounts?.closed ?? "—"}</p>
+                {isLoadingStatusCounts ? (
+                  <Spin size="small" className="mt-2 block" />
+                ) : (
+                  <p className="text-3xl font-semibold text-gray-900 mt-1">{statusCounts?.closed ?? "—"}</p>
+                )}
               </div>
               <Sparkline id="oe-spark-closed" stroke="#f59e0b" />
             </Card>
