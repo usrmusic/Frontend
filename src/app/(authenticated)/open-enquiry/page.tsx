@@ -853,138 +853,10 @@ const OpenEnquiryPage = () => {
                 </button>
               </div>
 
-              <div className="flex-1 min-h-0 flex flex-col">
-                {/* Tab content — scrolls independently of the Add Note bar
-                    below, which is a PERSISTENT bottom action visible on both
-                    tabs (matching the reference design: it stays put whether
-                    Details or Notes is the active tab, rather than only
-                    appearing under Notes). */}
-                {activeTab === "details" ? (
-                  <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
-                    {/* Deposit/Add Note both moved out of here — they're now
-                        shared, persistent bottom elements rendered once below
-                        (Deposit) so they're visible regardless of tab, and
-                        Add Note lives only in the Notes tab now, at its top.
-                        Detail rows — icon + label + value, in the same order
-                        as the reference design: Mobile, Event Date, Event
-                        Type, Location, Message, Amount, Payment Status. All
-                        real, selected-row fields — "--" shown for whichever
-                        of Amount/Payment Status has no deposit recorded yet,
-                        same as the reference. */}
-                    <div className="p-5 space-y-4 border-b border-gray-100">
-                      <div className="flex items-start gap-2.5">
-                        <Phone size={15} className="text-gray-400 mt-0.5 shrink-0" />
-                        <div className="min-w-0">
-                          <p className="text-[11px] text-gray-400 leading-tight">Mobile</p>
-                          <p className="text-sm text-gray-800 truncate">{selectedMobile || "--"}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-2.5">
-                        <CalendarDays size={15} className="text-gray-400 mt-0.5 shrink-0" />
-                        <div className="min-w-0">
-                          <p className="text-[11px] text-gray-400 leading-tight">Event Date</p>
-                          <p className="text-sm text-gray-800">
-                            {selectedDate ? dayjs(selectedDate).format("DD/MM/YYYY") : "--"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-2.5">
-                        <Sparkles size={15} className="text-gray-400 mt-0.5 shrink-0" />
-                        <div className="min-w-0">
-                          <p className="text-[11px] text-gray-400 leading-tight">Event Type</p>
-                          <p className="text-sm text-gray-800 truncate">{selectedEventType || "--"}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-2.5">
-                        <MapPin size={15} className="text-gray-400 mt-0.5 shrink-0" />
-                        <div className="min-w-0">
-                          <p className="text-[11px] text-gray-400 leading-tight">Location</p>
-                          <p className="text-sm text-gray-800 truncate">{selectedVenue || "--"}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-2.5">
-                        <MessageSquare size={15} className="text-gray-400 mt-0.5 shrink-0" />
-                        <div className="min-w-0">
-                          <p className="text-[11px] text-gray-400 leading-tight">Message</p>
-                          <p className="text-sm text-gray-800 leading-snug">{selectedMessage || "--"}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-2.5">
-                        <Wallet size={15} className="text-gray-400 mt-0.5 shrink-0" />
-                        <div className="min-w-0">
-                          <p className="text-[11px] text-gray-400 leading-tight">Amount</p>
-                          <p className="text-sm text-gray-800">
-                            {selectedDeposit ? `£${Number(selectedDeposit).toLocaleString()}` : "--"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-2.5">
-                        <CreditCard size={15} className="text-gray-400 mt-0.5 shrink-0" />
-                        <div className="min-w-0">
-                          <p className="text-[11px] text-gray-400 leading-tight">Payment Status</p>
-                          <p className="text-sm text-gray-800">
-                            {selectedDeposit ? "Deposit Received" : "--"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  /* Notes tab — Add Note at the TOP (matching the original,
-                     pre-redesign layout), Recent Activities below it,
-                     scrolling on its own.
-                     Separators are `gray-200` (#E5E7EB): `gray-100` (#F3F4F6) is
-                     the correct token now that globals.css no longer overrides it
-                     with #6B7280 — Tailwind's gray-*500* — but at this row height
-                     it reads as almost nothing, so this lands one step up. Visible
-                     hairline, nowhere near the heavy line it started as.
-
-                     Rows are tight on purpose: a date and a one-line note are one
-                     unit, so the padding between entries should be larger than the
-                     gap inside an entry, not equal to it. */
-                  <div className="flex-1 min-h-0 flex flex-col">
-                    <div className="shrink-0 p-5 pb-3 border-b border-gray-100">
-                      <AddNoteControl
-                        note={note}
-                        setNote={setNote}
-                        canAddNote={canAddNote}
-                        addingNote={addingNote}
-                        onSubmit={hanldeAddNote}
-                      />
-                    </div>
-                    <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar px-5 pt-3">
-                      {selectedRowData?.[0]?.event_notes?.length ? (
-                        <ul>
-                          {selectedRowData?.[0]?.event_notes?.map((item) => (
-                            <li
-                              key={item.id}
-                              className="py-1.5 border-b border-gray-200 last:border-0"
-                            >
-                              {item.created_at && (
-                                <p className="text-[11px] leading-tight text-gray-400">
-                                  {dayjs(item.created_at).format("DD/MM/YY HH:mm")}
-                                </p>
-                              )}
-                              <p className="text-xs leading-snug text-gray-600">{item.notes}</p>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <div className="h-full flex items-center justify-center text-xs text-gray-400 italic">
-                          No notes yet
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Record Deposit — a PERSISTENT bottom action visible on both
-                  tabs (matching how Add Note previously worked in that spot),
-                  since recording a deposit is relevant regardless of which
-                  tab you're looking at. The real payment feature the client
-                  asked to keep, unchanged. */}
-              <div className="shrink-0 p-5 border-t border-gray-100">
+              {/* Record Deposit — shared, persistent action pinned right
+                  under the tabs (visible regardless of which tab is active),
+                  matching the original pre-redesign position. */}
+              <div className="shrink-0 p-5 border-b border-gray-100">
                 <p className="text-sm font-semibold text-gray-900 mb-2.5">Record Deposit</p>
                 <form className="space-y-2.5" onSubmit={formik.handleSubmit}>
                   <div className="grid grid-cols-2 gap-2">
@@ -1040,6 +912,132 @@ const OpenEnquiryPage = () => {
                     Deposit Received
                   </Button>
                 </form>
+              </div>
+
+              <div className="flex-1 min-h-0 flex flex-col">
+                {/* Tab content — scrolls independently of Record Deposit
+                    above, which is a PERSISTENT element pinned under the tabs
+                    (matching the reference design: it stays put whether
+                    Details or Notes is the active tab, rather than only
+                    appearing under Notes). */}
+                {activeTab === "details" ? (
+                  <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
+                    {/* Deposit/Add Note both moved out of here — they're now
+                        shared, persistent bottom elements rendered once below
+                        (Deposit) so they're visible regardless of tab, and
+                        Add Note lives only in the Notes tab now, at its top.
+                        Detail rows — icon + label + value, in the same order
+                        as the reference design: Mobile, Event Date, Event
+                        Type, Location, Message, Amount, Payment Status. All
+                        real, selected-row fields — "--" shown for whichever
+                        of Amount/Payment Status has no deposit recorded yet,
+                        same as the reference. */}
+                    <div className="p-5 space-y-4 border-b border-gray-100">
+                      <div className="flex items-start gap-2.5">
+                        <Phone size={15} className="text-gray-400 mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-[11px] text-gray-400 leading-tight">Mobile</p>
+                          <p className="text-sm text-gray-800 truncate">{selectedMobile || "--"}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2.5">
+                        <CalendarDays size={15} className="text-gray-400 mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-[11px] text-gray-400 leading-tight">Event Date</p>
+                          <p className="text-sm text-gray-800">
+                            {selectedDate ? dayjs(selectedDate).format("DD/MM/YYYY") : "--"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2.5">
+                        <Sparkles size={15} className="text-gray-400 mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-[11px] text-gray-400 leading-tight">Event Type</p>
+                          <p className="text-sm text-gray-800 truncate">{selectedEventType || "--"}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2.5">
+                        <MapPin size={15} className="text-gray-400 mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-[11px] text-gray-400 leading-tight">Location</p>
+                          <p className="text-sm text-gray-800 truncate">{selectedVenue || "--"}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2.5">
+                        <MessageSquare size={15} className="text-gray-400 mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-[11px] text-gray-400 leading-tight">Message</p>
+                          <p className="text-sm text-gray-800 leading-snug">{selectedMessage || "--"}</p>
+                        </div>
+                      </div>
+                      {/* <div className="flex items-start gap-2.5">
+                        <Wallet size={15} className="text-gray-400 mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-[11px] text-gray-400 leading-tight">Amount</p>
+                          <p className="text-sm text-gray-800">
+                            {selectedDeposit ? `£${Number(selectedDeposit).toLocaleString()}` : "--"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2.5">
+                        <CreditCard size={15} className="text-gray-400 mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-[11px] text-gray-400 leading-tight">Payment Status</p>
+                          <p className="text-sm text-gray-800">
+                            {selectedDeposit ? "Deposit Received" : "--"}
+                          </p>
+                        </div>
+                      </div> */}
+                    </div>
+                  </div>
+                ) : (
+                  /* Notes tab — Add Note at the TOP (matching the original,
+                     pre-redesign layout), Recent Activities below it,
+                     scrolling on its own.
+                     Separators are `gray-200` (#E5E7EB): `gray-100` (#F3F4F6) is
+                     the correct token now that globals.css no longer overrides it
+                     with #6B7280 — Tailwind's gray-*500* — but at this row height
+                     it reads as almost nothing, so this lands one step up. Visible
+                     hairline, nowhere near the heavy line it started as.
+
+                     Rows are tight on purpose: a date and a one-line note are one
+                     unit, so the padding between entries should be larger than the
+                     gap inside an entry, not equal to it. */
+                  <div className="flex-1 min-h-0 flex flex-col">
+                    <div className="shrink-0 p-5 pb-3 border-b border-gray-100">
+                      <AddNoteControl
+                        note={note}
+                        setNote={setNote}
+                        canAddNote={canAddNote}
+                        addingNote={addingNote}
+                        onSubmit={hanldeAddNote}
+                      />
+                    </div>
+                    <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar px-5 pt-3">
+                      {selectedRowData?.[0]?.event_notes?.length ? (
+                        <ul>
+                          {selectedRowData?.[0]?.event_notes?.map((item) => (
+                            <li
+                              key={item.id}
+                              className="py-1.5 border-b border-gray-200 last:border-0"
+                            >
+                              {item.created_at && (
+                                <p className="text-[11px] leading-tight text-gray-400">
+                                  {dayjs(item.created_at).format("DD/MM/YY HH:mm")}
+                                </p>
+                              )}
+                              <p className="text-xs leading-snug text-gray-600">{item.notes}</p>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="h-full flex items-center justify-center text-xs text-gray-400 italic">
+                          No notes yet
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </aside>
