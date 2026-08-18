@@ -970,7 +970,7 @@ const OpenEnquiryPage = () => {
                           <p className="text-sm text-gray-800 leading-snug">{selectedMessage || "--"}</p>
                         </div>
                       </div>
-                      <div className="flex items-start gap-2.5">
+                      {/* <div className="flex items-start gap-2.5">
                         <Wallet size={15} className="text-gray-400 mt-0.5 shrink-0" />
                         <div className="min-w-0">
                           <p className="text-[11px] text-gray-400 leading-tight">Amount</p>
@@ -987,7 +987,7 @@ const OpenEnquiryPage = () => {
                             {selectedDeposit ? "Deposit Received" : "--"}
                           </p>
                         </div>
-                      </div>
+                      </div> */}
                     </div>
                   </div>
                 ) : (
