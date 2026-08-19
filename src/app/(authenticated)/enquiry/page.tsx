@@ -346,6 +346,21 @@ const NewEnquiryPage = () => {
      different enquiry, since react-query keeps serving the previous cached
      value until the new fetch resolves). */
   const hydratedForIdRef = useRef<string | null>(null);
+  // Separate from hydratedForIdRef: that ref only guards the RESET branch
+  // (don't reset twice for the same target). This one guards the actual
+  // setValues DISPATCH in the hydrate branch below. Without it, a warm-cache
+  // revisit can enter the hydrate branch twice in a row for the SAME editId
+  // (e.g. cached data on mount, then an almost-immediate background refetch
+  // reference change) — two overlapping `Promise.resolve().then()` closures
+  // both calling formikRef.current.setValues(fn). Formik's setValues resolves
+  // a functional updater against `state.values` captured in a stale
+  // useEventCallback closure (see setValues in formik's source), so the
+  // second dispatch doesn't see the first one's result — and combined with
+  // validateOnChange firing an async validation pass on every dispatch, the
+  // two overlapping updates clobber each other and values end up stuck at
+  // the pre-hydration blank state. Only actually dispatching once per editId
+  // eliminates the overlap entirely.
+  const formValuesHydratedForIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (!formikRef.current) return;
 
@@ -413,18 +428,28 @@ const NewEnquiryPage = () => {
       tellMeMore: enquiryItem.event_details ?? enquiryItem.details ?? "",
     };
 
-    // The equality guard lives inside the updater rather than comparing against
-    // a synchronously-read snapshot, for the same microtask-ordering reason
-    // documented in the clientDetails effect above.
-    Promise.resolve().then(() => {
-      formikRef.current?.setValues((prev) =>
-        JSON.stringify(prev) === JSON.stringify(newVals) ? prev : newVals,
-      );
-      try {
-        if (nameVal) formikRef.current?.setFieldValue("name", nameVal, false);
-        if (venueVal) formikRef.current?.setFieldValue("venue", venueVal, false);
-      } catch {}
-    });
+    // Only actually dispatch the setValues hydration once per editId — see
+    // formValuesHydratedForIdRef's declaration for why. A background refetch
+    // of the SAME enquiry (new enquiryItem reference, same underlying data)
+    // still reaches this point, but re-dispatching setValues for it is both
+    // unnecessary and actively harmful (the overlapping-dispatch bug this
+    // guard exists to prevent).
+    if (formValuesHydratedForIdRef.current !== editId) {
+      formValuesHydratedForIdRef.current = editId;
+
+      // The equality guard lives inside the updater rather than comparing against
+      // a synchronously-read snapshot, for the same microtask-ordering reason
+      // documented in the clientDetails effect above.
+      Promise.resolve().then(() => {
+        formikRef.current?.setValues((prev) =>
+          JSON.stringify(prev) === JSON.stringify(newVals) ? prev : newVals,
+        );
+        try {
+          if (nameVal) formikRef.current?.setFieldValue("name", nameVal, false);
+          if (venueVal) formikRef.current?.setFieldValue("venue", venueVal, false);
+        } catch {}
+      });
+    }
 
     if (enquiryItem.client_id) setClientId(Number(enquiryItem.client_id));
     if (enquiryItem.user_id) setClientId(Number(enquiryItem.user_id));
