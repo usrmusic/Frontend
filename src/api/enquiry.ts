@@ -250,8 +250,22 @@ export const useUpdateEnquiry = () => {
         throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["enquiry-list"] });
+      // Global query defaults have refetchOnMount:false, so plain
+      // invalidateQueries() only marks an INACTIVE query (e.g. this enquiry's
+      // edit page, already unmounted after a successful save + navigate
+      // away) stale without actually refetching it — a later remount would
+      // just serve that stale pre-update snapshot again, forever, since
+      // refetchOnMount:false skips the mount-time staleness check too.
+      // `refetchType: "all"` (same pattern already used for the reset-vs-
+      // hydrate race in enquiry/page.tsx) forces the refetch immediately
+      // regardless of whether anything is currently observing it, so
+      // re-opening this enquiry for edit reliably shows what was just saved.
+      queryClient.invalidateQueries({
+        queryKey: ["enquiry-item", variables.id],
+        refetchType: "all",
+      });
     },
     onError: (error: any) => {
       console.error("update enquiry failed:", error?.message || error);
