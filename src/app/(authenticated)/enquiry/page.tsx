@@ -141,6 +141,12 @@ const NewEnquiryPage = () => {
     useState<Record<string, boolean>>({});
   const [selectedExtras, setSelectedExtras] = useState<Record<string, boolean>>({});
   const [restoredEditSelections, setRestoredEditSelections] = useState(false);
+  // Flips true the moment the user picks a DJ from the dropdown themselves
+  // (as opposed to packageParams.staff being set by the edit-hydration effect
+  // from the saved enquiry). See the packageData effect below for why this
+  // distinction matters for whether a newly-loaded package defaults to
+  // checked or preserves whatever was already ticked.
+  const djManuallyChangedRef = useRef(false);
 
   // Card collapse state — enquiryDetails starts open, rigList collapsed
   const [cardsOpen, setCardsOpen] = useState<CardsOpen>({
@@ -253,6 +259,23 @@ const NewEnquiryPage = () => {
   const editId = searchParams?.get("select") ?? null;
   const queryClient = useQueryClient();
   const { data: enquiryItem } = useGetEnquiry(editId ?? undefined);
+
+  // /user/get-dropdown excludes soft-deleted users, so an enquiry whose
+  // assigned DJ has since left/been deactivated has a dj_id that matches NO
+  // option in djDropdownData — Ant Select then renders blank even though
+  // values.dj.id is correctly populated, since it looks up the display label
+  // from the options list rather than from the stored value alone. Splicing
+  // in a synthetic entry from the enquiry's own DJ relation (now included by
+  // GET /enquiry/:id) guarantees the Select always has a matching option for
+  // whichever DJ this specific enquiry is actually assigned to.
+  const djOptionsData = useMemo(() => {
+    const base = djDropdownData ?? [];
+    const editedDj = enquiryItem?.users_events_dj_idTousers;
+    if (editedDj?.id != null && !base.some((u) => u.id === editedDj.id)) {
+      return [...base, editedDj];
+    }
+    return base;
+  }, [djDropdownData, enquiryItem]);
 
   // Keep lastEnquiryIdRef in sync with editId
   useEffect(() => {
@@ -374,8 +397,8 @@ const NewEnquiryPage = () => {
       endTime: enquiryItem.end_time ? dayjs(enquiryItem.end_time).format("HH:mm") : (enquiryItem.end_time ?? ""),
       startTime: enquiryItem.start_time ? dayjs(enquiryItem.start_time).format("HH:mm") : (enquiryItem.start_time ?? ""),
       dj: {
-        id: enquiryItem.dj_id ?? enquiryItem.dj?.id ?? "",
-        name: enquiryItem.dj_name ?? enquiryItem.dj?.name ?? "",
+        id: enquiryItem.dj_id ?? enquiryItem.users_events_dj_idTousers?.id ?? enquiryItem.dj?.id ?? "",
+        name: enquiryItem.dj_name ?? enquiryItem.users_events_dj_idTousers?.name ?? enquiryItem.dj?.name ?? "",
       },
       depositAmount: (function (d) {
         if (d == null) return "";
@@ -421,8 +444,23 @@ const NewEnquiryPage = () => {
           const eqId = p?.equipment_id ?? p?.equipment?.id ?? null;
           if (eqId != null) {
             const key = String(eqId);
-            pkgMap[key] = true;
-            extrasMap[key] = true;
+            // package_type_id 1/"BASIC" = Starting Package, 2/"EXTRAS" = Extra
+            // (see makePackage in the backend enquiry controller). Older rows
+            // saved before that FK was populated have package_type_id null —
+            // for those, fall back to the old "mark both" behaviour rather
+            // than guessing wrong and hiding a legitimately-saved item.
+            const typeLabel = String(p?.package_types?.type ?? "").toUpperCase();
+            const typeId = p?.package_type_id != null ? String(p.package_type_id) : null;
+            const isExtra = typeLabel === "EXTRAS" || typeId === "2";
+            const isBasic = typeLabel === "BASIC" || typeId === "1";
+            if (isExtra) {
+              extrasMap[key] = true;
+            } else if (isBasic) {
+              pkgMap[key] = true;
+            } else {
+              pkgMap[key] = true;
+              extrasMap[key] = true;
+            }
             const savedNotes = p?.notes ?? "";
             const savedRigNotes = p?.rig_notes ?? "";
             if (savedNotes || savedRigNotes) {
@@ -466,12 +504,23 @@ const NewEnquiryPage = () => {
            That's why selected equipment appeared only after a hard refresh
            (cold cache ⇒ the two effects land in separate ticks).
 
-           In edit mode the saved event_package rows are the source of truth,
-           so never hard-reset here: merge in any package/extra keys we don't
-           know about as unticked and leave existing entries alone. The merge
-           is idempotent, so the re-run triggered when restoredEditSelections
-           flips is harmless. */
-        if (editId) {
+           In edit mode the saved event_package rows are the source of truth
+           for the ORIGINAL DJ, so that initial load must never hard-reset —
+           merge in any package/extra keys we don't know about as unticked
+           and leave existing (restored) entries alone. The merge is
+           idempotent, so the re-run triggered when restoredEditSelections
+           flips is harmless.
+
+           BUT once the user has actually picked a *different* DJ from the
+           dropdown (djManuallyChangedRef), that "preserve" behaviour is
+           wrong: this packageData response is now for a DJ that was never
+           saved on this enquiry, so there is no prior selection to protect —
+           it should default to fully checked, exactly like the fresh-
+           enquiry path below. Without this, switching DJs mid-edit left
+           every Starting Package item unticked (merged in as `false`) and
+           never checked, since editId being truthy always took the
+           preserve-only branch regardless of whether the DJ had changed. */
+        if (editId && !djManuallyChangedRef.current) {
           setSelectedPackageEquipments((prev) => {
             const merged = { ...prev };
             for (const key of Object.keys(initPkg)) {
@@ -1201,12 +1250,19 @@ const NewEnquiryPage = () => {
                                         value={values.dj?.id ? String(values.dj.id) : undefined}
                                         onChange={(val) => {
                                           const value = Number(val);
-                                          const selectedDj = djDropdownData?.find((item) => item.id === value);
+                                          const selectedDj = djOptionsData?.find((item) => item.id === value);
                                           const eventDateFormatted =
                                             packageParams.event_date ||
                                             (values.eventDate
                                               ? dayjs(values.eventDate).format("DD-MM-YYYY")
                                               : dayjs().format("DD-MM-YYYY"));
+                                          // A user-driven DJ change (as opposed to the edit
+                                          // page hydrating packageParams.staff from the saved
+                                          // enquiry) means: default the newly-picked DJ's
+                                          // Starting Package to fully checked, same as the
+                                          // fresh-enquiry flow. See the packageData effect for
+                                          // the other half of this fix.
+                                          djManuallyChangedRef.current = true;
                                           setPackageParams((prev) => ({
                                             ...prev,
                                             staff: selectedDj?.id ?? null,
@@ -1215,7 +1271,7 @@ const NewEnquiryPage = () => {
                                           }));
                                           setFieldValue("dj", selectedDj ?? null);
                                         }}
-                                        options={djDropdownData?.map((dj) => ({
+                                        options={djOptionsData?.map((dj) => ({
                                           label: `${dj.name} (${dj.package_users?.[0]?.package_name ?? ""})`,
                                           value: String(dj.id),
                                         }))}
