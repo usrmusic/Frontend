@@ -374,25 +374,45 @@ const OpenEnquiryPage = () => {
     if (found) setSelectedRowData([found]);
   }, [enquiryData, selectedRowKeys]);
 
-  // Auto-select the first enquiry so the side panel is populated on arrival.
-  // Guarded by a ref keyed on the current search/page so it fires once per
-  // result set — otherwise clearing a row would instantly re-select it and the
-  // Edit/Delete buttons (which require an empty selection to disable) would
-  // never turn off.
+  const searchParams = useSearchParams();
+
+  // Auto-select an enquiry so the side panel is populated on arrival.
+  // Guarded by a ref keyed on the current search/page (+ the incoming
+  // `select` id, if any) so it fires once per result set — otherwise
+  // clearing a row would instantly re-select it and the Edit/Delete buttons
+  // (which require an empty selection to disable) would never turn off.
+  //
+  // A deep link from the dashboard (e.g. Open Enquiries widget) arrives as
+  // `?search=<id>&name=<clientName>&select=<id>` — the search box is seeded
+  // with the client's NAME (see the effect below), not the id, since the
+  // backend search matches name/mobile/details, not id. That means the
+  // filtered result set can legitimately contain more than one row (two
+  // enquiries from the same client), so falling back to "just select the
+  // first row" doesn't reliably land on the specific enquiry that was
+  // clicked. `select` carries the exact id for that: prefer it whenever
+  // present and found in the loaded rows, before falling back to "first row".
   const autoSelectedForRef = useRef<string | null>(null);
   useEffect(() => {
     const rows = enquiryData?.data;
     if (!rows?.length) return;
-    const key = `${params.search}|${params.page}`;
+    const selectId = searchParams?.get("select") ?? "";
+    const key = `${params.search}|${params.page}|${selectId}`;
     if (autoSelectedForRef.current === key) return;
     autoSelectedForRef.current = key;
+    if (selectId) {
+      const found = rows.find((r) => String(r.id) === selectId);
+      if (found) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setSelectedRowKeys([String(found.id)]);
+        setSelectedRowData([found]);
+        return;
+      }
+    }
     if (selectedRowKeys.length) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedRowKeys([String(rows[0].id)]);
     setSelectedRowData([rows[0]]);
-  }, [enquiryData, params.search, params.page, selectedRowKeys.length]);
-
-  const searchParams = useSearchParams();
+  }, [enquiryData, params.search, params.page, selectedRowKeys.length, searchParams]);
 
   useEffect(() => {
     const s = searchParams?.get("search") ?? "";

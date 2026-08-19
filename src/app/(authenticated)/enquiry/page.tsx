@@ -141,6 +141,12 @@ const NewEnquiryPage = () => {
     useState<Record<string, boolean>>({});
   const [selectedExtras, setSelectedExtras] = useState<Record<string, boolean>>({});
   const [restoredEditSelections, setRestoredEditSelections] = useState(false);
+  // Flips true the moment the user picks a DJ from the dropdown themselves
+  // (as opposed to packageParams.staff being set by the edit-hydration effect
+  // from the saved enquiry). See the packageData effect below for why this
+  // distinction matters for whether a newly-loaded package defaults to
+  // checked or preserves whatever was already ticked.
+  const djManuallyChangedRef = useRef(false);
 
   // Card collapse state — enquiryDetails starts open, rigList collapsed
   const [cardsOpen, setCardsOpen] = useState<CardsOpen>({
@@ -254,6 +260,23 @@ const NewEnquiryPage = () => {
   const queryClient = useQueryClient();
   const { data: enquiryItem } = useGetEnquiry(editId ?? undefined);
 
+  // /user/get-dropdown excludes soft-deleted users, so an enquiry whose
+  // assigned DJ has since left/been deactivated has a dj_id that matches NO
+  // option in djDropdownData — Ant Select then renders blank even though
+  // values.dj.id is correctly populated, since it looks up the display label
+  // from the options list rather than from the stored value alone. Splicing
+  // in a synthetic entry from the enquiry's own DJ relation (now included by
+  // GET /enquiry/:id) guarantees the Select always has a matching option for
+  // whichever DJ this specific enquiry is actually assigned to.
+  const djOptionsData = useMemo(() => {
+    const base = djDropdownData ?? [];
+    const editedDj = enquiryItem?.users_events_dj_idTousers;
+    if (editedDj?.id != null && !base.some((u) => u.id === editedDj.id)) {
+      return [...base, editedDj];
+    }
+    return base;
+  }, [djDropdownData, enquiryItem]);
+
   // Keep lastEnquiryIdRef in sync with editId
   useEffect(() => {
     if (editId) lastEnquiryIdRef.current = editId;
@@ -262,41 +285,42 @@ const NewEnquiryPage = () => {
   useEffect(() => {
     if (!clientDetails || !formikRef.current) return;
     Promise.resolve().then(() => {
-      /* Functional updater, NOT a spread of a previously-read snapshot.
+      /* setFieldValue PER FIELD — deliberately NOT setValues, not even with a
+         functional updater.
 
-         This effect and the enquiryItem-hydration effect below both defer their
-         writes with Promise.resolve().then(). Microtasks drain back-to-back
-         WITHOUT React re-rendering in between, so reading
-         `formikRef.current.values` here returns the pre-hydration (blank)
-         snapshot even when the hydration effect has already called setValues.
-         Spreading that stale snapshot wrote blanks back over venue / DJ /
-         event date / times / deposit — i.e. every field this effect does not
-         itself own — which is exactly the reported bug: client name, address,
-         email and number populate, nothing else does.
+         This was the actual "edit form populates the first time, then comes
+         back blank" bug. Formik's setValues resolves a functional updater
+         OUTSIDE the reducer, against `state.values` from the last COMMITTED
+         render (it's captured in a useEventCallback ref that's only refreshed
+         in a layout effect), and the reducer then does a wholesale replace:
+         `values: msg.payload`. So `setValues(prev => ...)` hands you exactly
+         the same stale snapshot as reading formikRef.current.values would —
+         taking `prev` from Formik buys nothing here.
 
-         Taking `prev` from Formik guarantees we merge onto the latest state
-         regardless of which microtask ran first. */
-      formikRef.current?.setValues((prev) => {
-        const currentNameValue =
-          !showNameInput && clientId != null ? String(clientId) : prev.name;
-        const next = {
-          ...prev,
-          name: currentNameValue,
-          address: clientDetails.address ?? prev.address,
-          email: clientDetails.email ?? prev.email,
-          number: clientDetails.contact_number ?? prev.number,
-        };
-        // Return the same reference when nothing changed so Formik can skip the render.
-        if (
-          prev.name === next.name &&
-          prev.address === next.address &&
-          prev.email === next.email &&
-          prev.number === next.number
-        ) {
-          return prev;
-        }
-        return next;
-      });
+         That matters because this effect and the enquiryItem-hydration effect
+         below both defer their writes with Promise.resolve().then(). On a warm
+         React Query cache both microtasks drain before React re-renders, so
+         BOTH resolve against the same pre-hydration (blank) snapshot. The
+         hydration effect dispatches the full enquiry, then this one dispatches
+         {...blank, name, address, email, number} and wholesale-replaces it —
+         leaving precisely the four fields this effect owns populated and DJ /
+         venue / event date / times / deposit / details blank.
+
+         setFieldValue is immune: its reducer case composes against LIVE state
+         (`setIn(state.values, field, value)`), so these four fields can never
+         clobber a sibling field, in any interleaving. */
+      const setField = formikRef.current?.setFieldValue;
+      if (!setField) return;
+      // shouldValidate=false: these are programmatic hydration writes, not user
+      // edits, so they shouldn't surface validation errors on an untouched form.
+      if (!showNameInput && clientId != null) {
+        setField("name", String(clientId), false);
+      }
+      if (clientDetails.address != null) setField("address", clientDetails.address, false);
+      if (clientDetails.email != null) setField("email", clientDetails.email, false);
+      if (clientDetails.contact_number != null) {
+        setField("number", clientDetails.contact_number, false);
+      }
     });
   }, [clientDetails, showNameInput, clientId]);
 
@@ -323,6 +347,11 @@ const NewEnquiryPage = () => {
      different enquiry, since react-query keeps serving the previous cached
      value until the new fetch resolves). */
   const hydratedForIdRef = useRef<string | null>(null);
+  // Separate from hydratedForIdRef: that ref guards the RESET branch (don't
+  // reset twice for the same target). This one guards the whole-form setValues
+  // DISPATCH in the hydrate branch, so a background refetch of an enquiry the
+  // user is already editing can't wholesale-replace their in-progress typing.
+  const formValuesHydratedForIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (!formikRef.current) return;
 
@@ -374,8 +403,8 @@ const NewEnquiryPage = () => {
       endTime: enquiryItem.end_time ? dayjs(enquiryItem.end_time).format("HH:mm") : (enquiryItem.end_time ?? ""),
       startTime: enquiryItem.start_time ? dayjs(enquiryItem.start_time).format("HH:mm") : (enquiryItem.start_time ?? ""),
       dj: {
-        id: enquiryItem.dj_id ?? enquiryItem.dj?.id ?? "",
-        name: enquiryItem.dj_name ?? enquiryItem.dj?.name ?? "",
+        id: enquiryItem.dj_id ?? enquiryItem.users_events_dj_idTousers?.id ?? enquiryItem.dj?.id ?? "",
+        name: enquiryItem.dj_name ?? enquiryItem.users_events_dj_idTousers?.name ?? enquiryItem.dj?.name ?? "",
       },
       depositAmount: (function (d) {
         if (d == null) return "";
@@ -390,18 +419,29 @@ const NewEnquiryPage = () => {
       tellMeMore: enquiryItem.event_details ?? enquiryItem.details ?? "",
     };
 
-    // The equality guard lives inside the updater rather than comparing against
-    // a synchronously-read snapshot, for the same microtask-ordering reason
-    // documented in the clientDetails effect above.
-    Promise.resolve().then(() => {
-      formikRef.current?.setValues((prev) =>
-        JSON.stringify(prev) === JSON.stringify(newVals) ? prev : newVals,
-      );
-      try {
-        if (nameVal) formikRef.current?.setFieldValue("name", nameVal, false);
-        if (venueVal) formikRef.current?.setFieldValue("venue", venueVal, false);
-      } catch {}
-    });
+    // Dispatch the whole-form hydration once per editId. A background refetch
+    // of the SAME enquiry (new enquiryItem object, same underlying data) still
+    // reaches this point, and re-dispatching a wholesale setValues for it would
+    // silently discard whatever the user has typed since. Guarding on editId
+    // means later refetches leave in-progress edits alone.
+    if (formValuesHydratedForIdRef.current !== editId) {
+      Promise.resolve().then(() => {
+        const formik = formikRef.current;
+        // Only claim this editId as hydrated once the dispatch has actually
+        // gone out — marking it before the microtask ran would leave the form
+        // permanently blank if formikRef were momentarily detached here.
+        if (!formik) return;
+        formValuesHydratedForIdRef.current = editId;
+        // Wholesale replace is correct HERE (unlike the clientDetails effect):
+        // newVals is a complete EnquiryFormValues built from this enquiry, so
+        // it isn't relying on, and can't drop, anything already in state.
+        formik.setValues(newVals);
+        try {
+          if (nameVal) formik.setFieldValue("name", nameVal, false);
+          if (venueVal) formik.setFieldValue("venue", venueVal, false);
+        } catch {}
+      });
+    }
 
     if (enquiryItem.client_id) setClientId(Number(enquiryItem.client_id));
     if (enquiryItem.user_id) setClientId(Number(enquiryItem.user_id));
@@ -421,8 +461,23 @@ const NewEnquiryPage = () => {
           const eqId = p?.equipment_id ?? p?.equipment?.id ?? null;
           if (eqId != null) {
             const key = String(eqId);
-            pkgMap[key] = true;
-            extrasMap[key] = true;
+            // package_type_id 1/"BASIC" = Starting Package, 2/"EXTRAS" = Extra
+            // (see makePackage in the backend enquiry controller). Older rows
+            // saved before that FK was populated have package_type_id null —
+            // for those, fall back to the old "mark both" behaviour rather
+            // than guessing wrong and hiding a legitimately-saved item.
+            const typeLabel = String(p?.package_types?.type ?? "").toUpperCase();
+            const typeId = p?.package_type_id != null ? String(p.package_type_id) : null;
+            const isExtra = typeLabel === "EXTRAS" || typeId === "2";
+            const isBasic = typeLabel === "BASIC" || typeId === "1";
+            if (isExtra) {
+              extrasMap[key] = true;
+            } else if (isBasic) {
+              pkgMap[key] = true;
+            } else {
+              pkgMap[key] = true;
+              extrasMap[key] = true;
+            }
             const savedNotes = p?.notes ?? "";
             const savedRigNotes = p?.rig_notes ?? "";
             if (savedNotes || savedRigNotes) {
@@ -466,12 +521,23 @@ const NewEnquiryPage = () => {
            That's why selected equipment appeared only after a hard refresh
            (cold cache ⇒ the two effects land in separate ticks).
 
-           In edit mode the saved event_package rows are the source of truth,
-           so never hard-reset here: merge in any package/extra keys we don't
-           know about as unticked and leave existing entries alone. The merge
-           is idempotent, so the re-run triggered when restoredEditSelections
-           flips is harmless. */
-        if (editId) {
+           In edit mode the saved event_package rows are the source of truth
+           for the ORIGINAL DJ, so that initial load must never hard-reset —
+           merge in any package/extra keys we don't know about as unticked
+           and leave existing (restored) entries alone. The merge is
+           idempotent, so the re-run triggered when restoredEditSelections
+           flips is harmless.
+
+           BUT once the user has actually picked a *different* DJ from the
+           dropdown (djManuallyChangedRef), that "preserve" behaviour is
+           wrong: this packageData response is now for a DJ that was never
+           saved on this enquiry, so there is no prior selection to protect —
+           it should default to fully checked, exactly like the fresh-
+           enquiry path below. Without this, switching DJs mid-edit left
+           every Starting Package item unticked (merged in as `false`) and
+           never checked, since editId being truthy always took the
+           preserve-only branch regardless of whether the DJ had changed. */
+        if (editId && !djManuallyChangedRef.current) {
           setSelectedPackageEquipments((prev) => {
             const merged = { ...prev };
             for (const key of Object.keys(initPkg)) {
@@ -1201,12 +1267,19 @@ const NewEnquiryPage = () => {
                                         value={values.dj?.id ? String(values.dj.id) : undefined}
                                         onChange={(val) => {
                                           const value = Number(val);
-                                          const selectedDj = djDropdownData?.find((item) => item.id === value);
+                                          const selectedDj = djOptionsData?.find((item) => item.id === value);
                                           const eventDateFormatted =
                                             packageParams.event_date ||
                                             (values.eventDate
                                               ? dayjs(values.eventDate).format("DD-MM-YYYY")
                                               : dayjs().format("DD-MM-YYYY"));
+                                          // A user-driven DJ change (as opposed to the edit
+                                          // page hydrating packageParams.staff from the saved
+                                          // enquiry) means: default the newly-picked DJ's
+                                          // Starting Package to fully checked, same as the
+                                          // fresh-enquiry flow. See the packageData effect for
+                                          // the other half of this fix.
+                                          djManuallyChangedRef.current = true;
                                           setPackageParams((prev) => ({
                                             ...prev,
                                             staff: selectedDj?.id ?? null,
@@ -1215,7 +1288,7 @@ const NewEnquiryPage = () => {
                                           }));
                                           setFieldValue("dj", selectedDj ?? null);
                                         }}
-                                        options={djDropdownData?.map((dj) => ({
+                                        options={djOptionsData?.map((dj) => ({
                                           label: `${dj.name} (${dj.package_users?.[0]?.package_name ?? ""})`,
                                           value: String(dj.id),
                                         }))}
