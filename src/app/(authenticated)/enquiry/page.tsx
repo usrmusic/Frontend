@@ -285,41 +285,42 @@ const NewEnquiryPage = () => {
   useEffect(() => {
     if (!clientDetails || !formikRef.current) return;
     Promise.resolve().then(() => {
-      /* Functional updater, NOT a spread of a previously-read snapshot.
+      /* setFieldValue PER FIELD — deliberately NOT setValues, not even with a
+         functional updater.
 
-         This effect and the enquiryItem-hydration effect below both defer their
-         writes with Promise.resolve().then(). Microtasks drain back-to-back
-         WITHOUT React re-rendering in between, so reading
-         `formikRef.current.values` here returns the pre-hydration (blank)
-         snapshot even when the hydration effect has already called setValues.
-         Spreading that stale snapshot wrote blanks back over venue / DJ /
-         event date / times / deposit — i.e. every field this effect does not
-         itself own — which is exactly the reported bug: client name, address,
-         email and number populate, nothing else does.
+         This was the actual "edit form populates the first time, then comes
+         back blank" bug. Formik's setValues resolves a functional updater
+         OUTSIDE the reducer, against `state.values` from the last COMMITTED
+         render (it's captured in a useEventCallback ref that's only refreshed
+         in a layout effect), and the reducer then does a wholesale replace:
+         `values: msg.payload`. So `setValues(prev => ...)` hands you exactly
+         the same stale snapshot as reading formikRef.current.values would —
+         taking `prev` from Formik buys nothing here.
 
-         Taking `prev` from Formik guarantees we merge onto the latest state
-         regardless of which microtask ran first. */
-      formikRef.current?.setValues((prev) => {
-        const currentNameValue =
-          !showNameInput && clientId != null ? String(clientId) : prev.name;
-        const next = {
-          ...prev,
-          name: currentNameValue,
-          address: clientDetails.address ?? prev.address,
-          email: clientDetails.email ?? prev.email,
-          number: clientDetails.contact_number ?? prev.number,
-        };
-        // Return the same reference when nothing changed so Formik can skip the render.
-        if (
-          prev.name === next.name &&
-          prev.address === next.address &&
-          prev.email === next.email &&
-          prev.number === next.number
-        ) {
-          return prev;
-        }
-        return next;
-      });
+         That matters because this effect and the enquiryItem-hydration effect
+         below both defer their writes with Promise.resolve().then(). On a warm
+         React Query cache both microtasks drain before React re-renders, so
+         BOTH resolve against the same pre-hydration (blank) snapshot. The
+         hydration effect dispatches the full enquiry, then this one dispatches
+         {...blank, name, address, email, number} and wholesale-replaces it —
+         leaving precisely the four fields this effect owns populated and DJ /
+         venue / event date / times / deposit / details blank.
+
+         setFieldValue is immune: its reducer case composes against LIVE state
+         (`setIn(state.values, field, value)`), so these four fields can never
+         clobber a sibling field, in any interleaving. */
+      const setField = formikRef.current?.setFieldValue;
+      if (!setField) return;
+      // shouldValidate=false: these are programmatic hydration writes, not user
+      // edits, so they shouldn't surface validation errors on an untouched form.
+      if (!showNameInput && clientId != null) {
+        setField("name", String(clientId), false);
+      }
+      if (clientDetails.address != null) setField("address", clientDetails.address, false);
+      if (clientDetails.email != null) setField("email", clientDetails.email, false);
+      if (clientDetails.contact_number != null) {
+        setField("number", clientDetails.contact_number, false);
+      }
     });
   }, [clientDetails, showNameInput, clientId]);
 
@@ -346,20 +347,10 @@ const NewEnquiryPage = () => {
      different enquiry, since react-query keeps serving the previous cached
      value until the new fetch resolves). */
   const hydratedForIdRef = useRef<string | null>(null);
-  // Separate from hydratedForIdRef: that ref only guards the RESET branch
-  // (don't reset twice for the same target). This one guards the actual
-  // setValues DISPATCH in the hydrate branch below. Without it, a warm-cache
-  // revisit can enter the hydrate branch twice in a row for the SAME editId
-  // (e.g. cached data on mount, then an almost-immediate background refetch
-  // reference change) — two overlapping `Promise.resolve().then()` closures
-  // both calling formikRef.current.setValues(fn). Formik's setValues resolves
-  // a functional updater against `state.values` captured in a stale
-  // useEventCallback closure (see setValues in formik's source), so the
-  // second dispatch doesn't see the first one's result — and combined with
-  // validateOnChange firing an async validation pass on every dispatch, the
-  // two overlapping updates clobber each other and values end up stuck at
-  // the pre-hydration blank state. Only actually dispatching once per editId
-  // eliminates the overlap entirely.
+  // Separate from hydratedForIdRef: that ref guards the RESET branch (don't
+  // reset twice for the same target). This one guards the whole-form setValues
+  // DISPATCH in the hydrate branch, so a background refetch of an enquiry the
+  // user is already editing can't wholesale-replace their in-progress typing.
   const formValuesHydratedForIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (!formikRef.current) return;
@@ -428,25 +419,26 @@ const NewEnquiryPage = () => {
       tellMeMore: enquiryItem.event_details ?? enquiryItem.details ?? "",
     };
 
-    // Only actually dispatch the setValues hydration once per editId — see
-    // formValuesHydratedForIdRef's declaration for why. A background refetch
-    // of the SAME enquiry (new enquiryItem reference, same underlying data)
-    // still reaches this point, but re-dispatching setValues for it is both
-    // unnecessary and actively harmful (the overlapping-dispatch bug this
-    // guard exists to prevent).
+    // Dispatch the whole-form hydration once per editId. A background refetch
+    // of the SAME enquiry (new enquiryItem object, same underlying data) still
+    // reaches this point, and re-dispatching a wholesale setValues for it would
+    // silently discard whatever the user has typed since. Guarding on editId
+    // means later refetches leave in-progress edits alone.
     if (formValuesHydratedForIdRef.current !== editId) {
-      formValuesHydratedForIdRef.current = editId;
-
-      // The equality guard lives inside the updater rather than comparing against
-      // a synchronously-read snapshot, for the same microtask-ordering reason
-      // documented in the clientDetails effect above.
       Promise.resolve().then(() => {
-        formikRef.current?.setValues((prev) =>
-          JSON.stringify(prev) === JSON.stringify(newVals) ? prev : newVals,
-        );
+        const formik = formikRef.current;
+        // Only claim this editId as hydrated once the dispatch has actually
+        // gone out — marking it before the microtask ran would leave the form
+        // permanently blank if formikRef were momentarily detached here.
+        if (!formik) return;
+        formValuesHydratedForIdRef.current = editId;
+        // Wholesale replace is correct HERE (unlike the clientDetails effect):
+        // newVals is a complete EnquiryFormValues built from this enquiry, so
+        // it isn't relying on, and can't drop, anything already in state.
+        formik.setValues(newVals);
         try {
-          if (nameVal) formikRef.current?.setFieldValue("name", nameVal, false);
-          if (venueVal) formikRef.current?.setFieldValue("venue", venueVal, false);
+          if (nameVal) formik.setFieldValue("name", nameVal, false);
+          if (venueVal) formik.setFieldValue("venue", venueVal, false);
         } catch {}
       });
     }
