@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, type CSSProperties } from "react";
 import dayjs from "dayjs";
 import { ChevronLeft, ChevronRight, MapPin, Plus } from "lucide-react";
 import Link from "next/link";
@@ -11,15 +11,12 @@ import { BackButton } from "@/src/components/Icons";
 // Users table swatch and the dashboard's mini calendar.
 const DJ_FALLBACK_COLOR = "#9CA3AF";
 
-// Tints the stored DJ colour against white for the chip background/border,
-// rather than storing separate light/dark values — one hex per DJ is all
-// that's kept, everything else is derived at render time.
-function djChipStyle(hex?: string | null) {
-  const c = hex || DJ_FALLBACK_COLOR;
-  return {
-    backgroundColor: `color-mix(in srgb, ${c} 16%, white)`,
-    borderColor: `color-mix(in srgb, ${c} 42%, white)`,
-  };
+// Solid DJ colour as the chip's actual background (matching the reference
+// design — full-colour blocks with white text, not a pastel tint), so the
+// colour a DJ was given in settings is immediately, unambiguously the
+// colour their events show as on the calendar.
+function djChipStyle(hex?: string | null): CSSProperties {
+  return { backgroundColor: hex || DJ_FALLBACK_COLOR };
 }
 
 type CalendarEvent = {
@@ -219,43 +216,40 @@ export default function CalendarPage() {
                     )}
                   </div>
 
-                  {/* Event chips */}
+                  {/* Event chips — dense, single-purpose colour blocks (no
+                      avatar/initials): the DJ's colour and the event name
+                      are the whole point, and a name + separate time line
+                      inside a ~24px-tall cell read as cluttered rather than
+                      informative. Time still shows, folded onto the name's
+                      own line as a lighter suffix, and drops first under
+                      truncation since the name matters more. */}
                   {dayEvents.slice(0, 3).map((ev) => {
                     const name = getEventDisplayName(ev);
                     const time =
                       ev.start_time && ev.end_time
-                        ? `${formatTime(ev.start_time)} - ${formatTime(ev.end_time)}`
+                        ? formatTime(ev.start_time)
                         : "";
 
                     return (
                       <div
                         key={ev.id}
-                        className="border rounded shrink-0 px-1.5 py-1"
+                        className="rounded-[5px] shrink-0 px-1.5 py-[3px] flex items-baseline gap-1 min-w-0"
                         style={djChipStyle(ev.users_events_dj_idTousers?.color)}
                       >
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <div className="shrink-0 size-4 rounded-full bg-primary/30 flex items-center justify-center overflow-hidden">
-                            <span className="text-[10px] text-primary font-bold leading-none">
-                              {getInitials(name)}
-                            </span>
-                          </div>
-                          <span className="text-[#0a0a0a] text-xs leading-4 truncate">
-                            {name}
-                          </span>
-                        </div>
+                        <span className="text-white text-[11px] font-medium leading-4 truncate">
+                          {name}
+                        </span>
                         {time && (
-                          <div className="pl-[22px]">
-                            <span className="text-[#4a5565] text-[11px] leading-4">
-                              {time}
-                            </span>
-                          </div>
+                          <span className="shrink-0 text-white/75 text-[10px] leading-4">
+                            {time}
+                          </span>
                         )}
                       </div>
                     );
                   })}
 
                   {dayEvents.length > 3 && (
-                    <span className="text-[#6b7280] text-[11px] pl-0.5">
+                    <span className="text-[#6b7280] text-[11px] font-medium pl-1.5">
                       +{dayEvents.length - 3} more
                     </span>
                   )}

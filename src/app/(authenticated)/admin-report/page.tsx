@@ -249,9 +249,10 @@ const Page = () => {
           </div>
         </div>
         <DataTable
-          wrapperClassName="overflow-hidden"
+          wrapperClassName="overflow-x-auto"
           columns={columns}
           dataSource={reportData?.result}
+          scroll={{ x: 1700 }}
           pagination={{
             pageSize: filters.perPage,
             current: filters.page,

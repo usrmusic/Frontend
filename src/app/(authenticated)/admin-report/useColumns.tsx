@@ -25,6 +25,7 @@ const useColumns = (
     {
       key: "company_name",
       dataIndex: "company_name",
+      width: 150,
       title: (
         <div>
           <p>Company</p>
@@ -35,6 +36,7 @@ const useColumns = (
     {
       key: "client_name",
       dataIndex: "client_name",
+      width: 150,
       title: (
         <div>
           <p>Client</p>
@@ -45,6 +47,7 @@ const useColumns = (
     {
       key: "event_date",
       dataIndex: "event_date",
+      width: 140,
       title: (
         <div>
           <p>Event Date</p>
@@ -56,6 +59,7 @@ const useColumns = (
     {
       key: "event_status",
       dataIndex: "event_status",
+      width: 170,
       title: (
         <div>
           <p>Event Status</p>
@@ -91,6 +95,7 @@ const useColumns = (
     {
       key: "dj",
       dataIndex: "dj_name",
+      width: 130,
       title: (
         <div>
           <p>DJ</p>
@@ -101,6 +106,7 @@ const useColumns = (
     {
       key: "venue_name",
       dataIndex: "venue_name",
+      width: 140,
       title: (
         <div>
           <p>Venue</p>
@@ -111,6 +117,7 @@ const useColumns = (
     {
       key: "total_price",
       dataIndex: "total_price",
+      width: 130,
       title: (
         <div>
           <p>Total Price</p>
@@ -122,6 +129,7 @@ const useColumns = (
     {
       key: "total_cost",
       dataIndex: "total_cost",
+      width: 120,
       title: (
         <div>
           <p>Cost</p>
@@ -133,6 +141,7 @@ const useColumns = (
     {
       key: "extra_cost",
       dataIndex: "extra_cost",
+      width: 120,
       title: (
         <div>
           <p>Extra Cost</p>
@@ -144,6 +153,7 @@ const useColumns = (
     {
       key: "profit",
       dataIndex: "profit",
+      width: 120,
       title: (
         <div>
           <p>Profit</p>
@@ -155,6 +165,7 @@ const useColumns = (
     {
       key: "payment_received",
       dataIndex: "payment_received",
+      width: 160,
       title: (
         <div>
           <p>Payment Received</p>
@@ -171,6 +182,7 @@ const useColumns = (
     {
       key: "payment_remaining",
       dataIndex: "payment_remaining",
+      width: 170,
       title: (
         <div>
           <p>Payment Outstanding</p>
