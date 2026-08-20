@@ -144,8 +144,7 @@ export default function OpenEnquiriesList({
               <li
                 key={String(enq.id ?? enq.couple_name ?? `enq-${idx}`)}
                 className={`flex items-center border-b border-[#636363] last:border-0 justify-between px-3 py-3 ${scope === 'personal' ? '' : 'cursor-pointer hover:bg-gray-50'} transition-colors`}
-                title={scope === 'personal' ? undefined : "Double-click to open"}
-                onDoubleClick={() => { if (scope !== 'personal') handleEnquiryClick(enq); }}
+                onClick={() => { if (scope !== 'personal') handleEnquiryClick(enq); }}
               >
                 <div className="flex gap-3">
                   <Image

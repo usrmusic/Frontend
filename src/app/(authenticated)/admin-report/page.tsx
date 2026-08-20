@@ -195,8 +195,16 @@ const Page = () => {
             })}
           </div>
       <div className="rounded-2xl overflow-hidden [&_.ant-table]:rounded-none! [&_.ant-table-container]:rounded-none!">
-        <div className="bg-primary p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
-          <div className="flex items-center gap-2 rounded-lg bg-white px-4 h-10">
+        {/* flex-wrap instead of a fixed grid-cols-N: a rigid column count
+            forces every cell — including the two-button group — into an
+            equal fraction of the row regardless of whether its content
+            actually fits, which is exactly what was overflowing past the
+            container's right edge (buttons can't shrink below their own
+            label + padding). Each control instead gets a min-width and
+            wraps onto its own line once the row runs out of room, at any
+            viewport size, rather than only at specific Tailwind breakpoints. */}
+        <div className="bg-primary p-4 flex flex-wrap gap-2">
+          <div className="flex-1 min-w-[180px] flex items-center gap-2 rounded-lg bg-white px-4 h-10">
             <MagnifyingGlass w={18} h={18} />
             <input
               type="text"
@@ -205,13 +213,12 @@ const Page = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-      
           </div>
-          <div className="max-w-full">
+          <div className="flex-1 min-w-[180px] max-w-full">
             <Select
               allowClear
               placeholder="Confirmed and Completed Events"
-              className="w-full bg-white rounded-lg text-xs"
+              className="w-full h-10 bg-white rounded-lg text-xs"
               value={selectedEventStatus || undefined}
               onChange={(val) => setSelectedEventStatus(String(val || ""))}
               options={[
@@ -223,7 +230,7 @@ const Page = () => {
           </div>
           <DatePicker
             placeholder="Date (From)"
-            className="w-full !bg-white"
+            className="flex-1 min-w-[140px] h-10 !bg-white"
             value={dateFrom ? dayjs(dateFrom) : null}
             onChange={(_, dateString) =>
               setDateFrom(Array.isArray(dateString) ? dateString[0] || "" : dateString)
@@ -231,16 +238,16 @@ const Page = () => {
           />
           <DatePicker
             placeholder="Date (To)"
-            className="w-full !bg-white"
+            className="flex-1 min-w-[140px] h-10 !bg-white"
             value={dateTo ? dayjs(dateTo) : null}
             onChange={(_, dateString) =>
               setDateTo(Array.isArray(dateString) ? dateString[0] || "" : dateString)
             }
           />
-          <div className="flex gap-2">
-            <Button className="flex-1 h-full!" onClick={applyFilters}>Apply Filters</Button>
+          <div className="flex gap-2 shrink-0">
+            <Button className="h-10!" onClick={applyFilters}>Apply Filters</Button>
             <Button
-              className="flex-1 h-full!"
+              className="h-10!"
               icon={<RefreshCw size={14} />}
               onClick={resetFilters}
             >
@@ -249,9 +256,10 @@ const Page = () => {
           </div>
         </div>
         <DataTable
-          wrapperClassName="overflow-hidden"
+          wrapperClassName="overflow-x-auto"
           columns={columns}
           dataSource={reportData?.result}
+          scroll={{ x: 1700 }}
           pagination={{
             pageSize: filters.perPage,
             current: filters.page,
