@@ -140,9 +140,24 @@ export default function CalendarPage() {
       >
 
         {/* ────────────────────────────────────────────
-            LEFT — Monthly calendar grid
-        ──────────────────────────────────────────── */}
-        <div className="flex-1 bg-white rounded-[14.5px] shadow-[0px_0.906px_1.359px_rgba(0,0,0,0.1),0px_0.906px_0.906px_rgba(0,0,0,0.1)] flex flex-col overflow-hidden">
+            LEFT — Monthly calendar grid (Notion Calendar style)
+
+            Previously each day cell was its OWN bordered, rounded, drop-
+            shadowed box sitting inside an ALSO bordered/shadowed outer card —
+            "double-boxing": every date looked like a little card floating
+            inside a bigger card, which is what read as awkward rather than
+            like a calendar. Notion's month grid is the opposite: ONE flat
+            surface, divided by hairlines, with a single subtle border around
+            the whole thing — no shadows, no per-cell rounding.
+
+            The hairlines themselves aren't borders on every cell (that's
+            what caused the boxy look in the first place) — they're the
+            container's own background colour showing through 1px gaps
+            between white cells, the same trick CSS grid dividers commonly
+            use. Only the outer container gets rounded corners + overflow
+            hidden, so the whole grid reads as one clipped shape instead of
+            49 individually rounded ones. */}
+        <div className="flex-1 bg-white rounded-lg border border-gray-200 flex flex-col overflow-hidden">
 
           {/* Month navigation */}
           <div className="flex items-center justify-between px-4 pt-4 pb-3 shrink-0">
@@ -168,8 +183,10 @@ export default function CalendarPage() {
             </div>
           </div>
 
-          {/* Day-of-week headers */}
-          <div className="grid grid-cols-7 px-4 shrink-0">
+          {/* Day-of-week headers — a single hairline UNDER the whole row
+              (not per-column) is the only divider between this and the
+              grid, matching the "one flat surface" treatment below. */}
+          <div className="grid grid-cols-7 px-4 shrink-0 border-b border-gray-100">
             {WEEK_DAYS.map((d) => (
               <div
                 key={d}
@@ -180,8 +197,9 @@ export default function CalendarPage() {
             ))}
           </div>
 
-          {/* Calendar grid — rows fill available height */}
-          <div className={`grid grid-cols-7 ${rowClass} flex-1 min-h-0 gap-px px-4 pb-4`}>
+          {/* Calendar grid — `gap-px` + a light grid background is what
+              renders the hairlines; cells contribute no border of their own. */}
+          <div className={`grid grid-cols-7 ${rowClass} flex-1 min-h-0 gap-px bg-gray-100`}>
             {calendarCells.map(({ date, isCurrentMonth }, idx) => {
               const dateKey = date.format("YYYY-MM-DD");
               const dayEvents = eventsByDate[dateKey] || [];
@@ -193,13 +211,16 @@ export default function CalendarPage() {
                   key={idx}
                   onClick={() => setSelectedDate(date)}
                   className={[
-                    "border border-[rgba(0,0,0,0.1)] rounded-[9.063px] pt-[7.854px] px-[7.854px] pb-[0.604px]",
-                    "cursor-pointer flex flex-col gap-[3.625px] transition-all overflow-hidden",
-                    isCurrentMonth ? "bg-white hover:bg-gray-50" : "bg-[#f9fafb]",
-                    isSelected ? "ring-2 ring-primary ring-inset" : "",
+                    "pt-[7.854px] px-[7.854px] pb-[0.604px]",
+                    "cursor-pointer flex flex-col gap-[3.625px] transition-colors overflow-hidden",
+                    isCurrentMonth ? "bg-white hover:bg-gray-50" : "bg-gray-50/60",
                   ].join(" ")}
                 >
-                  {/* Date number */}
+                  {/* Date number — today is a solid dark circle (unchanged);
+                      a selected OTHER day gets a slim colour ring around just
+                      the number rather than tinting the whole cell, which is
+                      the more "Notion" way to say "this one's picked" without
+                      turning the cell back into a box. */}
                   <div className="shrink-0 h-5 flex items-center">
                     {isToday && isCurrentMonth ? (
                       <span className="size-5 flex items-center justify-center bg-[#2a2d32] text-white rounded-full text-[11px] font-medium">
@@ -207,9 +228,9 @@ export default function CalendarPage() {
                       </span>
                     ) : (
                       <span
-                        className={`text-xs leading-5 ${
-                          isCurrentMonth ? "text-[#101828]" : "text-[#99a1af]"
-                        }`}
+                        className={`size-5 flex items-center justify-center rounded-full text-xs leading-none ${
+                          isSelected ? "ring-1 ring-primary text-primary font-medium" : ""
+                        } ${isCurrentMonth ? "text-[#101828]" : "text-[#99a1af]"}`}
                       >
                         {date.date()}
                       </span>
@@ -262,7 +283,7 @@ export default function CalendarPage() {
         {/* ────────────────────────────────────────────
             RIGHT — Selected-date event panel
         ──────────────────────────────────────────── */}
-        <div className="w-[335px] shrink-0 bg-white rounded-[15.314px] shadow-[0px_0.957px_1.436px_rgba(0,0,0,0.1),0px_0.957px_0.957px_rgba(0,0,0,0.1)] flex flex-col overflow-hidden">
+        <div className="w-[335px] shrink-0 bg-white rounded-lg border border-gray-200 flex flex-col overflow-hidden">
 
           {/* Panel header */}
           <div className="px-[22.97px] pt-[22.97px] shrink-0">
@@ -307,11 +328,7 @@ export default function CalendarPage() {
                   <Link
                     key={ev.id}
                     href={`/confirmed-events?search=${encodeURIComponent(String(ev.id))}&name=${encodeURIComponent(name)}`}
-                    className="block bg-white rounded-[19.055px] overflow-hidden hover:shadow-md transition-shadow"
-                    style={{
-                      border: "1.059px solid rgba(0,0,0,0.1)",
-                      boxShadow: "0px 4.234px 5.293px rgba(0,0,0,0.1)",
-                    }}
+                    className="block bg-white rounded-xl border border-gray-100 overflow-hidden hover:border-gray-200 hover:shadow-sm transition-all"
                   >
                     {/* Avatar + name / venue / time */}
                     <div className="flex gap-[12.159px] items-start px-[14.82px] pt-[15.39px] pb-3">
