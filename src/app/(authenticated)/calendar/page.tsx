@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo, type CSSProperties } from "react";
+import { useState, useEffect, useMemo, useRef, type CSSProperties } from "react";
 import dayjs from "dayjs";
 import { ChevronLeft, ChevronRight, MapPin, Plus } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCalendar } from "@/src/api/calendar";
 import { BackButton } from "@/src/components/Icons";
 
@@ -80,6 +81,22 @@ export default function CalendarPage() {
     window.addEventListener("dashboard:yearChange", onYearChange as EventListener);
     return () => window.removeEventListener("dashboard:yearChange", onYearChange as EventListener);
   }, []);
+
+  // The dashboard's mini calendar links here as `/calendar?date=<iso>` to
+  // land on the day the user clicked — without this, that link opened the
+  // full calendar on today's month/date instead, ignoring the click.
+  const searchParams = useSearchParams();
+  const dateParamAppliedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const dateParam = searchParams?.get("date") ?? "";
+    if (!dateParam || dateParamAppliedRef.current === dateParam) return;
+    const parsed = dayjs(dateParam);
+    if (!parsed.isValid()) return;
+    dateParamAppliedRef.current = dateParam;
+    setCurrentMonth(parsed.startOf("month"));
+    setSelectedDate(parsed);
+    setYear(parsed.year());
+  }, [searchParams]);
 
   const { data: rawData } = useCalendar({ year });
 
@@ -224,12 +241,13 @@ export default function CalendarPage() {
                     isCurrentMonth ? "bg-white hover:bg-gray-50" : "bg-gray-50/60",
                   ].join(" ")}
                 >
-                  {/* Date number — today is plain brand-coloured text (a
-                      colour cue, not a shape); a selected OTHER day gets a
-                      slim colour ring around just the number rather than
-                      tinting the whole cell, which is the more "Notion" way
-                      to say "this one's picked" without turning the cell
-                      back into a box. */}
+                  {/* Date number — pinned outside the scroll area below
+                      (shrink-0) so it never scrolls out of view. Today is
+                      plain brand-coloured text (a colour cue, not a shape);
+                      a selected OTHER day gets a slim colour ring around
+                      just the number rather than tinting the whole cell,
+                      which is the more "Notion" way to say "this one's
+                      picked" without turning the cell back into a box. */}
                   <div className="shrink-0 h-5 flex items-center">
                     {isToday && isCurrentMonth ? (
                       // Plain coloured text rather than a filled circle (the
@@ -255,37 +273,38 @@ export default function CalendarPage() {
                       the whole chip rather than a small dot, and the title
                       wraps onto a second line instead of truncating with an
                       ellipsis (a short block filling most of the cell's
-                      width reads better wrapped than clipped). */}
-                  {dayEvents.slice(0, 3).map((ev) => {
-                    const name = getEventDisplayName(ev);
-                    const time =
-                      ev.start_time && ev.end_time
-                        ? formatTime(ev.start_time)
-                        : "";
+                      width reads better wrapped than clipped). This list
+                      scrolls internally (min-h-0 + overflow-y-auto, scrollbar
+                      hidden to keep the tiny cell visually clean) rather than
+                      the cell clipping whichever chip runs out of room — a
+                      busy day on a 6-row month can need more height than a
+                      fixed row can spare. */}
+                  <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide flex flex-col gap-[3.625px]">
+                    {dayEvents.map((ev) => {
+                      const name = getEventDisplayName(ev);
+                      const time =
+                        ev.start_time && ev.end_time
+                          ? formatTime(ev.start_time)
+                          : "";
 
-                    return (
-                      <div
-                        key={ev.id}
-                        className="rounded-[4px] shrink-0 px-1.5 py-1 min-w-0"
-                        style={djChipStyle(ev.users_events_dj_idTousers?.color)}
-                      >
-                        <span className="block text-white text-[11px] font-medium leading-[13px] break-words line-clamp-2">
-                          {name}
-                        </span>
-                        {time && (
-                          <span className="block text-white/75 text-[10px] leading-[13px] tabular-nums">
-                            {time}
+                      return (
+                        <div
+                          key={ev.id}
+                          className="rounded-[4px] shrink-0 px-1.5 py-1 min-w-0"
+                          style={djChipStyle(ev.users_events_dj_idTousers?.color)}
+                        >
+                          <span className="block text-white text-[11px] font-medium leading-[13px] break-words line-clamp-2">
+                            {name}
                           </span>
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  {dayEvents.length > 3 && (
-                    <span className="text-[#6b7280] text-[11px] font-medium pl-1.5">
-                      +{dayEvents.length - 3} more
-                    </span>
-                  )}
+                          {time && (
+                            <span className="block text-white/75 text-[10px] leading-[13px] tabular-nums">
+                              {time}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               );
             })}

@@ -492,7 +492,6 @@ const OpenEnquiryPage = () => {
           </Button>
           <Button
             type="default"
-            danger
             className="themeDefaultButton"
             disabled={!selectedRowKeys.length || Boolean(buttonLoading)}
             loading={buttonLoading === "delete"}
@@ -797,6 +796,11 @@ const OpenEnquiryPage = () => {
                     setSelectedRowData([record]);
                   } catch {}
                 },
+                onDoubleClick: () => {
+                  const id = record?.id;
+                  if (!id) return;
+                  router.push(`/enquiry?select=${encodeURIComponent(String(id))}`);
+                },
               })}
             />
           </div>
@@ -959,19 +963,24 @@ const OpenEnquiryPage = () => {
                         real, selected-row fields — "--" shown for whichever
                         of Amount/Payment Status has no deposit recorded yet,
                         same as the reference. */}
+                    {/* Label/value sizing here matches the rest of the site's
+                        "label above value" convention (see the shared Input
+                        component and the Filters popover just above: text-xs
+                        label, text-sm value) rather than the smaller
+                        11px/gray-400 this box used before. */}
                     <div className="p-5 space-y-4 border-b border-gray-100">
                       <div className="flex items-start gap-2.5">
                         <Phone size={15} className="text-gray-400 mt-0.5 shrink-0" />
                         <div className="min-w-0">
-                          <p className="text-[11px] text-gray-400 leading-tight">Mobile</p>
-                          <p className="text-sm text-gray-800 truncate">{selectedMobile || "--"}</p>
+                          <p className="text-xs text-gray-500 leading-tight">Mobile</p>
+                          <p className="text-sm text-gray-900 truncate">{selectedMobile || "--"}</p>
                         </div>
                       </div>
                       <div className="flex items-start gap-2.5">
                         <CalendarDays size={15} className="text-gray-400 mt-0.5 shrink-0" />
                         <div className="min-w-0">
-                          <p className="text-[11px] text-gray-400 leading-tight">Event Date</p>
-                          <p className="text-sm text-gray-800">
+                          <p className="text-xs text-gray-500 leading-tight">Event Date</p>
+                          <p className="text-sm text-gray-900">
                             {selectedDate ? dayjs(selectedDate).format("DD/MM/YYYY") : "--"}
                           </p>
                         </div>
@@ -979,22 +988,22 @@ const OpenEnquiryPage = () => {
                       <div className="flex items-start gap-2.5">
                         <Sparkles size={15} className="text-gray-400 mt-0.5 shrink-0" />
                         <div className="min-w-0">
-                          <p className="text-[11px] text-gray-400 leading-tight">Event Type</p>
-                          <p className="text-sm text-gray-800 truncate">{selectedEventType || "--"}</p>
+                          <p className="text-xs text-gray-500 leading-tight">Event Type</p>
+                          <p className="text-sm text-gray-900 truncate">{selectedEventType || "--"}</p>
                         </div>
                       </div>
                       <div className="flex items-start gap-2.5">
                         <MapPin size={15} className="text-gray-400 mt-0.5 shrink-0" />
                         <div className="min-w-0">
-                          <p className="text-[11px] text-gray-400 leading-tight">Location</p>
-                          <p className="text-sm text-gray-800 truncate">{selectedVenue || "--"}</p>
+                          <p className="text-xs text-gray-500 leading-tight">Location</p>
+                          <p className="text-sm text-gray-900 truncate">{selectedVenue || "--"}</p>
                         </div>
                       </div>
                       <div className="flex items-start gap-2.5">
                         <MessageSquare size={15} className="text-gray-400 mt-0.5 shrink-0" />
                         <div className="min-w-0">
-                          <p className="text-[11px] text-gray-400 leading-tight">Message</p>
-                          <p className="text-sm text-gray-800 leading-snug">{selectedMessage || "--"}</p>
+                          <p className="text-xs text-gray-500 leading-tight">Message</p>
+                          <p className="text-sm text-gray-900 leading-snug">{selectedMessage || "--"}</p>
                         </div>
                       </div>
                       {/* <div className="flex items-start gap-2.5">
@@ -1048,17 +1057,23 @@ const OpenEnquiryPage = () => {
                               key={item.id}
                               className="py-1.5 border-b border-gray-200 last:border-0"
                             >
+                              {/* Same note+timestamp sizing as the dashboard's
+                                  Events Activity feed (EventActivity.tsx) —
+                                  same content type, so it should read the
+                                  same: sm/gray-700 for the note text, xs/
+                                  gray-400 for the meta line, not the smaller
+                                  11px/xs pairing this used before. */}
                               {item.created_at && (
-                                <p className="text-[11px] leading-tight text-gray-400">
+                                <p className="text-xs leading-tight text-gray-400">
                                   {dayjs(item.created_at).format("DD/MM/YY HH:mm")}
                                 </p>
                               )}
-                              <p className="text-xs leading-snug text-gray-600">{item.notes}</p>
+                              <p className="text-sm leading-snug text-gray-700">{item.notes}</p>
                             </li>
                           ))}
                         </ul>
                       ) : (
-                        <div className="h-full flex items-center justify-center text-xs text-gray-400 italic">
+                        <div className="h-full flex items-center justify-center text-sm text-gray-500">
                           No notes yet
                         </div>
                       )}
