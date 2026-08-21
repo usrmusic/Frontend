@@ -5,7 +5,7 @@ import DataTable from "@/src/components/DataTable";
 import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import { useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { TableColumnsType, TableProps, Select } from "antd";
 import { useRouter } from "next/navigation";
 import SendBrochureModal from "../open-enquiry/SendBrochure";
@@ -41,15 +41,24 @@ const CompletedEventsPage = () => {
   const debouncedSearch = useDebounce(search, 1000);
 
   const searchParams = useSearchParams();
+  const searchParamsKey = searchParams?.toString() ?? "";
+  // Fire once per incoming URL, not on every keystroke — `search` was in
+  // the dep list before, so as soon as the user edited the seeded search
+  // box, this effect re-ran, saw the URL's value still didn't match what
+  // they'd just typed, and snapped it straight back (the URL param is never
+  // cleared), making the box uneditable after a dashboard/calendar redirect.
+  const searchSyncedForRef = useRef<string | null>(null);
   useEffect(() => {
+    if (searchSyncedForRef.current === searchParamsKey) return;
+    searchSyncedForRef.current = searchParamsKey;
     const s = searchParams?.get("search") ?? "";
     const name = searchParams?.get("name") ?? "";
     const displayValue = name || s;
-    if (displayValue && displayValue !== search) {
+    if (displayValue) {
       setSearch(displayValue);
       setParams((prev) => ({ ...prev, page: 1 }));
     }
-  }, [search, searchParams]);
+  }, [searchParams, searchParamsKey]);
 
   const { data: completedEventsData, isLoading } = useGetCompletedEventsList({
     ...params,

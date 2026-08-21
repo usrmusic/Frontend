@@ -22,7 +22,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { CSSProperties, useState, useEffect } from "react";
+import { CSSProperties, useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ConfirmEventData, EventsDropdownItem, ConfirmEventPayment, ConfirmEventNote, ConfirmEventPackage } from "@/src/types/types";
@@ -217,13 +217,21 @@ const ConfirmedEventsPage = () => {
 
   const searchParams = useSearchParams();
   const searchParamsKey = searchParams?.toString() ?? "";
+  // Fire once per incoming URL (not per eventId change) — otherwise picking
+  // a different event from the dropdown below re-triggers this effect (its
+  // deps included eventId) and it immediately snaps the selection back to
+  // whatever `search` was in the URL, which never gets cleared, so the user
+  // could never change events after arriving via a dashboard/calendar link.
+  const eventIdSyncedForRef = useRef<string | null>(null);
   useEffect(() => {
+    if (eventIdSyncedForRef.current === searchParamsKey) return;
+    eventIdSyncedForRef.current = searchParamsKey;
     const s = searchParams?.get("search") ?? "";
-    if (s && s !== eventId) {
+    if (s) {
       setEventId(String(s));
       setIsModifyMode(false);
     }
-  }, [searchParams, searchParamsKey, eventId]);
+  }, [searchParams, searchParamsKey]);
 
   const payments =
     (selectedEventData?.data as ConfirmEventData)?.event_payments ?? [];
