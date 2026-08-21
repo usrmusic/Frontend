@@ -692,7 +692,7 @@ const ConfirmedEventsPage = () => {
             </div>
           </div>
         </div>
-        <div className="flex justify-end gap-3 mb-4">
+        <div className="flex items-center justify-end gap-3 py-4">
           <Button
             htmlType="button"
             type="primary"
@@ -710,7 +710,7 @@ const ConfirmedEventsPage = () => {
             {showPayments ? "Hide Payments" : "Show Payments"}
           </Button>
         </div>
-        <div className="grid grid-cols-2 gap-4 mb-3">
+        <div className="grid grid-cols-2 gap-4">
           <div
             className={`overflow-hidden rounded-xl bg-white border border-gray-200 transition-all duration-300 ease-in-out ${
               showNotes
