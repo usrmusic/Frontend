@@ -221,60 +221,58 @@ const FileUploadPage = () => {
 
   return (
     <div className="mt-4 space-y-4">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard" className="shrink-0">
-            <BackButton />
-          </Link>
-          <h2 className="themeH1">File Upload</h2>
-        </div>
-        <div className="flex gap-3">
-          <Button
-            icon={<FileUp size={14} />}
-            onClick={() => {
-              resetUploadForm();
-              setShowUploadModal(true);
-            }}
-          >
-            Upload File
-          </Button>
-          <CSVLink
-            data={csvData ?? []}
-            filename="file-upload.csv"
-            headers={csvHeaders}
-          >
-            <Button icon={<Export w={16} h={16} />}>Export Data</Button>
-          </CSVLink>
-          {/* <Button icon={<MoreVertical size={18} />}></Button> */}
-        </div>
+      <div className="flex items-center gap-3">
+        <Link href="/dashboard" className="shrink-0">
+          <BackButton />
+        </Link>
+        <h2 className="themeH1">File Upload</h2>
       </div>
-      <div className="bg-white rounded-xl overflow-hidden shadow-sm">
-        <div className="bg-primary px-4 py-3">
-          <div className="flex items-center gap-2 rounded-lg bg-white px-4 py-2">
+      <div>
+        <div className="flex items-center justify-between">
+          <div className="flex max-w-[410px] items-center gap-2 rounded-lg bg-white px-4 py-3">
             <MagnifyingGlass w={18} h={18} />
             <input
               type="text"
-              placeholder="Search file"
-              className="w-full bg-white! outline-none text-sm placeholder:text-gray-400"
+              placeholder="Search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              className="w-full bg-transparent! text-sm placeholder:text-gray-500"
             />
           </div>
+          <div className="flex items-center gap-2">
+            <CSVLink
+              data={csvData ?? []}
+              filename="file-upload.csv"
+              headers={csvHeaders}
+            >
+              <Button icon={<Export w={16} h={16} />}>Export Data</Button>
+            </CSVLink>
+            <Button
+              type="primary"
+              icon={<FileUp size={14} />}
+              onClick={() => {
+                resetUploadForm();
+                setShowUploadModal(true);
+              }}
+            >
+              Upload File
+            </Button>
+          </div>
         </div>
-        <DataTable
-          columns={columns}
-          dataSource={uploadListData?.data}
-          loading={isLoading}
-          pagination={{
-            pageSize: params.perPage,
-            current: params.page,
-            total: uploadListData?.meta.total,
-            onChange: (page, pageSize) =>
-              setParams({ ...params, page, perPage: pageSize }),
-          }}
-          rowKey={(data) => data.id}
-        />
       </div>
+      <DataTable
+        columns={columns}
+        dataSource={uploadListData?.data}
+        loading={isLoading}
+        pagination={{
+          pageSize: params.perPage,
+          current: params.page,
+          total: uploadListData?.meta.total,
+          onChange: (page, pageSize) =>
+            setParams({ ...params, page, perPage: pageSize }),
+        }}
+        rowKey={(data) => data.id}
+      />
       {/* Edit metadata modal */}
       <Modal
         title="Edit File"

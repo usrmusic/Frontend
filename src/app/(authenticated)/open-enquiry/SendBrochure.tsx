@@ -121,7 +121,7 @@ const SendBrochureModal = ({
             Body
           </label>
           <textarea
-            className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none"
+            className="w-full resize-y rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none"
             rows={8}
             placeholder="Write your message here..."
             name="body"

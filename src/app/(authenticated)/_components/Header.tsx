@@ -102,6 +102,18 @@ const Header = () => {
               }
               setSearch(label);
 
+              // The `name` query param becomes the destination page's search
+              // box text (see open-enquiry/completed-events), which is sent
+              // to the backend as a literal text filter — it must be the
+              // client's actual name, not this dropdown's "date - name"
+              // display label, or the filter matches zero rows and the
+              // redirect lands on an empty, dead-looking page.
+              let clientName = label;
+              if (option && typeof option === 'object' && 'clientName' in (option as Record<string, unknown>)) {
+                const maybeName = (option as Record<string, unknown>).clientName;
+                if (typeof maybeName === 'string' && maybeName) clientName = maybeName;
+              }
+
               // determine event status from option if present, otherwise lookup from dropdownItems
               let statusId: number | string | undefined = undefined;
               try {
@@ -117,12 +129,23 @@ const Header = () => {
               let target = '/dashboard';
               if (statusId === 1 || statusId === '1') target = '/open-enquiry';
               else if (statusId === 2 || statusId === '2') target = '/confirmed-events';
-              else if (statusId === 3 || statusId === '3') target = '/completed-events';
+              // Completed (3) and Cancelled (4) events both live on the same
+              // completed-events page — there's no separate cancelled-events
+              // page in this stack (same convention as the dashboard's
+              // Pending Payments card).
+              else if (statusId === 3 || statusId === '3' || statusId === 4 || statusId === '4') target = '/completed-events';
+
+              // open-enquiry needs the exact id to auto-select the right
+              // row (its text search can legitimately return more than one
+              // enquiry for the same client) — mirrors the dashboard's Open
+              // Enquiries widget, which already passes this.
+              const selectParam = target === '/open-enquiry' ? `&select=${encodeURIComponent(idStr)}` : '';
+              const href = `${target}?search=${encodeURIComponent(idStr)}&name=${encodeURIComponent(clientName)}${selectParam}`;
 
               try {
-                router.push(`${target}?search=${encodeURIComponent(idStr)}&name=${encodeURIComponent(label)}`);
+                router.push(href);
               } catch (e) {
-                if (typeof window !== 'undefined') window.location.href = `${target}?search=${encodeURIComponent(idStr)}&name=${encodeURIComponent(label)}`;
+                if (typeof window !== 'undefined') window.location.href = href;
               }
             }}
             notFoundContent={dropdownFetching ? <Spin size="small" /> : (dropdownParams ? <div className="text-sm text-gray-500">No results</div> : <div className="text-sm text-gray-500">Type to search</div>)}
@@ -134,6 +157,7 @@ const Header = () => {
               return {
                 value: String(it.id),
                 label: dateStr ? `${dateStr} - ${clientName}` : clientName,
+                clientName,
                 status: it.status,
                 clientId: it.client?.id,
                 date: it.date ?? null,

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo, type CSSProperties } from "react";
+import { useState, useEffect, useMemo, useRef, type CSSProperties } from "react";
 import dayjs from "dayjs";
 import { ChevronLeft, ChevronRight, MapPin, Plus } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCalendar } from "@/src/api/calendar";
 import { BackButton } from "@/src/components/Icons";
 
@@ -80,6 +81,22 @@ export default function CalendarPage() {
     window.addEventListener("dashboard:yearChange", onYearChange as EventListener);
     return () => window.removeEventListener("dashboard:yearChange", onYearChange as EventListener);
   }, []);
+
+  // The dashboard's mini calendar links here as `/calendar?date=<iso>` to
+  // land on the day the user clicked — without this, that link opened the
+  // full calendar on today's month/date instead, ignoring the click.
+  const searchParams = useSearchParams();
+  const dateParamAppliedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const dateParam = searchParams?.get("date") ?? "";
+    if (!dateParam || dateParamAppliedRef.current === dateParam) return;
+    const parsed = dayjs(dateParam);
+    if (!parsed.isValid()) return;
+    dateParamAppliedRef.current = dateParam;
+    setCurrentMonth(parsed.startOf("month"));
+    setSelectedDate(parsed);
+    setYear(parsed.year());
+  }, [searchParams]);
 
   const { data: rawData } = useCalendar({ year });
 
