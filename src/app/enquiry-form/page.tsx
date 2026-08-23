@@ -192,7 +192,15 @@ export default function PublicEnquiryFormPage() {
           </div>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="w-100 pt-3" style={{ maxWidth: 520 }}>
+        <form
+          onSubmit={handleSubmit}
+          className="w-100 pt-3"
+          // Exact match to Laravel's own .contact-form rule
+          // (usrmusic_rep/resources/scss/pages/contact-us.scss) — that's the
+          // only real customization on top of plain Bootstrap defaults there,
+          // no separate font-family override exists anywhere in that build.
+          style={{ maxWidth: 520, color: "#8b8884", fontSize: 12 }}
+        >
           <label>
             You can also contact us by filling the below form and a member of the team will
             contact you:
