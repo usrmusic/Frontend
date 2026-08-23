@@ -47,7 +47,7 @@ export function useSubmitPublicEnquiry() {
 // never block or fail their submission to the new CRM, which is what
 // actually matters going forward.
 const LARAVEL_ENQUIRY_URL =
-  process.env.NEXT_PUBLIC_LARAVEL_ENQUIRY_URL || "https://usrmusic.com/api/enquiry-form";
+  process.env.NEXT_PUBLIC_LARAVEL_ENQUIRY_URL || "https://dev.usrmusic.com/api/enquiry-form";
 
 export async function submitToLaravelEnquiryForm(payload: {
   name: string;
