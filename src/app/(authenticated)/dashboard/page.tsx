@@ -36,22 +36,6 @@ const DashboardPage = () => {
     };
   }, []);
 
-  useEffect(() => {
-    const handler: EventListener = (ev) => {
-      const custom = ev as CustomEvent<{ year?: number }>;
-      const y = custom?.detail?.year;
-      if (typeof y === "number" && !Number.isNaN(y)) setYear(y);
-    };
-    if (typeof window !== "undefined") {
-      window.addEventListener("dashboard:yearChange", handler);
-    }
-    return () => {
-      if (typeof window !== "undefined") {
-        window.removeEventListener("dashboard:yearChange", handler);
-      }
-    };
-  }, []);
-
   const { data: dashboard, isLoading: dashboardLoading } = useDashboard({
     year,
   });
@@ -62,6 +46,10 @@ const DashboardPage = () => {
   const { data: upcomingData, isLoading: upcomingLoading } = useUpcomingEvents(
     debouncedUpcoming.trim().length > 0 ? { search: debouncedUpcoming.trim() } : {}
   );
+
+  // Client has no role-relevant activity feed; Staff/Admin still see it
+  // (scoped to their own events by the backend).
+  const eventActivityVisible = dashboard?.scope !== "personal";
 
   const handleStatToggle = (
     stat: keyof typeof showStat,
@@ -102,36 +90,46 @@ const DashboardPage = () => {
 
         {/* Right column stats */}
         <section className="col-span-12 xl:col-span-6 flex flex-col gap-4 h-full">
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-stretch h-full">
-            {/* Sales Analytics (admin only — show skeleton while loading) */}
-            {(dashboardLoading || dashboard?.scope === 'admin') && (
-              <SalesAnalytics
-                djCounts={
-                  Object.fromEntries(
-                    Object.entries(dashboard?.salesAnalytics?.djCounts ?? {}).map(
-                      ([key, val]) => [key, Number(val ?? 0)]
+          {/* Sales Analytics only renders for admin scope — everyone else
+              only ever gets Pending Payments (or nothing), so the 2-column
+              split is admin-only too; otherwise Pending Payments is left at
+              half width next to a permanently empty column. Team scope gets
+              neither, so this block is skipped entirely rather than left
+              rendering an empty, gap-eating div above Todos. */}
+          {(dashboardLoading || dashboard?.scope === 'admin' || dashboard?.scope === 'personal') && (
+            <div className={`grid grid-cols-1 ${dashboardLoading || dashboard?.scope === 'admin' ? 'xl:grid-cols-2' : ''} gap-4 items-stretch h-full`}>
+              {/* Sales Analytics (admin only — show skeleton while loading) */}
+              {(dashboardLoading || dashboard?.scope === 'admin') && (
+                <SalesAnalytics
+                  djCounts={
+                    Object.fromEntries(
+                      Object.entries(dashboard?.salesAnalytics?.djCounts ?? {}).map(
+                        ([key, val]) => [key, Number(val ?? 0)]
+                      )
                     )
-                  )
-                }
-                confirmedEventsCount={dashboard?.confirmedEventsCount ?? 0}
-                totalEvents={dashboard?.totalEvents ?? 0}
-                isLoading={dashboardLoading}
-                year={year}
-              />
-            )}
+                  }
+                  confirmedEventsCount={dashboard?.confirmedEventsCount ?? 0}
+                  totalEvents={dashboard?.totalEvents ?? 0}
+                  isLoading={dashboardLoading}
+                  year={year}
+                />
+              )}
 
-            {/* Pending Payments (admin + personal — show skeleton while loading) */}
-            {(dashboardLoading || dashboard?.scope === 'admin' || dashboard?.scope === 'personal') && (
-              <PendingPayments
-                payments={dashboard?.pendingPayments || []}
-                isLoading={dashboardLoading}
-                scope={dashboard?.scope}
-              />
-            )}
-          </div>
-          {/* Dashboard Todos for team scope */}
+              {/* Pending Payments (admin + personal — show skeleton while loading) */}
+              {(dashboardLoading || dashboard?.scope === 'admin' || dashboard?.scope === 'personal') && (
+                <PendingPayments
+                  payments={dashboard?.pendingPayments || []}
+                  isLoading={dashboardLoading}
+                  scope={dashboard?.scope}
+                />
+              )}
+            </div>
+          )}
+          {/* Dashboard Todos for team scope — flex-1 so it fills the section
+              (matching Event Overview's height) instead of leaving a gap
+              where Sales Analytics/Pending Payments would have been. */}
           {dashboard?.scope === 'team' && (
-            <div className="col-span-1 xl:col-span-2">
+            <div className="flex-1 flex flex-col">
               <DashboardTodos
                 eventIds={(upcomingData || []).slice(0, 6).map((e) => Number(e.id)).filter(Boolean)}
               />
@@ -153,16 +151,20 @@ const DashboardPage = () => {
           upcomingIds={(upcomingData || []).map((e) => Number(e.id)).filter(Boolean)}
         />
 
-        {/* Calendar */}
+        {/* Calendar — expands into Event Activity's space only when that
+            widget is hidden (Client scope). Staff still see activity scoped
+            to their own events, Admin sees all — only Client has no
+            role-relevant activity to show. */}
         <Card
           variant="white"
-          className="dashboard-calendar col-span-12 lg:col-span-5 2xl:col-span-4 shadow-sm p-0 rounded-2xl bg-[#F6F5F0]"
+          className={`dashboard-calendar col-span-12 ${eventActivityVisible ? "lg:col-span-5 2xl:col-span-4" : "lg:col-span-8 2xl:col-span-7"} shadow-sm p-0 rounded-2xl bg-[#F6F5F0]`}
         >
           <CalendarWithSidebar events={dashboard?.calendarEvents} isLoading={dashboardLoading} />
         </Card>
 
-        {/* Event Activity Component (hide for team scope) */}
-        {dashboard?.scope !== 'team' && (
+        {/* Event Activity — hidden for Client only; Staff/Admin see it
+            (backend scopes the notes themselves per role). */}
+        {eventActivityVisible && (
           <EventActivity
             notes={dashboard?.recentNotes}
             isLoading={dashboardLoading}

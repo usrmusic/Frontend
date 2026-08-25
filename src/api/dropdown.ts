@@ -66,6 +66,20 @@ export const useRigListEventsDropdown = () => {
     },
   });
 };
+// Separate from useRigListEventsDropdown above — that one hits /rig-list/drop-down,
+// which requires the "rig list" permission and is hard-blocked for Client (Rig
+// List is genuinely never a Client feature). The confirmed-events page's own
+// event picker isn't a rig-list concern, so it gets its own properly-scoped
+// endpoint instead of borrowing rig-list's.
+export const useConfirmEventsDropdown = () => {
+  return useQuery({
+    queryKey: ["confirm-events-dropdown"],
+    queryFn: async () => {
+      const response = await AxiosInstance.get("/confirm-event/events-dropdown");
+      return response.data;
+    },
+  });
+};
 export const useEquipmentDropdown = () => {
   return useQuery({
     queryKey: ["equipment-dropdown"],

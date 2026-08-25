@@ -1,5 +1,5 @@
 "use client";
-import { useRigListEventsDropdown } from "@/src/api/dropdown";
+import { useConfirmEventsDropdown } from "@/src/api/dropdown";
 import {
   useCancelEvent,
   useDownloadInvoice,
@@ -62,7 +62,7 @@ const ConfirmedEventsPage = () => {
     useDownloadInvoice();
   const { mutate: cancelEventMutation, isPending: isCancelingEvent } =
     useCancelEvent();
-  const { data: eventsDropdown } = useRigListEventsDropdown();
+  const { data: eventsDropdown } = useConfirmEventsDropdown();
   const { data: selectedEventData, isLoading } = useGetConfirmEvent(eventId);
   const router = useRouter();
   const { mutate: sendInvoiceMutation, isPending: isSendingInvoice } =
@@ -409,15 +409,13 @@ const ConfirmedEventsPage = () => {
                     Refund
                   </Button>
                 )}
-                {/* Drawer trigger (Package Summary / Rig List / Payment Summary) —
-                    everyone but Client, matching Laravel's sidebar panel;
-                    the Add Payment form inside stays Admin-only via
-                    canAddPayment on the drawer itself. */}
-                {!isClient && (
-                  <Button onClick={() => setShowDrawer(true)}>
-                    <MoreVertical size={14} />
-                  </Button>
-                )}
+                {/* Drawer trigger — everyone, including Client (Laravel's
+                    Client-facing sidebar panel has the same Package Summary +
+                    read-only Total/Deposit/Outstanding). The drawer itself
+                    hides Rig List, Edit, and Add Payment for Client. */}
+                <Button onClick={() => setShowDrawer(true)}>
+                  <MoreVertical size={14} />
+                </Button>
               </>
             )}
           </div>
@@ -739,21 +737,18 @@ const ConfirmedEventsPage = () => {
             </Button>
           )}
         </div>
-        {/* Client never gets a Payments box (see !isClient above), so the
-            grid collapses to 1 column for them instead of leaving an empty,
-            dead second column at half width. */}
-        <div className={`grid ${isClient ? "grid-cols-1" : "grid-cols-2"} gap-4`}>
-          <div
-            className={`overflow-hidden rounded-xl bg-white border border-gray-200 transition-all duration-300 ease-in-out ${
-              showNotes
-                ? "max-h-[800px] opacity-100 p-4"
-                : "max-h-0 opacity-0 p-0"
-            }`}
-            aria-hidden={!showNotes}
-          >
-            <div className="space-y-3">
-                  {showNotes && (
-                <>
+        {/* Real conditional mounting instead of an animated max-height
+            collapse — the collapse approach left a residual gap/ghost box
+            when closed (the animated box's own padding/border still took up
+            space). A closed box now takes zero space, full stop. Grid only
+            renders at all when something is actually open, and only spans 2
+            columns when both boxes are showing (never for Client, who has
+            no Payments box at all). */}
+        {(showNotes || (showPayments && !isClient)) && (
+          <div className={`grid ${!isClient && showNotes && showPayments ? "grid-cols-2" : "grid-cols-1"} gap-4`}>
+            {showNotes && (
+              <div className="rounded-xl bg-white border border-gray-200 p-4">
+                <div className="space-y-3">
                   {eventNotes.length === 0 ? (
                     <div className="text-sm text-gray-500">No notes found.</div>
                   ) : (
@@ -771,21 +766,12 @@ const ConfirmedEventsPage = () => {
                       </div>
                     ))
                   )}
-                </>
-              )}
-            </div>
-          </div>
+                </div>
+              </div>
+            )}
 
-          {!isClient && <div
-            className={`overflow-hidden bg-white rounded-xl border border-gray-200 transition-all duration-300 ease-in-out ${
-              showPayments
-                ? "max-h-[800px] opacity-100 p-4"
-                : "max-h-0 opacity-0 p-0"
-            }`}
-            aria-hidden={!showPayments}
-          >
-            {showPayments && (
-              <div className="p-4">
+            {!isClient && showPayments && (
+              <div className="rounded-xl bg-white border border-gray-200 p-4">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50">
                     <tr>
@@ -825,8 +811,8 @@ const ConfirmedEventsPage = () => {
                 </table>
               </div>
             )}
-          </div>}
-        </div>
+          </div>
+        )}
       </form>
       {showModal && (
         <SendBrochureModal
@@ -862,6 +848,7 @@ const ConfirmedEventsPage = () => {
         open={showDrawer}
         onClose={() => setShowDrawer(false)}
         canAddPayment={isAdmin}
+        isClientView={isClient}
       />
 
         {/* Send Invoice Modal */}
