@@ -9,8 +9,11 @@ import dayjs from "dayjs";
 import { useState, useEffect } from "react";
 import { useGetRigList, useSaveRigNotes } from "@/src/api/riglist";
 import { toast } from "react-toastify";
+import useRole from "@/src/hooks/useRole";
+import AccessDenied from "@/src/components/common/AccessDenied";
 
 const Page = () => {
+  const { isClient } = useRole();
   const [eventId, setEventId] = useState("");
   const [note, setNote] = useState("");
   const { data: eventsDropdown } = useRigListEventsDropdown();
@@ -40,6 +43,15 @@ const Page = () => {
   };
 
   const event = rigNotesData?.event;
+
+  // Rig list is never a Client-facing feature — matches the legacy Laravel
+  // CRM, which hides its rig-list widget specifically for role_id 4 on top
+  // of the "rig list" permission gate.
+  if (isClient) {
+    return (
+      <AccessDenied message="Rig list isn't available for client accounts." />
+    );
+  }
 
   const formatTime = (t?: string) => {
     if (!t) return "";

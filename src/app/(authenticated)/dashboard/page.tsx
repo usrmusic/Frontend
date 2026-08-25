@@ -84,6 +84,7 @@ const DashboardPage = () => {
         // show money only to admin
         totalTurnover={dashboard?.scope === 'admin' ? dashboard?.totalTurnover ?? 0 : 0}
         totalProfit={dashboard?.scope === 'admin' ? dashboard?.totalProfit ?? 0 : 0}
+        showFinancialCards={dashboard?.scope === 'admin'}
         isLoading={dashboardLoading}
         onStatToggle={handleStatToggle}
         showStat={showStat}

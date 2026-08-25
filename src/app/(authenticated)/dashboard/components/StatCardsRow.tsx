@@ -19,6 +19,10 @@ interface StatCardsRowProps {
   isLoading?: boolean;
   onStatToggle?: (stat: StatKey, value: boolean) => void;
   showStat?: ShowStatType;
+  // Turn Over / Profit are Admin-only, matching the legacy Laravel CRM (Staff
+  // and Client only ever get the Events/Remaining pair). Default true so
+  // existing callers that don't pass it keep showing all four cards.
+  showFinancialCards?: boolean;
 }
 
 /* Icon sizing.
@@ -106,6 +110,7 @@ export default function StatCardsRow({
     profitStat: false,
     turnOverStat: false,
   },
+  showFinancialCards = true,
 }: StatCardsRowProps) {
   const handleToggle = (stat: StatKey) => {
     onStatToggle?.(stat, !showStat[stat]);
@@ -166,87 +171,90 @@ export default function StatCardsRow({
         )}
       </Card>
 
-      {/* Turn Over */}
-      <Card
-        variant="white"
-        className={CARD_CLASS}
-        onClick={isLoading ? undefined : () => handleToggle("turnOverStat")}
-      >
-        {isLoading ? (
-          <div className="w-full flex items-center justify-center">
-            <Spin size="large" />
-          </div>
-        ) : (
-          <>
-            <Image
-              src={"/svgs/Icon.svg"}
-              alt=""
-              aria-hidden
-              {...BADGE}
-              className={BADGE_CLASS}
-            />
-            <div className="flex-1 min-w-0">
-              <p className={`${LABEL_CLASS} text-primary`}>Turn Over</p>
-              <div className="flex items-center gap-2 min-w-0">
-                <StatValue
-                  value={GBP.format(totalTurnover)}
-                  concealed={!showStat.turnOverStat}
-                />
-                {showStat.turnOverStat ? (
-                  <EyeOff size={20} className="shrink-0" />
-                ) : (
-                  <Eye size={20} className="shrink-0" />
-                )}
+      {/* Turn Over / Profit — Admin only */}
+      {showFinancialCards && (
+        <>
+          <Card
+            variant="white"
+            className={CARD_CLASS}
+            onClick={isLoading ? undefined : () => handleToggle("turnOverStat")}
+          >
+            {isLoading ? (
+              <div className="w-full flex items-center justify-center">
+                <Spin size="large" />
               </div>
-            </div>
-            <Image
-              src={"/svgs/red-chart.svg"}
-              alt=""
-              aria-hidden
-              {...SPARKLINE}
-              className={SPARKLINE_CLASS}
-            />
-          </>
-        )}
-      </Card>
+            ) : (
+              <>
+                <Image
+                  src={"/svgs/Icon.svg"}
+                  alt=""
+                  aria-hidden
+                  {...BADGE}
+                  className={BADGE_CLASS}
+                />
+                <div className="flex-1 min-w-0">
+                  <p className={`${LABEL_CLASS} text-primary`}>Turn Over</p>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <StatValue
+                      value={GBP.format(totalTurnover)}
+                      concealed={!showStat.turnOverStat}
+                    />
+                    {showStat.turnOverStat ? (
+                      <EyeOff size={20} className="shrink-0" />
+                    ) : (
+                      <Eye size={20} className="shrink-0" />
+                    )}
+                  </div>
+                </div>
+                <Image
+                  src={"/svgs/red-chart.svg"}
+                  alt=""
+                  aria-hidden
+                  {...SPARKLINE}
+                  className={SPARKLINE_CLASS}
+                />
+              </>
+            )}
+          </Card>
 
-      {/* Profit */}
-      <Card
-        variant="green"
-        className={CARD_CLASS}
-        onClick={isLoading ? undefined : () => handleToggle("profitStat")}
-      >
-        {isLoading ? (
-          <div className="w-full flex items-center justify-center">
-            <Spin size="large" />
-          </div>
-        ) : (
-          <>
-            <div className="flex-1 min-w-0">
-              <p className={`${LABEL_CLASS} text-white/80 mb-2`}>Profit</p>
-              <div className="flex items-center gap-2 min-w-0">
-                <StatValue
-                  value={GBP.format(totalProfit)}
-                  concealed={!showStat.profitStat}
-                  className="text-white"
-                />
-                {showStat.profitStat ? (
-                  <EyeOff size={20} color="#fff" className="shrink-0" />
-                ) : (
-                  <Eye size={20} color="#fff" className="shrink-0" />
-                )}
+          <Card
+            variant="green"
+            className={CARD_CLASS}
+            onClick={isLoading ? undefined : () => handleToggle("profitStat")}
+          >
+            {isLoading ? (
+              <div className="w-full flex items-center justify-center">
+                <Spin size="large" />
               </div>
-            </div>
-            <Image
-              src={"/svgs/Line-chart.svg"}
-              alt=""
-              aria-hidden
-              {...SPARKLINE}
-              className={SPARKLINE_CLASS}
-            />
-          </>
-        )}
-      </Card>
+            ) : (
+              <>
+                <div className="flex-1 min-w-0">
+                  <p className={`${LABEL_CLASS} text-white/80 mb-2`}>Profit</p>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <StatValue
+                      value={GBP.format(totalProfit)}
+                      concealed={!showStat.profitStat}
+                      className="text-white"
+                    />
+                    {showStat.profitStat ? (
+                      <EyeOff size={20} color="#fff" className="shrink-0" />
+                    ) : (
+                      <Eye size={20} color="#fff" className="shrink-0" />
+                    )}
+                  </div>
+                </div>
+                <Image
+                  src={"/svgs/Line-chart.svg"}
+                  alt=""
+                  aria-hidden
+                  {...SPARKLINE}
+                  className={SPARKLINE_CLASS}
+                />
+              </>
+            )}
+          </Card>
+        </>
+      )}
     </div>
   );
 }
