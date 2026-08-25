@@ -36,8 +36,13 @@ import { parseTimeTo24 } from "@/src/utils/timeConverter";
 import { useSendConfirmInvoice, useRefundConfirmEvent } from "@/src/api/events";
 import { SendInvoiceModal } from "./_components/SendInvoiceModal";
 import { RefundModal } from "./_components/RefundModal";
+import useRole from "@/src/hooks/useRole";
 
 const ConfirmedEventsPage = () => {
+  // Add Payment / Refund are Admin-only, matching the legacy Laravel CRM
+  // (sidebar_ui_new.blade.php's Add Payment form and confirmed_events.blade.php's
+  // Refund button both only render inside @hasrole('Super Admin|Admin')).
+  const { isAdmin, isClient } = useRole();
   const [eventId, setEventId] = useState("");
   const [sendMode, setSendMode] = useState<"invoice" | "quote">("quote");
   const [isModifyMode, setIsModifyMode] = useState(false);
@@ -330,70 +335,85 @@ const ConfirmedEventsPage = () => {
                     Modify
                   </Button>
                 )}
-                <Button onClick={handleCancelEvent} loading={isCancelingEvent}>
-                  Cancel Event
-                </Button>
-                <Button
-                  onClick={async () => {
-                    if (!eventId) return;
-                    setButtonLoading("quote");
-                    try {
-                      const data = await fetchEmailTemplate(
-                        String(eventId),
-                        "SEND QUOTE-CONFIRMED",
-                      );
-                      setModalTemplate(data?.email ?? null);
-                      setModalCompanies(data?.companies ?? null);
-                      setSendMode("quote");
-                      setShowModal(true);
-                    } catch {
-                      toast.error("Failed to load email template");
-                    } finally {
-                      setButtonLoading(null);
-                    }
-                  }}
-                  loading={buttonLoading === "quote"}
-                >
-                  Send Quote
-                </Button>
+                {/* Cancel Event / Send Quote / Send Invoice: Admin + Staff only.
+                    Laravel's Client-facing confirmed_events_client.blade.php
+                    toolbar is just Modify/Update/Print/Download Invoice — no
+                    Cancel, no Send Quote, no Send Invoice. */}
+                {!isClient && (
+                  <Button onClick={handleCancelEvent} loading={isCancelingEvent}>
+                    Cancel Event
+                  </Button>
+                )}
+                {!isClient && (
+                  <Button
+                    onClick={async () => {
+                      if (!eventId) return;
+                      setButtonLoading("quote");
+                      try {
+                        const data = await fetchEmailTemplate(
+                          String(eventId),
+                          "SEND QUOTE-CONFIRMED",
+                        );
+                        setModalTemplate(data?.email ?? null);
+                        setModalCompanies(data?.companies ?? null);
+                        setSendMode("quote");
+                        setShowModal(true);
+                      } catch {
+                        toast.error("Failed to load email template");
+                      } finally {
+                        setButtonLoading(null);
+                      }
+                    }}
+                    loading={buttonLoading === "quote"}
+                  >
+                    Send Quote
+                  </Button>
+                )}
                 <Button
                   loading={isDownloadingInvoice}
                   onClick={handleDownloadInvoice}
                 >
                   Download Invoice
                 </Button>
-                <Button
-                  onClick={async () => {
-                    if (!eventId) return;
-                    setButtonLoading("invoice");
-                    try {
-                      const data = await fetchEmailTemplate(
-                        String(eventId),
-                        "SEND INVOICE-OPEN",
-                      );
-                      setModalTemplate(data?.email ?? null);
-                      setModalCompanies(data?.companies ?? null);
-                      setSendMode("invoice");
-                      setShowModal(true);
-                    } catch {
-                      toast.error("Failed to load email template");
-                    } finally {
-                      setButtonLoading(null);
-                    }
-                  }}
-                  loading={buttonLoading === "invoice"}
-                >
-                  Send Invoice
-                </Button>
-                {/* Additional top-level confirmed send invoice + refund buttons */}
-                <Button
-                  onClick={() => setShowRefundModal(true)}
-                >
-                  Refund
-                </Button>
-                <Button onClick={() => setShowDrawer(true)}>
-                  <MoreVertical size={14} />
-                </Button>
+                {!isClient && (
+                  <Button
+                    onClick={async () => {
+                      if (!eventId) return;
+                      setButtonLoading("invoice");
+                      try {
+                        const data = await fetchEmailTemplate(
+                          String(eventId),
+                          "SEND INVOICE-OPEN",
+                        );
+                        setModalTemplate(data?.email ?? null);
+                        setModalCompanies(data?.companies ?? null);
+                        setSendMode("invoice");
+                        setShowModal(true);
+                      } catch {
+                        toast.error("Failed to load email template");
+                      } finally {
+                        setButtonLoading(null);
+                      }
+                    }}
+                    loading={buttonLoading === "invoice"}
+                  >
+                    Send Invoice
+                  </Button>
+                )}
+                {/* Additional top-level confirmed send invoice + refund buttons —
+                    Admin only (see useRole import above) */}
+                {isAdmin && (
+                  <Button
+                    onClick={() => setShowRefundModal(true)}
+                  >
+                    Refund
+                  </Button>
+                )}
+                {isAdmin && (
+                  <Button onClick={() => setShowDrawer(true)}>
+                    <MoreVertical size={14} />
+                  </Button>
+                )}
               </>
             )}
           </div>
@@ -701,14 +721,19 @@ const ConfirmedEventsPage = () => {
           >
             {showNotes ? "Hide Notes" : "Show Notes"}
           </Button>
-          <Button
-            htmlType="button"
-            type="primary"
-            onClick={() => setShowPayments((v) => !v)}
-            className="px-3 py-1"
-          >
-            {showPayments ? "Hide Payments" : "Show Payments"}
-          </Button>
+          {/* Line-item payment history (Date/Amount/Reference) is Admin/Staff
+              only — the legacy Laravel CRM's Client view only ever shows an
+              aggregate total + outstanding figure, never per-payment records. */}
+          {!isClient && (
+            <Button
+              htmlType="button"
+              type="primary"
+              onClick={() => setShowPayments((v) => !v)}
+              className="px-3 py-1"
+            >
+              {showPayments ? "Hide Payments" : "Show Payments"}
+            </Button>
+          )}
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div
@@ -806,7 +831,11 @@ const ConfirmedEventsPage = () => {
           onCancel={() => setShowModal(false)}
         />
       )}
+      {/* mt-4: the Collapse sits outside the form above, so it doesn't get the
+          form's `space-y-4` — without this the accordion sits flush against
+          the payments/notes box whenever showPayments/showNotes is open. */}
       <Collapse
+        className="mt-4"
         bordered={false}
         expandIconPlacement="end"
         expandIcon={({ isActive }) => (

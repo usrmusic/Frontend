@@ -11,7 +11,6 @@ import {
 } from "@/src/components/Icons";
 import {
   TbReportSearch,
-  TbReportMedical,
   TbReportAnalytics,
   TbFileDownload,
   TbFileUpload,
@@ -26,6 +25,7 @@ import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import Avatar from "@/src/components/common/Avatar";
 import { useAuth } from "@/src/hooks/useAuth";
+import useRole from "@/src/hooks/useRole";
 
 // Sidebar visibility maps to the same permissions used by checkPermission()
 // on the Express backend, which mirror the @hasrole/can: gates from the
@@ -38,17 +38,11 @@ type LinkItem = {
   permissionAny?: string[];
 };
 
-type Group = {
-  key: string;
-  label: string;
-  icon: ReactNode;
-  children: LinkItem[];
-};
-
 const Sidebar = () => {
   const pathname = usePathname();
   const queryClient = useQueryClient();
   const { data: authUser, isLoading } = useAuth();
+  const { isClient } = useRole();
 
   const [tooltip, setTooltip] = useState<{
     label: string;
@@ -114,8 +108,7 @@ const Sidebar = () => {
     return permissions.some((p) => authUser.permissions?.includes(p));
   };
 
-  // Top-level priority links — always visible, never inside a folder.
-  // Dashboard is visible to all authenticated users; the rest are permission-gated.
+  // Priority links — always shown flat, never grouped.
   const standaloneLinks: LinkItem[] = [
     { href: "/dashboard", icon: <Dashboard />, label: "Dashboard" },
     { href: "/enquiry", icon: <Enquiry />, label: "Enquiry", permission: "new enquiry" },
@@ -125,20 +118,16 @@ const Sidebar = () => {
     { href: "/calendar", icon: <Calendar />, label: "Calendar", permission: "calendar" },
   ];
 
-  const groups: Group[] = [
-    {
-      key: "more",
-      label: "More",
-      icon: <MoreHorizontal size={20} />,
-      children: [
-        { href: "/completed-events", icon: <TbReportSearch size={20} />, label: "Completed Events", permission: "complete event" },
-        { href: "/file-upload", icon: <TbFileUpload size={20} />, label: "File Upload", permission: "file upload" },
-        { href: "/downloads", icon: <TbFileDownload size={20} />, label: "Downloads", permission: "downloads" },
-        // { href: "/suppliers-report", icon: <TbReportMedical size={20} />, label: "Suppliers Report", permission: "supplier reporting" },
-        { href: "/admin-report", icon: <TbReportAnalytics size={20} />, label: "Admin Report", permission: "admin reporting" },
-        { href: "/users?title=Users", icon: <Contacts />, label: "Users", permissionAny: ["user", "manage access"] },
-      ],
-    },
+  // Secondary links — tucked under a "More" toggle for Admin/Staff (who
+  // typically have every permission and would otherwise see a long list);
+  // a Client only ever has 1-2 of these anyway, so they're shown flat
+  // instead of hiding behind an extra click.
+  const moreLinks: LinkItem[] = [
+    { href: "/completed-events", icon: <TbReportSearch size={20} />, label: "Completed Events", permission: "complete event" },
+    { href: "/file-upload", icon: <TbFileUpload size={20} />, label: "File Upload", permission: "file upload" },
+    { href: "/downloads", icon: <TbFileDownload size={20} />, label: "Downloads", permission: "downloads" },
+    { href: "/admin-report", icon: <TbReportAnalytics size={20} />, label: "Admin Report", permission: "admin reporting" },
+    { href: "/users?title=Users", icon: <Contacts />, label: "Users", permissionAny: ["user", "manage access"] },
   ];
 
   const isAllowed = (item: LinkItem) => {
@@ -150,16 +139,14 @@ const Sidebar = () => {
   // While `/auth/me` is loading we render nothing in the gated slots — this
   // matches the Laravel server-rendered behavior where the menu is computed
   // before any markup is sent to the browser.
-  const visibleStandalone = isLoading ? [] : standaloneLinks.filter(isAllowed);
-  const visibleGroups = isLoading
-    ? []
-    : groups
-        .map((g) => ({ ...g, children: g.children.filter(isAllowed) }))
-        .filter((g) => g.children.length > 0);
+  const visiblePriority = isLoading ? [] : standaloneLinks.filter(isAllowed);
+  const visibleMore = isLoading ? [] : moreLinks.filter(isAllowed);
+  // Client: everything flat, no "More" toggle. Admin/Staff: secondary links
+  // tucked behind "More".
+  const visibleStandalone = isClient ? [...visiblePriority, ...visibleMore] : visiblePriority;
+  const groupedMore = isClient ? [] : visibleMore;
 
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => ({
-    more: false,
-  }));
+  const [moreOpen, setMoreOpen] = useState(false);
 
   return (
     <>
@@ -196,52 +183,48 @@ const Sidebar = () => {
             );
           })}
 
-          {visibleGroups.map((g) => {
-            const anyActive = g.children.some((c) => pathname.startsWith(c.href.split("?")[0]));
-            const open = !!openGroups[g.key];
-            return (
-              <div key={g.key} className="w-full">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!expanded) {
-                      setExpanded(true);
-                      handleToggle(true);
-                      setOpenGroups((s) => ({ ...s, [g.key]: true }));
-                      return;
-                    }
-                    setOpenGroups((s) => ({ ...s, [g.key]: !s[g.key] }));
-                  }}
-                  onMouseEnter={(e) => showTooltip(e, g.label)}
-                  onMouseMove={(e) => showTooltip(e, g.label)}
-                  onMouseLeave={hideTooltip}
-                  className={`group relative flex w-full items-center ${expanded ? "justify-start gap-3 px-3 py-2 rounded-md" : "justify-center size-10 rounded-full"} hover:bg-black hover:text-white transition-colors duration-200 ${anyActive ? "bg-black text-white" : ""}`}
-                >
-                  {g.icon}
-                  <span className={`text-sm transition-all duration-300 overflow-hidden whitespace-nowrap ${expanded ? "max-w-[200px] opacity-100 ml-2" : "max-w-0 opacity-0 ml-0"}`}>{g.label}</span>
-                </button>
+          {groupedMore.length > 0 && (
+            <div className="w-full">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!expanded) {
+                    setExpanded(true);
+                    handleToggle(true);
+                    setMoreOpen(true);
+                    return;
+                  }
+                  setMoreOpen((s) => !s);
+                }}
+                onMouseEnter={(e) => showTooltip(e, "More")}
+                onMouseMove={(e) => showTooltip(e, "More")}
+                onMouseLeave={hideTooltip}
+                className={`group relative flex w-full items-center ${expanded ? "justify-start gap-3 px-3 py-2 rounded-md" : "justify-center size-10 rounded-full"} hover:bg-black hover:text-white transition-colors duration-200 ${groupedMore.some((c) => pathname.startsWith(c.href.split("?")[0])) ? "bg-black text-white" : ""}`}
+              >
+                <MoreHorizontal size={20} />
+                <span className={`text-sm transition-all duration-300 overflow-hidden whitespace-nowrap ${expanded ? "max-w-[200px] opacity-100 ml-2" : "max-w-0 opacity-0 ml-0"}`}>More</span>
+              </button>
 
-                <div className={`${open && expanded ? "pl-8 mt-2" : "hidden"}`}>
-                  {g.children.map((c, idx) => {
-                    const isActive = pathname.startsWith(c.href.split("?")[0]);
-                    return (
-                      <Link
-                        key={`${g.key}-child-${idx}`}
-                        href={c.href}
-                        onMouseEnter={(e) => showTooltip(e, c.label)}
-                        onMouseMove={(e) => showTooltip(e, c.label)}
-                        onMouseLeave={hideTooltip}
-                        className={`group relative flex w-full items-center justify-start gap-3 px-3 py-2 rounded-md text-sm hover:bg-black hover:text-white transition-colors duration-200 ${isActive ? "bg-black text-white" : "text-gray-600"}`}
-                      >
-                        {c.icon}
-                        <span className="overflow-hidden whitespace-nowrap">{c.label}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
+              <div className={`${moreOpen && expanded ? "pl-8 mt-2" : "hidden"}`}>
+                {groupedMore.map((c, idx) => {
+                  const isActive = pathname.startsWith(c.href.split("?")[0]);
+                  return (
+                    <Link
+                      key={`more-${idx}`}
+                      href={c.href}
+                      onMouseEnter={(e) => showTooltip(e, c.label)}
+                      onMouseMove={(e) => showTooltip(e, c.label)}
+                      onMouseLeave={hideTooltip}
+                      className={`group relative flex w-full items-center justify-start gap-3 px-3 py-2 rounded-md text-sm hover:bg-black hover:text-white transition-colors duration-200 ${isActive ? "bg-black text-white" : "text-gray-600"}`}
+                    >
+                      {c.icon}
+                      <span className="overflow-hidden whitespace-nowrap">{c.label}</span>
+                    </Link>
+                  );
+                })}
               </div>
-            );
-          })}
+            </div>
+          )}
 
           </div>
 
