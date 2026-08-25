@@ -30,6 +30,7 @@ import {
   fetchEmailTemplate,
 } from "@/src/api/enquiry";
 import SendBrochureModal from "../open-enquiry/SendBrochure";
+import useRole from "@/src/hooks/useRole";
 import dayjs from "dayjs";
 import { parseTimeTo24 } from "@/src/utils/timeConverter";
 
@@ -259,6 +260,7 @@ const NewEnquiryPage = () => {
   const editId = searchParams?.get("select") ?? null;
   const queryClient = useQueryClient();
   const { data: enquiryItem } = useGetEnquiry(editId ?? undefined);
+  const { isAdmin, userId } = useRole();
 
   // /user/get-dropdown excludes soft-deleted users, so an enquiry whose
   // assigned DJ has since left/been deactivated has a dj_id that matches NO
@@ -269,13 +271,16 @@ const NewEnquiryPage = () => {
   // GET /enquiry/:id) guarantees the Select always has a matching option for
   // whichever DJ this specific enquiry is actually assigned to.
   const djOptionsData = useMemo(() => {
-    const base = djDropdownData ?? [];
+    // Staff only ever books their own package — the full DJ roster is an
+    // Admin-only concern (assigning enquiries to whichever DJ is free).
+    const full = djDropdownData ?? [];
+    const base = isAdmin ? full : full.filter((u) => u.id === userId);
     const editedDj = enquiryItem?.users_events_dj_idTousers;
     if (editedDj?.id != null && !base.some((u) => u.id === editedDj.id)) {
       return [...base, editedDj];
     }
     return base;
-  }, [djDropdownData, enquiryItem]);
+  }, [djDropdownData, enquiryItem, isAdmin, userId]);
 
   // Keep lastEnquiryIdRef in sync with editId
   useEffect(() => {

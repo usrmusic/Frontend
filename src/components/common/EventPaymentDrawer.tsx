@@ -32,9 +32,18 @@ interface EventPaymentDrawerProps {
   eventId: string;
   open: boolean;
   onClose: () => void;
+  // Add Payment is Admin-only (matches the legacy Laravel CRM); Package
+  // Summary, Rig List, and the read-only Payment Summary stay visible to
+  // Staff too — only the form itself is gated.
+  canAddPayment?: boolean;
+  // Client gets a stripped-down view — matches Laravel's Client-facing
+  // sidebar panel (sidebar_ui_new.blade.php): equipment checklist +
+  // read-only Total/Deposit/Outstanding only. No Edit (routes into the
+  // internal enquiry-builder), no Print/Rig List (never a Client feature).
+  isClientView?: boolean;
 }
 
-export default function EventPaymentDrawer({ eventId, open, onClose }: EventPaymentDrawerProps) {
+export default function EventPaymentDrawer({ eventId, open, onClose, canAddPayment = true, isClientView = false }: EventPaymentDrawerProps) {
   const router = useRouter();
   const { data: selectedEventData } = useGetConfirmEvent(eventId);
   const { mutate: addPaymentMutation, isPending: isAddingPayment } = useAddConfirmPayment();
@@ -129,25 +138,29 @@ export default function EventPaymentDrawer({ eventId, open, onClose }: EventPaym
                       <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Package Summary</p>
                       <p className="font-semibold text-gray-900 mt-1">{selectedEventData?.data?.dj_package_name || "DJ Package"}</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setPrintRig(true)}
-                        className="p-1.5 text-slate-500 hover:text-primary hover:bg-white rounded-lg transition-colors"
-                        aria-label="Print rig list"
-                        title="Print rig list and notes"
-                      >
-                        <Printer size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        className="px-3 py-1.5 bg-primary hover:bg-primary/90 text-white text-xs font-medium rounded-lg transition-colors"
-                        onClick={() => router.push(`/enquiry?select=${encodeURIComponent(String(eventId))}`)}
-                        title="Edit enquiry details"
-                      >
-                        Edit
-                      </button>
-                    </div>
+                    {/* Print (rig list) and Edit (routes into the internal
+                        enquiry builder) — never a Client feature. */}
+                    {!isClientView && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPrintRig(true)}
+                          className="p-1.5 text-slate-500 hover:text-primary hover:bg-white rounded-lg transition-colors"
+                          aria-label="Print rig list"
+                          title="Print rig list and notes"
+                        >
+                          <Printer size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          className="px-3 py-1.5 bg-primary hover:bg-primary/90 text-white text-xs font-medium rounded-lg transition-colors"
+                          onClick={() => router.push(`/enquiry?select=${encodeURIComponent(String(eventId))}`)}
+                          title="Edit enquiry details"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Equipment Names Only */}
@@ -167,8 +180,12 @@ export default function EventPaymentDrawer({ eventId, open, onClose }: EventPaym
                   </div>
                 </div>
 
-                {/* Rig List Section — plain anchor-style toggle when collapsed; the
-                    boxed panel only mounts once expanded, so no empty box lingers. */}
+                {/* Rig List Section — never a Client feature (matches the
+                    legacy Laravel CRM's sidebar_ui_new.blade.php, which hides
+                    the mini rig-list accordion specifically for role_id 4).
+                    Plain anchor-style toggle when collapsed; the boxed panel
+                    only mounts once expanded, so no empty box lingers. */}
+                {!isClientView && (
                 <div>
                   <div className="flex justify-end">
                     <button
@@ -203,8 +220,10 @@ export default function EventPaymentDrawer({ eventId, open, onClose }: EventPaym
                     </div>
                   )}
                 </div>
+                )}
 
-                {/* Payment Form Section */}
+                {/* Payment Form Section — Admin only */}
+                {canAddPayment && (
                 <div className="space-y-4">
                   <h4 className="text-sm font-semibold text-gray-900">Add Payment</h4>
 
@@ -279,6 +298,7 @@ export default function EventPaymentDrawer({ eventId, open, onClose }: EventPaym
                     </div>
                   </form>
                 </div>
+                )}
 
                 {/* Payment Summary */}
                 <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 space-y-3">

@@ -47,9 +47,14 @@ const BADGE_CLASS = "shrink-0 size-9 2xl:size-10 object-contain";
 /* Cards sit on the same 12-column grid as the panels below them, so at `xl`
    the first two line up edge-to-edge with Event Overview and the last two with
    the Sales Analytics / Pending Payment pair. Below `xl` the panels collapse to
-   one column, so the cards fall back to two-up and then one-up. */
-const CARD_CLASS =
-  "col-span-12 sm:col-span-6 xl:col-span-3 shadow-sm p-4 2xl:p-5 flex gap-3 2xl:gap-4 items-center min-w-0";
+   one column, so the cards fall back to two-up and then one-up.
+
+   When Turn Over/Profit are hidden (non-Admin), only 2 cards render — at
+   quarter-width each that leaves half the row empty, so those 2 take half
+   the row each instead (col-span-6) to fill it, matching Admin's "two pairs"
+   layout instead of "two cards, then a gap". */
+const CARD_CLASS = (full: boolean) =>
+  `col-span-12 sm:col-span-6 ${full ? "xl:col-span-6" : "xl:col-span-3"} shadow-sm p-4 2xl:p-5 flex gap-3 2xl:gap-4 items-center min-w-0`;
 
 const LABEL_CLASS = "text-sm 2xl:text-base truncate";
 
@@ -119,7 +124,7 @@ export default function StatCardsRow({
   return (
     <div className="grid grid-cols-12 gap-4">
       {/* Events total */}
-      <Card variant="white" className={CARD_CLASS}>
+      <Card variant="white" className={CARD_CLASS(!showFinancialCards)}>
         {isLoading ? (
           <div className="w-full flex items-center justify-center">
             <Spin size="large" />
@@ -142,7 +147,7 @@ export default function StatCardsRow({
       </Card>
 
       {/* Remaining */}
-      <Card variant="white" className={CARD_CLASS}>
+      <Card variant="white" className={CARD_CLASS(!showFinancialCards)}>
         {isLoading ? (
           <div className="w-full flex items-center justify-center">
             <Spin size="large" />
@@ -176,7 +181,7 @@ export default function StatCardsRow({
         <>
           <Card
             variant="white"
-            className={CARD_CLASS}
+            className={CARD_CLASS(false)}
             onClick={isLoading ? undefined : () => handleToggle("turnOverStat")}
           >
             {isLoading ? (
@@ -219,7 +224,7 @@ export default function StatCardsRow({
 
           <Card
             variant="green"
-            className={CARD_CLASS}
+            className={CARD_CLASS(false)}
             onClick={isLoading ? undefined : () => handleToggle("profitStat")}
           >
             {isLoading ? (

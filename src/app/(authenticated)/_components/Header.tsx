@@ -10,9 +10,14 @@ import { useDebounce } from "@/src/hooks/useDebounce";
 import { useDashboardDropdown } from "@/src/api/dasboard";
 import { MagnifyingGlass, Plus } from "@/src/components/Icons";
 import Link from "next/link";
+import useRole from "@/src/hooks/useRole";
 
 const Header = () => {
-  
+  // Creating an enquiry is a staff-facing action — a Client submits new
+  // enquiries via the public website form (publicEnquiry.ts), not this
+  // authenticated quick-action button.
+  const { isClient } = useRole();
+
   const [year, setYear] = useState<number>(new Date().getFullYear());
   const [search, setSearch] = useState("");
   const router = useRouter();
@@ -187,11 +192,13 @@ const Header = () => {
             />
           </div>
         </ConfigProvider>
-        <Link href={"/enquiry"}>
-          <button className="size-12 flex items-center justify-center bg-white rounded-full">
-            <Plus />
-          </button>
-        </Link>
+        {!isClient && (
+          <Link href={"/enquiry"}>
+            <button className="size-12 flex items-center justify-center bg-white rounded-full">
+              <Plus />
+            </button>
+          </Link>
+        )}
       </div>
     </div>
   );
