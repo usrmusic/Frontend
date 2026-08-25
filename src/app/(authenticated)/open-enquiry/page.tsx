@@ -35,6 +35,7 @@ import SendBrochureModal from "./SendBrochure";
 import { toast } from "react-toastify";
 import { fetchEmailTemplate } from "@/src/api/enquiry";
 import { useCompanyDropdown } from "@/src/api/dropdown";
+import useRole from "@/src/hooks/useRole";
 // using Ant Design inputs for date/amount
 
 const initialParams: {
@@ -151,6 +152,10 @@ function AddNoteControl({
 }
 
 const OpenEnquiryPage = () => {
+  // Confirming a deposit is how an enquiry becomes a confirmed event —
+  // Admin/Super Admin only, matching Laravel's Deposit form
+  // (@hasrole('Super Admin|Admin')) and its Confirm Event button.
+  const { isAdmin } = useRole();
   const [params, setParams] = useState(initialParams);
   const [modalOpen, setModalOpen] = useState(false);
   // Side panel is inline and shown by default; the 3-dot button toggles it.
@@ -886,7 +891,8 @@ const OpenEnquiryPage = () => {
 
               {/* Record Deposit — shared, persistent action pinned right
                   under the tabs (visible regardless of which tab is active),
-                  matching the original pre-redesign position. */}
+                  matching the original pre-redesign position. Admin only. */}
+              {isAdmin && (
               <div className="shrink-0 p-5 border-b border-gray-100">
                 <p className="text-sm font-semibold text-gray-900 mb-2.5">Record Deposit</p>
                 <form className="space-y-2.5" onSubmit={formik.handleSubmit}>
@@ -944,6 +950,7 @@ const OpenEnquiryPage = () => {
                   </Button>
                 </form>
               </div>
+              )}
 
               <div className="flex-1 min-h-0 flex flex-col">
                 {/* Tab content — scrolls independently of Record Deposit

@@ -409,7 +409,11 @@ const ConfirmedEventsPage = () => {
                     Refund
                   </Button>
                 )}
-                {isAdmin && (
+                {/* Drawer trigger (Package Summary / Rig List / Payment Summary) —
+                    everyone but Client, matching Laravel's sidebar panel;
+                    the Add Payment form inside stays Admin-only via
+                    canAddPayment on the drawer itself. */}
+                {!isClient && (
                   <Button onClick={() => setShowDrawer(true)}>
                     <MoreVertical size={14} />
                   </Button>
@@ -735,7 +739,10 @@ const ConfirmedEventsPage = () => {
             </Button>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        {/* Client never gets a Payments box (see !isClient above), so the
+            grid collapses to 1 column for them instead of leaving an empty,
+            dead second column at half width. */}
+        <div className={`grid ${isClient ? "grid-cols-1" : "grid-cols-2"} gap-4`}>
           <div
             className={`overflow-hidden rounded-xl bg-white border border-gray-200 transition-all duration-300 ease-in-out ${
               showNotes
@@ -769,7 +776,7 @@ const ConfirmedEventsPage = () => {
             </div>
           </div>
 
-          <div
+          {!isClient && <div
             className={`overflow-hidden bg-white rounded-xl border border-gray-200 transition-all duration-300 ease-in-out ${
               showPayments
                 ? "max-h-[800px] opacity-100 p-4"
@@ -818,7 +825,7 @@ const ConfirmedEventsPage = () => {
                 </table>
               </div>
             )}
-          </div>
+          </div>}
         </div>
       </form>
       {showModal && (
@@ -831,26 +838,30 @@ const ConfirmedEventsPage = () => {
           onCancel={() => setShowModal(false)}
         />
       )}
-      {/* mt-4: the Collapse sits outside the form above, so it doesn't get the
-          form's `space-y-4` — without this the accordion sits flush against
-          the payments/notes box whenever showPayments/showNotes is open. */}
-      <Collapse
-        className="mt-4"
-        bordered={false}
-        expandIconPlacement="end"
-        expandIcon={({ isActive }) => (
-          <ChevronDown
-            size={14}
-            className={`transition-transform duration-300 ${isActive ? "rotate-180" : ""}`}
-          />
-        )}
-        style={{ background: "transparent" }}
-        items={getItems(panelStyle)}
-      />
+      {/* mt-4 on a wrapper div (not the Collapse's own className prop, which
+          AntD doesn't reliably forward to a plain margin on its root) — the
+          Collapse sits outside the form above, so it doesn't get the form's
+          `space-y-4`; without this the accordion sits flush against the
+          payments/notes box whenever showPayments/showNotes is open. */}
+      <div className="mt-4">
+        <Collapse
+          bordered={false}
+          expandIconPlacement="end"
+          expandIcon={({ isActive }) => (
+            <ChevronDown
+              size={14}
+              className={`transition-transform duration-300 ${isActive ? "rotate-180" : ""}`}
+            />
+          )}
+          style={{ background: "transparent" }}
+          items={getItems(panelStyle)}
+        />
+      </div>
       <EventPaymentDrawer
         eventId={eventId}
         open={showDrawer}
         onClose={() => setShowDrawer(false)}
+        canAddPayment={isAdmin}
       />
 
         {/* Send Invoice Modal */}

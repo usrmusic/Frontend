@@ -32,9 +32,13 @@ interface EventPaymentDrawerProps {
   eventId: string;
   open: boolean;
   onClose: () => void;
+  // Add Payment is Admin-only (matches the legacy Laravel CRM); Package
+  // Summary, Rig List, and the read-only Payment Summary stay visible to
+  // Staff too — only the form itself is gated.
+  canAddPayment?: boolean;
 }
 
-export default function EventPaymentDrawer({ eventId, open, onClose }: EventPaymentDrawerProps) {
+export default function EventPaymentDrawer({ eventId, open, onClose, canAddPayment = true }: EventPaymentDrawerProps) {
   const router = useRouter();
   const { data: selectedEventData } = useGetConfirmEvent(eventId);
   const { mutate: addPaymentMutation, isPending: isAddingPayment } = useAddConfirmPayment();
@@ -204,7 +208,8 @@ export default function EventPaymentDrawer({ eventId, open, onClose }: EventPaym
                   )}
                 </div>
 
-                {/* Payment Form Section */}
+                {/* Payment Form Section — Admin only */}
+                {canAddPayment && (
                 <div className="space-y-4">
                   <h4 className="text-sm font-semibold text-gray-900">Add Payment</h4>
 
@@ -279,6 +284,7 @@ export default function EventPaymentDrawer({ eventId, open, onClose }: EventPaym
                     </div>
                   </form>
                 </div>
+                )}
 
                 {/* Payment Summary */}
                 <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 space-y-3">
