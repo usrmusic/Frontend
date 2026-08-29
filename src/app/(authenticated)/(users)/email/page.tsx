@@ -6,7 +6,6 @@ import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import { TableColumnsType } from "antd";
-import { Pencil } from "lucide-react";
 import { useState } from "react";
 import { CSVLink } from "react-csv";
 import EmailModal from "./EmailModal";
@@ -58,16 +57,6 @@ const EmailPage = () => {
       key: "body",
       width: "70%",
     },
-    {
-      title: "Action",
-      fixed: "right",
-      width: "5%",
-      render: (_, record) => (
-        <button onClick={() => openEdit(record)}>
-          <Pencil size={14} />
-        </button>
-      ),
-    },
   ];
 
   const csvHeaders = [
@@ -116,6 +105,7 @@ const EmailPage = () => {
         loading={isLoading}
         onRow={(record) => ({
           onDoubleClick: () => openEdit(record),
+          className: "cursor-pointer select-none",
         })}
         pagination={{
           pageSize: params.perPage,

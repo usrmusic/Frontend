@@ -18,7 +18,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useFormik } from "formik";
 import Input from "@/src/components/Input";
-import { useRigListEventsDropdown } from "@/src/api/dropdown";
+import { useConfirmEventsDropdown } from "@/src/api/dropdown";
 import { EventsDropdownItem } from "@/src/types/types";
 import { CSVLink } from "react-csv";
 
@@ -57,7 +57,7 @@ const FileUploadPage = () => {
     ...params,
     search: debouncedSearch,
   });
-  const { data: eventsDropdown } = useRigListEventsDropdown();
+  const { data: eventsDropdown } = useConfirmEventsDropdown();
 
   const eventDropdownOptions = (
     eventsDropdown?.data as EventsDropdownItem[]

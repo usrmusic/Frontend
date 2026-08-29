@@ -9,15 +9,21 @@ import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
 import { useDebounce } from "@/src/hooks/useDebounce";
-import { notification, TableColumnsType } from "antd";
+import { notification, TableColumnsType, TableProps } from "antd";
 import { useState } from "react";
 import UserModal from "./UserModal";
 import { KeyRound, Pencil } from "lucide-react";
-import { TableRowSelection } from "antd/es/table/interface";
+import { TableRowSelection, SorterResult } from "antd/es/table/interface";
 import AlertModal from "@/src/components/common/AlertModal";
 import { CSVLink } from "react-csv";
 
-const initialParams = {
+const initialParams: {
+  page: number;
+  perPage: number;
+  search: string;
+  sort_by?: string;
+  sort_dir?: "asc" | "desc";
+} = {
   page: 1,
   perPage: 10,
   search: "",
@@ -71,6 +77,19 @@ const UsersPage = () => {
     onChange: onSelectChange,
   };
 
+  const handleTableChange: TableProps<any>["onChange"] = (
+    _pagination,
+    _filters,
+    sorter,
+  ) => {
+    const s = Array.isArray(sorter) ? sorter[0] : (sorter as SorterResult<any>);
+    setParams((p) => ({
+      ...p,
+      sort_by: s?.order && typeof s.field === "string" ? s.field : undefined,
+      sort_dir: s?.order === "ascend" ? "asc" : s?.order === "descend" ? "desc" : undefined,
+    }));
+  };
+
   const handleDelete = () => {
     deleteUser.mutate(
       { ids: selectedRowKeys, force: false },
@@ -91,16 +110,19 @@ const UsersPage = () => {
       title: "Name",
       dataIndex: "name",
       key: "name",
+      sorter: true,
     },
     {
       title: "Email",
       dataIndex: "email",
       key: "email",
+      sorter: true,
     },
     {
       title: "Contact Number",
       dataIndex: "contact_number",
       key: "contact_number",
+      sorter: true,
     },
     {
       title: "Password",
@@ -111,6 +133,7 @@ const UsersPage = () => {
       title: "Address",
       dataIndex: "address",
       key: "address",
+      sorter: true,
     },
     {
       title: "Role",
@@ -220,6 +243,7 @@ const UsersPage = () => {
         columns={columns}
         rowSelection={rowSelection}
         dataSource={usersData?.data}
+        onChange={handleTableChange}
         pagination={{
           pageSize: params.perPage,
           current: params.page,

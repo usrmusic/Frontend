@@ -5,15 +5,21 @@ import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
 import { useDebounce } from "@/src/hooks/useDebounce";
-import { notification, TableColumnsType } from "antd";
+import { notification, TableColumnsType, TableProps } from "antd";
 import { useState } from "react";
 import VenueModal from "./VenueModal";
 import { Pencil } from "lucide-react";
 import AlertModal from "@/src/components/common/AlertModal";
-import { TableRowSelection } from "antd/es/table/interface";
+import { TableRowSelection, SorterResult } from "antd/es/table/interface";
 import { CSVLink } from "react-csv";
 
-const initialParams = {
+const initialParams: {
+  page: number;
+  perPage: number;
+  search: string;
+  sort_by?: string;
+  sort_dir?: "asc" | "desc";
+} = {
   page: 1,
   perPage: 10,
   search: "",
@@ -50,6 +56,19 @@ const VenuesPage = () => {
     onChange: onSelectChange,
   };
 
+  const handleTableChange: TableProps<any>["onChange"] = (
+    _pagination,
+    _filters,
+    sorter,
+  ) => {
+    const s = Array.isArray(sorter) ? sorter[0] : (sorter as SorterResult<any>);
+    setParams((p) => ({
+      ...p,
+      sort_by: s?.order && typeof s.field === "string" ? s.field : undefined,
+      sort_dir: s?.order === "ascend" ? "asc" : s?.order === "descend" ? "desc" : undefined,
+    }));
+  };
+
   const handleDelete = () => {
     deleteVenue.mutate(
       { ids: selectedRowKeys, force: false },
@@ -70,26 +89,31 @@ const VenuesPage = () => {
       title: "Venue",
       dataIndex: "venue",
       key: "venue",
+      sorter: true,
     },
     {
       title: "Stage",
       dataIndex: "stage",
       key: "stage",
+      sorter: true,
     },
     {
       title: "Power",
       dataIndex: "power",
       key: "power",
+      sorter: true,
     },
     {
       title: "Access",
       dataIndex: "access",
       key: "access",
+      sorter: true,
     },
     {
       title: "Notes",
       dataIndex: "notes",
       key: "notes",
+      sorter: true,
     },
     {
       title: "Action",
@@ -160,6 +184,7 @@ const VenuesPage = () => {
         columns={columns}
         dataSource={venueData?.data}
         loading={isLoading}
+        onChange={handleTableChange}
         pagination={{
           pageSize: params.perPage,
           current: params.page,

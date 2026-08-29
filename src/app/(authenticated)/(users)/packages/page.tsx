@@ -222,8 +222,14 @@ const PackagesPage = () => {
   const columns: TableColumnsType = [
     {
       title: "Name",
+      // Kept as a plain string (not the dotted path some AntD versions
+      // resolve as a nested accessor) purely so `sorter.field` reports
+      // "users.name" for the backend's dot-notation relation sort — the
+      // cell itself is still read from the full row via `record` below.
+      dataIndex: "users.name",
       key: "name",
-      render: (data) => <>{data.users.name}</>,
+      sorter: true,
+      render: (_, record) => <>{record.users.name}</>,
     },
     {
       title: "Package Name",

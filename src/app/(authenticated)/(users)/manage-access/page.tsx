@@ -17,8 +17,12 @@ import AccessDenied from "@/src/components/common/AccessDenied";
 const ManageAccessPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"search" | "permission">("search");
+  // Both tabs need this — Roles renders `.roles` directly, Permissions needs
+  // `.roles` for its dropdown and `.permissions` for the checklist — so it
+  // must always be enabled, not just once the user switches to Permissions
+  // (which was leaving the Roles tab's own table empty on first load).
   const { data: manageAccessData, isLoading: manageAccessLoading } =
-    useManageAccess(activeTab === "permission");
+    useManageAccess();
   const [selectedRole, setSelectedRole] = useState<string | undefined>(
     undefined,
   );
