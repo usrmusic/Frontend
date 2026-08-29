@@ -4,12 +4,12 @@ import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
-import { DatePicker, Select } from "antd";
-import { RefreshCw, Eye, EyeOff } from "lucide-react";
+import { DatePicker, Select, Dropdown, Checkbox } from "antd";
+import { RefreshCw, Eye, EyeOff, Columns3 } from "lucide-react";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import Image from "next/image";
 import Link from "next/link";
-import useColumns from "./useColumns";
+import useColumns, { COLUMN_LABELS, DEFAULT_VISIBLE_COLUMNS } from "./useColumns";
 import { useAdminReport } from "@/src/api/reports";
 import SkeletonInput from "antd/es/skeleton/Input";
 import dayjs from "dayjs";
@@ -52,6 +52,7 @@ const Page = () => {
   const [selectedEventStatus, setSelectedEventStatus] = useState<string>("");
   const [colFilters, setColFilters] = useState<Record<string, string>>({});
   const debouncedColFilters = useDebounce(colFilters, 600);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(DEFAULT_VISIBLE_COLUMNS);
 
   // Merge base filters with debounced column filters at query time — no cascading setState
   const activeFilters: Filters = {
@@ -61,7 +62,8 @@ const Page = () => {
 
   const { data: reportData, isLoading } = useAdminReport(activeFilters);
 
-  const { columns } = useColumns(colFilters, setColFilters);
+  const { columns: allColumns } = useColumns(colFilters, setColFilters);
+  const columns = allColumns.filter((c) => visibleColumns.includes(String(c.key)));
 
   const statsData = reportData?.stats;
 
@@ -253,6 +255,38 @@ const Page = () => {
             >
               Reset Filters
             </Button>
+            <Dropdown
+              trigger={["click"]}
+              popupRender={() => (
+                <div className="bg-white rounded-lg shadow-lg p-3 min-w-[220px]">
+                  {allColumns.map((c) => {
+                    const key = String(c.key);
+                    return (
+                      <label
+                        key={key}
+                        className="flex items-center gap-2 py-1 text-sm cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={visibleColumns.includes(key)}
+                          onChange={(e) =>
+                            setVisibleColumns((prev) =>
+                              e.target.checked
+                                ? [...prev, key]
+                                : prev.filter((k) => k !== key),
+                            )
+                          }
+                        />
+                        {COLUMN_LABELS[key] ?? key}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            >
+              <Button className="h-10!" icon={<Columns3 size={14} />}>
+                Columns
+              </Button>
+            </Dropdown>
           </div>
         </div>
         <DataTable

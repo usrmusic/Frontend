@@ -1,6 +1,36 @@
 import { TableColumnsType, Select } from "antd";
 import dayjs from "dayjs";
 
+// Plain-text label per column, for the toggle dropdown — column `title` is
+// JSX (label + inline filter input), not usable as a checklist label.
+export const COLUMN_LABELS: Record<string, string> = {
+  company_name: "Company",
+  client_name: "Client",
+  event_date: "Event Date",
+  event_status: "Event Status",
+  dj: "DJ",
+  venue_name: "Venue",
+  total_price: "Total Price",
+  total_cost: "Cost",
+  extra_cost: "Extra Cost",
+  profit: "Profit",
+  payment_received: "Payment Received",
+  payment_remaining: "Payment Outstanding",
+};
+
+// Kept lean on first load — the detailed cost breakdown columns are opt-in
+// via the toggle dropdown rather than shown by default.
+export const DEFAULT_VISIBLE_COLUMNS = [
+  "company_name",
+  "client_name",
+  "event_date",
+  "event_status",
+  "dj",
+  "venue_name",
+  "total_price",
+  "profit",
+];
+
 const useColumns = (
   colFilters: Record<string, string>,
   setColFilters: React.Dispatch<React.SetStateAction<Record<string, string>>>,
