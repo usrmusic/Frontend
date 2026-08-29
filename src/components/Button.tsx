@@ -14,14 +14,21 @@ const Button = ({
   ...props
 }: BtnProps) => {
   const baseClasses = "text-sm!";
+  // AntD's default disabled look (pale grey-on-grey) reads as barely-there
+  // against this app's coloured toolbars — make "off" unambiguous (solid
+  // grey, no shadow) so it doesn't get mistaken for a rendering glitch, and
+  // let the enabled state keep its normal solid appearance so the contrast
+  // between the two is obvious at a glance.
+  const disabledClasses =
+    "disabled:opacity-100! disabled:bg-gray-200! disabled:text-gray-400! disabled:border-gray-200! disabled:shadow-none!";
 
   return (
     <AntdButton
       {...props}
-      className={twMerge(baseClasses, className)}
+      className={twMerge(baseClasses, disabledClasses, className)}
       style={{
         borderRadius: 9999,
-        boxShadow: showShadow ? "0px 4px 4px 0px #0000001A" : "",
+        boxShadow: showShadow && !props.disabled ? "0px 4px 4px 0px #0000001A" : "",
         ...style,
       }}
     >

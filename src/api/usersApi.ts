@@ -7,8 +7,15 @@ import { ApiResponse } from "../types/types";
 
 type QueryParams = {
   page: number;
-  perPage: number;
+  // "all" (equipment list only) skips pagination so drag-and-drop reordering
+  // has every row in view at once.
+  perPage: number | "all";
   search: string;
+  status?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  sort_by?: string;
+  sort_dir?: "asc" | "desc";
 };
 
 type Venue = {
@@ -51,6 +58,7 @@ type Packages = {
   package_name: string;
   cost_price: number;
   sell_price: number;
+  status?: string;
   users: {
     name: string;
     email: string;
@@ -173,6 +181,7 @@ type PackagePayload = {
   sell_price: number;
   cost_price: number;
   package_name: string;
+  status?: "ACTIVE" | "INACTIVE";
   equipments?: { equipment_id: number; quantity: number; equipment_order_id?: number }[];
 };
 
@@ -313,6 +322,35 @@ export const useEmail = (params: QueryParams) => {
       return response.data;
     },
     enabled: !!params,
+  });
+};
+
+export const useUpdateEmailContent = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: {
+      id: string | number;
+      subject: string;
+      body: string;
+    }) => {
+      try {
+        const { id, ...rest } = payload;
+        const response = await AxiosInstance.post(`/email-content/${id}`, rest);
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["email-content"] });
+    },
+    onError: (error) => {
+      console.error("update email content failed:", error.message);
+    },
   });
 };
 
@@ -540,8 +578,10 @@ export const useEditPackage = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    // Expect payload to contain an id property along with other client properties
-    mutationFn: async (payload: PackagePayload & { id: number | string }) => {
+    // Expect payload to contain an id property along with other client properties.
+    // Partial<> so a status-only toggle doesn't have to resend every field —
+    // the backend fills in anything omitted from the existing record.
+    mutationFn: async (payload: Partial<PackagePayload> & { id: number | string }) => {
       try {
         const { id, ...rest } = payload;
         const response = await AxiosInstance.put(`/package/${id}`, rest);
@@ -963,6 +1003,19 @@ export const useEquipment = (params: QueryParams) => {
       return response.data;
     },
     enabled: !!params,
+  });
+};
+
+export const useReorderEquipment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: (number | string)[]) => {
+      const response = await AxiosInstance.post("/equipment/reorder", { ids });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["equipment"] });
+    },
   });
 };
 

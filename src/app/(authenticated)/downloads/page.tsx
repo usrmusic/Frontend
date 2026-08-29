@@ -6,6 +6,7 @@ import AlertModal from "@/src/components/common/AlertModal";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
 import { useDebounce } from "@/src/hooks/useDebounce";
+import { formatFileSize } from "@/src/utils/formatFileSize";
 import { TableColumnsType } from "antd";
 import { FileUp, Download, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -50,6 +51,7 @@ const DownloadsPage = () => {
       title: "Size",
       dataIndex: "size",
       key: "size",
+      render: (bytes: number) => formatFileSize(bytes),
     },
     {
       title: "Actions",

@@ -137,8 +137,10 @@ const Header = () => {
               // Completed (3) and Cancelled (4) events both live on the same
               // completed-events page — there's no separate cancelled-events
               // page in this stack (same convention as the dashboard's
-              // Pending Payments card).
-              else if (statusId === 3 || statusId === '3' || statusId === 4 || statusId === '4') target = '/completed-events';
+              // Pending Payments card). Client can't access that page at
+              // all, so leave target at '/dashboard' rather than routing
+              // them into a 403.
+              else if (!isClient && (statusId === 3 || statusId === '3' || statusId === 4 || statusId === '4')) target = '/completed-events';
 
               // open-enquiry needs the exact id to auto-select the right
               // row (its text search can legitimately return more than one

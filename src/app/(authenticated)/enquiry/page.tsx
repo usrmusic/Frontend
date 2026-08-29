@@ -44,6 +44,7 @@ type EnquiryFormValues = {
   endTime: string;
   startTime: string;
   dj: { id: string | number; name: string };
+  eventType: string;
   depositAmount: string | number;
   notes: string;
   tellMeMore: string;
@@ -97,6 +98,8 @@ type CardsOpen = {
   extras: boolean;
 };
 
+const EVENT_TYPES = ["Wedding Reception", "Destination Wedding", "Corporate", "Jago/Sangeet", "Other"];
+
 const validationSchema = Yup.object({
   name: Yup.string()
     .max(100, "Name must be at most 100 characters")
@@ -121,6 +124,7 @@ const validationSchema = Yup.object({
   dj: Yup.object()
     .shape({ id: Yup.mixed(), name: Yup.string().max(100, "DJ name must be at most 100 characters") })
     .nullable(),
+  eventType: Yup.string(),
   depositAmount: Yup.number().min(0, "Deposit cannot be negative"),
   notes: Yup.string().max(500, "Notes must be at most 500 characters"),
   tellMeMore: Yup.string().max(500, "Additional information must be at most 500 characters"),
@@ -411,6 +415,7 @@ const NewEnquiryPage = () => {
         id: enquiryItem.dj_id ?? enquiryItem.users_events_dj_idTousers?.id ?? enquiryItem.dj?.id ?? "",
         name: enquiryItem.dj_name ?? enquiryItem.users_events_dj_idTousers?.name ?? enquiryItem.dj?.name ?? "",
       },
+      eventType: enquiryItem.event_type ?? "",
       depositAmount: (function (d) {
         if (d == null) return "";
         if (typeof d === "object") {
@@ -712,6 +717,7 @@ const NewEnquiryPage = () => {
     endTime: "",
     startTime: "",
     dj: { id: "", name: "" },
+    eventType: "",
     depositAmount: "",
     notes: "",
     tellMeMore: "",
@@ -826,6 +832,7 @@ const NewEnquiryPage = () => {
             dj_id: djId,
             dj_name: djName,
             dj_package_name: djPackageName,
+            event_type: values.eventType || null,
             total_cost: Number(totalPrice) || 0,
             dj_cost: djCost,
             equipment_data,
@@ -1257,7 +1264,8 @@ const NewEnquiryPage = () => {
 
                             {/* Right sub-column */}
                             <div className="flex h-full flex-col gap-4">
-                                                              <Field name="dj">
+                              <div className="grid grid-cols-2 gap-4">
+                                <Field name="dj">
                                   {(fieldProps: FieldProps) => (
                                     <div className="space-y-1">
                                       <label className="mb-1 block text-xs">Select DJ</label>
@@ -1304,6 +1312,23 @@ const NewEnquiryPage = () => {
                                     </div>
                                   )}
                                 </Field>
+                                <Field name="eventType">
+                                  {(fieldProps: FieldProps) => (
+                                    <div className="space-y-1">
+                                      <label className="mb-1 block text-xs">Event Type</label>
+                                      <AntSelect
+                                        className="h-10 w-full"
+                                        placeholder="Select event type"
+                                        allowClear
+                                        disabled={isSubmitting}
+                                        value={fieldProps.field.value || undefined}
+                                        onChange={(val) => setFieldValue("eventType", val ?? "")}
+                                        options={EVENT_TYPES.map((type) => ({ label: type, value: type }))}
+                                      />
+                                    </div>
+                                  )}
+                                </Field>
+                              </div>
                               <div className="grid grid-cols-2 gap-4">
                                 <Field name="eventDate">
                                   {() => (

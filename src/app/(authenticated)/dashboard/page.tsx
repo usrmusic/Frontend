@@ -11,8 +11,11 @@ import EventOverview from "./components/EventOverview";
 import SalesAnalytics from "./components/SalesAnalytics";
 import PendingPayments from "./components/PendingPayments";
 import DashboardTodos from "./components/DashboardTodos";
+import ClientFilesCard from "./components/ClientFilesCard";
+import { useRole } from "@/src/hooks/useRole";
 
 const DashboardPage = () => {
+  const { isClient } = useRole();
   const [showStat, setShowStat] = useState({
     profitStat: false,
     turnOverStat: false,
@@ -96,7 +99,7 @@ const DashboardPage = () => {
               half width next to a permanently empty column. Team scope gets
               neither, so this block is skipped entirely rather than left
               rendering an empty, gap-eating div above Todos. */}
-          {(dashboardLoading || dashboard?.scope === 'admin' || dashboard?.scope === 'personal') && (
+          {(dashboardLoading || dashboard?.scope === 'admin' || (dashboard?.scope === 'personal' && !isClient)) && (
             <div className={`grid grid-cols-1 ${dashboardLoading || dashboard?.scope === 'admin' ? 'xl:grid-cols-2' : ''} gap-4 items-stretch h-full`}>
               {/* Sales Analytics (admin only — show skeleton while loading) */}
               {(dashboardLoading || dashboard?.scope === 'admin') && (
@@ -115,8 +118,9 @@ const DashboardPage = () => {
                 />
               )}
 
-              {/* Pending Payments (admin + personal — show skeleton while loading) */}
-              {(dashboardLoading || dashboard?.scope === 'admin' || dashboard?.scope === 'personal') && (
+              {/* Pending Payments (admin + personal, but Client gets My Files
+                  below instead — show skeleton while loading) */}
+              {(dashboardLoading || dashboard?.scope === 'admin' || (dashboard?.scope === 'personal' && !isClient)) && (
                 <PendingPayments
                   payments={dashboard?.pendingPayments || []}
                   isLoading={dashboardLoading}
@@ -125,6 +129,10 @@ const DashboardPage = () => {
               )}
             </div>
           )}
+
+          {/* Client's own uploaded event files, replacing Pending Payments'
+              slot for that scope. */}
+          {isClient && dashboard?.scope === 'personal' && <ClientFilesCard />}
           {/* Dashboard Todos for team scope — flex-1 so it fills the section
               (matching Event Overview's height) instead of leaving a gap
               where Sales Analytics/Pending Payments would have been. */}
@@ -138,39 +146,44 @@ const DashboardPage = () => {
         </section>
       </div>
 
-      {/* Bottom grid: Open Enquiry + Calendar + Activities */}
-      <div className="grid grid-cols-12 gap-4 pb-4">
-        {/* Open Enquiry Component */}
-        <OpenEnquiriesList
-          enquiries={dashboard?.openEnquiries}
-          count={
-            dashboard?.openEnquiriesCount ?? dashboard?.openEnquiries?.length
-          }
-          isLoading={dashboardLoading}
-          scope={dashboard?.scope}
-          upcomingIds={(upcomingData || []).map((e) => Number(e.id)).filter(Boolean)}
-        />
-
-        {/* Calendar — expands into Event Activity's space only when that
-            widget is hidden (Client scope). Staff still see activity scoped
-            to their own events, Admin sees all — only Client has no
-            role-relevant activity to show. */}
-        <Card
-          variant="white"
-          className={`dashboard-calendar col-span-12 ${eventActivityVisible ? "lg:col-span-5 2xl:col-span-4" : "lg:col-span-8 2xl:col-span-7"} shadow-sm p-0 rounded-2xl bg-[#F6F5F0]`}
-        >
-          <CalendarWithSidebar events={dashboard?.calendarEvents} isLoading={dashboardLoading} />
-        </Card>
-
-        {/* Event Activity — hidden for Client only; Staff/Admin see it
-            (backend scopes the notes themselves per role). */}
-        {eventActivityVisible && (
-          <EventActivity
-            notes={dashboard?.recentNotes}
+      {/* Bottom grid: Open Enquiry + Calendar + Activities — Client sees none
+          of these (Open Enquiry and Calendar are hidden for Client, and
+          eventActivityVisible is already false for personal scope), so skip
+          the whole row rather than render an empty grid gap. */}
+      {!isClient && (
+        <div className="grid grid-cols-12 gap-4 pb-4">
+          {/* Open Enquiry Component */}
+          <OpenEnquiriesList
+            enquiries={dashboard?.openEnquiries}
+            count={
+              dashboard?.openEnquiriesCount ?? dashboard?.openEnquiries?.length
+            }
             isLoading={dashboardLoading}
+            scope={dashboard?.scope}
+            upcomingIds={(upcomingData || []).map((e) => Number(e.id)).filter(Boolean)}
           />
-        )}
-      </div>
+
+          {/* Calendar — expands into Event Activity's space only when that
+              widget is hidden (Client scope). Staff still see activity scoped
+              to their own events, Admin sees all — only Client has no
+              role-relevant activity to show. */}
+          <Card
+            variant="white"
+            className={`dashboard-calendar col-span-12 ${eventActivityVisible ? "lg:col-span-5 2xl:col-span-4" : "lg:col-span-8 2xl:col-span-7"} shadow-sm p-0 rounded-2xl bg-[#F6F5F0]`}
+          >
+            <CalendarWithSidebar events={dashboard?.calendarEvents} isLoading={dashboardLoading} />
+          </Card>
+
+          {/* Event Activity — hidden for Client only; Staff/Admin see it
+              (backend scopes the notes themselves per role). */}
+          {eventActivityVisible && (
+            <EventActivity
+              notes={dashboard?.recentNotes}
+              isLoading={dashboardLoading}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 };

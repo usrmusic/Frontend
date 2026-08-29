@@ -11,10 +11,12 @@ interface QueryParams {
 }
 
 interface Upload {
+  id: number;
   file_name: string;
   file_type: string;
   created_at: string;
   event: string;
+  event_id?: number | null;
 }
 
 export const useUploadList = (params: QueryParams) => {
@@ -24,6 +26,16 @@ export const useUploadList = (params: QueryParams) => {
       const response = await AxiosInstance.get(`/files/uploads`, {
         params,
       });
+      return response.data;
+    },
+  });
+};
+
+export const useMyUploadList = () => {
+  return useQuery({
+    queryKey: ["uploads-mine"],
+    queryFn: async (): Promise<ApiResponse<Upload>> => {
+      const response = await AxiosInstance.get(`/files/uploads/mine`);
       return response.data;
     },
   });
@@ -120,5 +132,29 @@ export const useDownloadUpload = () => {
       return { blob: response.data as Blob, filename };
     },
     // No onError here — callers use mutateAsync and handle errors in their own catch blocks
+  });
+};
+
+// Ownership-checked counterpart used by clients, who lack the "file upload"
+// permission required by /files/uploads/:id/download.
+export const useDownloadMyUpload = () => {
+  return useMutation({
+    mutationFn: async (
+      id: number | string,
+    ): Promise<{ blob: Blob; filename: string }> => {
+      const response = await AxiosInstance.get(
+        `/files/uploads/mine/${id}/download`,
+        { responseType: "blob" },
+      );
+      const cd = response.headers["content-disposition"] as string | undefined;
+      let filename = "download";
+      if (cd) {
+        const match = cd.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (match?.[1]) {
+          filename = decodeURIComponent(match[1].replace(/['"]/g, ""));
+        }
+      }
+      return { blob: response.data as Blob, filename };
+    },
   });
 };

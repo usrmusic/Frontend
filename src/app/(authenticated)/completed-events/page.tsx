@@ -17,6 +17,8 @@ import { MoreVertical } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { CSVLink } from "react-csv";
+import useRole from "@/src/hooks/useRole";
+import AccessDenied from "@/src/components/common/AccessDenied";
 
 const initialParams = {
   page: 1,
@@ -38,6 +40,7 @@ const CompletedEventsPage = () => {
     name: string;
   }> | null>(null);
   const router = useRouter();
+  const { isClient } = useRole();
   const debouncedSearch = useDebounce(search, 1000);
 
   const searchParams = useSearchParams();
@@ -138,6 +141,12 @@ const CompletedEventsPage = () => {
     date: row.date,
     payment: row.is_event_payment_fully_paid ? "Completed" : "Pending",
   }));
+
+  if (isClient) {
+    return (
+      <AccessDenied message="Completed events aren't available for client accounts." />
+    );
+  }
 
   return (
     <>

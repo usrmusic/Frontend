@@ -44,17 +44,17 @@ const EquipmentModal = ({ modalOpen, handleCancel, initialValues }: EquipmentPro
         rig_notes: values.rig_notes || null,
       };
 
-      // Enforce availability rules:
-      // - If availability is unchecked -> quantity = 0
-      // - If availability is checked -> cost_price and sell_price = 0
+      // Cost/sell price always apply, matching Laravel (equipment_packages.blade.php fields
+      // are never hidden or zeroed by the availability radio).
+      payload.cost_price = values.cost_price !== "" ? Number(values.cost_price) : 0;
+      payload.sell_price = values.sell_price !== "" ? Number(values.sell_price) : 0;
+
+      // Laravel only toggles quantity vs. supplier by the "Do you have this Equipment?"
+      // radio (is_availabilty_check): quantity when in-house, supplier when sourced externally.
       if (values.is_availabilty_check) {
         payload.quantity = values.quantity !== "" ? Number(values.quantity) : 0;
-        payload.cost_price = 0;
-        payload.sell_price = 0;
       } else {
         payload.quantity = 0;
-        payload.cost_price = values.cost_price !== "" ? Number(values.cost_price) : 0;
-        payload.sell_price = values.sell_price !== "" ? Number(values.sell_price) : 0;
       }
 
       // supplier preference: supplier_id if set, else supplier_name if provided
@@ -129,12 +129,10 @@ const EquipmentModal = ({ modalOpen, handleCancel, initialValues }: EquipmentPro
                 <label htmlFor="is_availabilty_check" className="mb-1 text-xs flex items-center gap-1">Do you have this Equipment? *</label>
               </div>
 
-              {!formik.values.is_availabilty_check && (
-                <div className="grid grid-cols-2 gap-4">
-                  <Input label="Cost Price" type="number" name="cost_price" value={formik.values.cost_price} onChange={formik.handleChange} />
-                  <Input label="Sell Price" type="number" name="sell_price" value={formik.values.sell_price} onChange={formik.handleChange} required />
-                </div>
-              )}
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Cost Price" type="number" name="cost_price" value={formik.values.cost_price} onChange={formik.handleChange} required />
+                <Input label="Sell Price" type="number" name="sell_price" value={formik.values.sell_price} onChange={formik.handleChange} required />
+              </div>
 
               {formik.values.is_availabilty_check && (
                 <Input label="Quantity" type="number" name="quantity" value={formik.values.quantity} onChange={formik.handleChange} />
@@ -142,49 +140,52 @@ const EquipmentModal = ({ modalOpen, handleCancel, initialValues }: EquipmentPro
 
               {/* Status removed per requirements */}
 
-              <div>
-                <label className="mb-1 text-xs">Supplier</label>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    className="px-3 py-1 rounded-lg bg-primary text-white text-sm hover:opacity-95"
-                    onClick={() => setShowNewSupplier(true)}
-                  >
-                    Add new supplier
-                  </button>
-                  {!showNewSupplier && (
-                    <Select
-                      className="flex-1"
-                      loading={suppliersLoading}
-                      value={formik.values.supplier_id || undefined}
-                      onChange={(val) => formik.setFieldValue("supplier_id", val ?? "")}
-                      placeholder="Select Supplier"
-                      options={Array.isArray(suppliers) ? suppliers.map((s: any) => ({
-                        value: s.id,
-                        label: s.company_name || s.name,
-                      })) : []}
-                    />
-                  )}
-                </div>
-                <div className="mt-2">
-                  {showNewSupplier ? (
-                    <div className="flex gap-2">
-                      <input
-                        className="w-full h-10 rounded-xl px-3 text-sm bg-secondary-100"
-                        name="supplier_name"
-                        value={formik.values.supplier_name}
-                        onChange={formik.handleChange}
-                        placeholder="New supplier name"
+              {/* Supplier only applies when the equipment is sourced externally, matching Laravel's supplier-hide-div toggle */}
+              {!formik.values.is_availabilty_check && (
+                <div>
+                  <label className="mb-1 text-xs">Supplier</label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded-lg bg-primary text-white text-sm hover:opacity-95"
+                      onClick={() => setShowNewSupplier(true)}
+                    >
+                      Add new supplier
+                    </button>
+                    {!showNewSupplier && (
+                      <Select
+                        className="flex-1"
+                        loading={suppliersLoading}
+                        value={formik.values.supplier_id || undefined}
+                        onChange={(val) => formik.setFieldValue("supplier_id", val ?? "")}
+                        placeholder="Select Supplier"
+                        options={Array.isArray(suppliers) ? suppliers.map((s: any) => ({
+                          value: s.id,
+                          label: s.company_name || s.name,
+                        })) : []}
                       />
-                      <button type="button" className="px-3 py-1 rounded-lg bg-secondary-200 text-sm" onClick={() => { setShowNewSupplier(false); formik.setFieldValue('supplier_name', ''); }}>
-                        Select existing
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="text-xs text-gray-500">Or click "Add new supplier" to add a new one</div>
-                  )}
+                    )}
+                  </div>
+                  <div className="mt-2">
+                    {showNewSupplier ? (
+                      <div className="flex gap-2">
+                        <input
+                          className="w-full h-10 rounded-xl px-3 text-sm bg-secondary-100"
+                          name="supplier_name"
+                          value={formik.values.supplier_name}
+                          onChange={formik.handleChange}
+                          placeholder="New supplier name"
+                        />
+                        <button type="button" className="px-3 py-1 rounded-lg bg-secondary-200 text-sm" onClick={() => { setShowNewSupplier(false); formik.setFieldValue('supplier_name', ''); }}>
+                          Select existing
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-gray-500">Or click "Add new supplier" to add a new one</div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div>
                 <label className="mb-1 text-xs">Pricing Guide</label>

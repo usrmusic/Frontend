@@ -1,13 +1,15 @@
 "use client";
-import { useEmail } from "@/src/api/usersApi";
+import { useEmail, EmailContent } from "@/src/api/usersApi";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import { TableColumnsType } from "antd";
+import { Pencil } from "lucide-react";
 import { useState } from "react";
 import { CSVLink } from "react-csv";
+import EmailModal from "./EmailModal";
 
 const initialParams = {
   page: 1,
@@ -18,13 +20,26 @@ const initialParams = {
 const EmailPage = () => {
   const [params, setParams] = useState(initialParams);
   const [search, setSearch] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [emailItem, setEmailItem] = useState<EmailContent | null>(null);
   const debouncedSearch = useDebounce(search, 1000);
 
   const { data: emailData, isLoading } = useEmail({
     ...params,
     search: debouncedSearch,
   });
-  const columns: TableColumnsType = [
+
+  const openEdit = (record: EmailContent) => {
+    setEmailItem(record);
+    setModalOpen(true);
+  };
+
+  const handleCancel = () => {
+    setEmailItem(null);
+    setModalOpen(false);
+  };
+
+  const columns: TableColumnsType<EmailContent> = [
     {
       title: "Name",
       dataIndex: "email_name",
@@ -42,6 +57,16 @@ const EmailPage = () => {
       dataIndex: "body",
       key: "body",
       width: "70%",
+    },
+    {
+      title: "Action",
+      fixed: "right",
+      width: "5%",
+      render: (_, record) => (
+        <button onClick={() => openEdit(record)}>
+          <Pencil size={14} />
+        </button>
+      ),
     },
   ];
 
@@ -83,12 +108,15 @@ const EmailPage = () => {
         </div>
       </Card>
       {/* Data Table  */}
-      <DataTable
+      <DataTable<EmailContent>
         columns={columns}
         rowKey={(data) => data.id}
         dataSource={emailData?.data}
         tableLayout="fixed"
         loading={isLoading}
+        onRow={(record) => ({
+          onDoubleClick: () => openEdit(record),
+        })}
         pagination={{
           pageSize: params.perPage,
           current: params.page,
@@ -97,6 +125,13 @@ const EmailPage = () => {
             setParams({ ...params, page, perPage: pageSize }),
         }}
       />
+      {modalOpen && (
+        <EmailModal
+          modalOpen={modalOpen}
+          onCancel={handleCancel}
+          initialValues={emailItem}
+        />
+      )}
     </div>
   );
 };

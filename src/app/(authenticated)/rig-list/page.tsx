@@ -11,6 +11,7 @@ import { useGetRigList, useSaveRigNotes } from "@/src/api/riglist";
 import { toast } from "react-toastify";
 import useRole from "@/src/hooks/useRole";
 import AccessDenied from "@/src/components/common/AccessDenied";
+import Card from "@/src/components/Card";
 
 const Page = () => {
   const { isClient } = useRole();
@@ -98,13 +99,13 @@ const Page = () => {
           drawer's "Rig List" label rather than a second colored header bar. */}
       {/* <p className="text-sm font-semibold text-gray-900">Rig List</p> */}
 
-      {/* One white card, split into two halves by a vertical hairline — replaces
-          the previous two separate colour-headed panels. */}
-      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-        <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-gray-100">
+      {/* Two independent cards instead of one card split by a divider —
+          gap-4 matches the app's standard two-column card spacing (see
+          dashboard's grid grid-cols-12 gap-4). */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
-          {/* LEFT — Rig list */}
-          <div className="p-5 min-h-[200px]">
+        {/* LEFT — Rig list */}
+        <Card variant="white" className="rounded-2xl shadow-sm overflow-hidden p-5 min-h-[200px]">
             {isLoading ? (
               <div className="flex justify-center py-8"><Spin /></div>
             ) : rigNotesData?.packages?.filter((pkg: any) => pkg.rig_notes || pkg.equipment?.rig_notes).length > 0 ? (
@@ -152,10 +153,10 @@ const Page = () => {
             ) : (
               <p className="text-sm text-gray-500">No rig notes available.</p>
             )}
-          </div>
+        </Card>
 
-          {/* RIGHT — Event notes */}
-          <div className="flex flex-col">
+        {/* RIGHT — Event notes */}
+        <Card variant="white" className="rounded-2xl shadow-sm overflow-hidden p-0 flex flex-col">
             {/* Event info block — shown at top when event is loaded */}
             {event && (
               <div className="px-5 pt-5 shrink-0">
@@ -208,9 +209,8 @@ const Page = () => {
               value={note}
               onChange={(e) => setNote(e.target.value)}
             />
-          </div>
+        </Card>
 
-        </div>
       </div>
     </div>
   );

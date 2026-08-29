@@ -1,23 +1,65 @@
 "use client";
-import { useDeletePackage, usePackages, useEquipment, useDeleteEquipment } from "@/src/api/usersApi";
+import {
+  useDeletePackage,
+  usePackages,
+  useEquipment,
+  useDeleteEquipment,
+  useEditPackage,
+  useReorderEquipment,
+  Equipment,
+} from "@/src/api/usersApi";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import AlertModal from "@/src/components/common/AlertModal";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
 import { useDebounce } from "@/src/hooks/useDebounce";
-import { notification, TableColumnsType } from "antd";
+import { notification, TableColumnsType, TableProps } from "antd";
 import { TableRowSelection } from "antd/es/table/interface";
-import { Pencil } from "lucide-react";
+import { SorterResult } from "antd/es/table/interface";
+import { GripVertical, Pencil } from "lucide-react";
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import PackageModal from "./PackageModal";
 import EquipmentModal from "./EquipmentModal";
 import { CSVLink } from "react-csv";
 
-const initialParams = {
+const initialParams: {
+  page: number;
+  perPage: number;
+  search: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+} = {
   page: 1,
   perPage: 10,
   search: "",
+};
+
+const StatusToggle = ({
+  status,
+  onClick,
+  loading,
+}: {
+  status?: string;
+  onClick: () => void;
+  loading?: boolean;
+}) => {
+  const isActive = status !== "INACTIVE";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={loading}
+      className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-60 ${
+        isActive
+          ? "bg-green-50 text-green-700 hover:bg-green-100"
+          : "bg-gray-200 text-gray-500 hover:bg-gray-300"
+      }`}
+    >
+      {isActive ? "Active" : "Inactive"}
+    </button>
+  );
 };
 
 const PackagesPage = () => {
@@ -31,14 +73,40 @@ const PackagesPage = () => {
   const [equipmentItem, setEquipmentItem] = useState(null);
   const debouncedSearch = useDebounce(search, 1000);
 
+  // Equipment tab: click-to-sort by a column, wired to the backend's
+  // sort_by/sort_dir query params (matches the legacy Laravel list: bootstrap-table
+  // with sortable columns and pagination disabled).
+  const [equipmentSort, setEquipmentSort] = useState<{
+    field?: string;
+    order?: "asc" | "desc";
+  }>({});
+  // Manual drag order (persisted to equipment.sort_order) only makes sense
+  // while no column sort is overriding the view — dragging while a sort is
+  // active would silently reorder rows the user can't see move relative to
+  // their sorted position.
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const queryClient = useQueryClient();
+  const reorderEquipment = useReorderEquipment();
+
   const { data: packagesData, isLoading } = usePackages({
     ...params,
     search: debouncedSearch,
   });
-  const { data: equipmentDataRes, isLoading: equipmentLoading } = useEquipment({ page: params.page, perPage: params.perPage, search: debouncedSearch });
+  // Equipment tab shows everything on one page (perPage: "all"), matching the
+  // legacy Laravel bootstrap-table config (`pagination: false`).
+  const equipmentParams = {
+    page: 1,
+    perPage: "all" as const,
+    search: debouncedSearch,
+    sort_by: equipmentSort.field,
+    sort_dir: equipmentSort.order,
+  };
+  const { data: equipmentDataRes, isLoading: equipmentLoading } = useEquipment(equipmentParams);
 
   const deletePackage = useDeletePackage();
   const deleteEquipment = useDeleteEquipment();
+  const editPackage = useEditPackage();
 
   const handleCancel = () => {
     setPackageItem(null);
@@ -50,7 +118,7 @@ const PackagesPage = () => {
     setSelectedRowKeys(newSelectedRowKeys);
   };
 
-  const rowSelection: TableRowSelection = {
+  const rowSelection: TableRowSelection<any> = {
     selectedRowKeys,
     onChange: onSelectChange,
   };
@@ -86,6 +154,71 @@ const PackagesPage = () => {
       );
     }
   };
+
+  const handleToggleStatus = (row: { id: number; status?: string }) => {
+    editPackage.mutate({
+      id: row.id,
+      status: row.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
+    });
+  };
+
+  const handlePackagesTableChange: TableProps<any>["onChange"] = (
+    _pagination,
+    _filters,
+    sorter,
+  ) => {
+    const s = Array.isArray(sorter) ? sorter[0] : (sorter as SorterResult<any>);
+    setParams((p) => ({
+      ...p,
+      sortBy: s?.order && typeof s.field === "string" ? s.field : undefined,
+      sortOrder: s?.order === "ascend" ? "asc" : s?.order === "descend" ? "desc" : undefined,
+    }));
+  };
+
+  const handleEquipmentTableChange: TableProps<Equipment>["onChange"] = (
+    _pagination,
+    _filters,
+    sorter,
+  ) => {
+    const s = Array.isArray(sorter) ? sorter[0] : (sorter as SorterResult<Equipment>);
+    if (!s || !s.order || typeof s.field !== "string") {
+      setEquipmentSort({});
+      return;
+    }
+    setEquipmentSort({ field: s.field, order: s.order === "ascend" ? "asc" : "desc" });
+  };
+
+  // ── Equipment row drag-and-drop ──
+  const equipmentSortActive = !!equipmentSort.field;
+  const handleEquipmentDragStart = (idx: number) => setDragIndex(idx);
+  const handleEquipmentDragOver = (e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    setDragOverIndex(idx);
+  };
+  const handleEquipmentDrop = (targetIdx: number) => {
+    if (dragIndex === null || dragIndex === targetIdx || !equipmentDataRes?.data) {
+      setDragIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+    const next = [...equipmentDataRes.data];
+    const [moved] = next.splice(dragIndex, 1);
+    next.splice(targetIdx, 0, moved);
+    setDragIndex(null);
+    setDragOverIndex(null);
+    // Optimistic reorder so the drop feels instant, then persist — a failed
+    // mutation invalidates the query anyway and snaps back to server order.
+    queryClient.setQueryData(["equipment", equipmentParams], {
+      ...equipmentDataRes,
+      data: next,
+    });
+    reorderEquipment.mutate(next.map((row) => row.id));
+  };
+  const handleEquipmentDragEnd = () => {
+    setDragIndex(null);
+    setDragOverIndex(null);
+  };
+
   const columns: TableColumnsType = [
     {
       title: "Name",
@@ -96,6 +229,7 @@ const PackagesPage = () => {
       title: "Package Name",
       dataIndex: "package_name",
       key: "package_name",
+      sorter: true,
     },
     {
       title: "Email",
@@ -106,11 +240,24 @@ const PackagesPage = () => {
       title: "Cost Price",
       dataIndex: "cost_price",
       key: "costPrice",
+      sorter: true,
     },
     {
       title: "Sell Price",
       dataIndex: "sell_price",
       key: "sellPrice",
+      sorter: true,
+    },
+    {
+      title: "Status",
+      key: "status",
+      render: (data) => (
+        <StatusToggle
+          status={data.status}
+          loading={editPackage.isPending}
+          onClick={() => handleToggleStatus(data)}
+        />
+      ),
     },
     {
       title: "Actions",
@@ -136,26 +283,41 @@ const PackagesPage = () => {
     },
   ];
 
-  const equipmentColumns: TableColumnsType = [
+  const equipmentColumns: TableColumnsType<Equipment> = [
+    {
+      title: "",
+      key: "drag",
+      width: 32,
+      render: () => (
+        <GripVertical
+          size={16}
+          className={equipmentSortActive ? "text-gray-300" : "cursor-grab text-gray-400"}
+        />
+      ),
+    },
     {
       title: "Name",
       dataIndex: "name",
       key: "name",
+      sorter: true,
     },
     {
       title: "Quantity",
       dataIndex: "quantity",
       key: "quantity",
+      sorter: true,
     },
     {
       title: "Cost Price",
       dataIndex: "cost_price",
       key: "cost_price",
+      sorter: true,
     },
     {
       title: "Sell Price",
       dataIndex: "sell_price",
       key: "sell_price",
+      sorter: true,
     },
     {
       title: "Actions",
@@ -270,6 +432,7 @@ const PackagesPage = () => {
           columns={columns}
           dataSource={packagesData?.data}
           loading={isLoading}
+          onChange={handlePackagesTableChange}
           pagination={{
             pageSize: params.perPage,
             current: params.page,
@@ -281,19 +444,26 @@ const PackagesPage = () => {
           rowSelection={rowSelection}
         />
       ) : (
-        <DataTable
+        <DataTable<Equipment>
           columns={equipmentColumns}
           dataSource={equipmentDataRes?.data}
           loading={equipmentLoading}
-          pagination={{
-            pageSize: params.perPage,
-            current: params.page,
-            total: equipmentDataRes?.meta.total,
-            onChange: (page, pageSize) =>
-              setParams({ ...params, page, perPage: pageSize }),
-          }}
+          onChange={handleEquipmentTableChange}
+          pagination={false}
           rowKey={(data) => Number(data.id)}
-          rowSelection={rowSelection}
+          rowSelection={rowSelection as TableRowSelection<Equipment>}
+          onRow={(_record, index) =>
+            equipmentSortActive || index === undefined
+              ? {}
+              : {
+                  draggable: true,
+                  onDragStart: () => handleEquipmentDragStart(index),
+                  onDragOver: (e: React.DragEvent) => handleEquipmentDragOver(e, index),
+                  onDrop: () => handleEquipmentDrop(index),
+                  onDragEnd: handleEquipmentDragEnd,
+                  className: dragOverIndex === index ? "bg-primary/5" : undefined,
+                }
+          }
         />
       )}
       {modalOpen && activeTab === 'packages' && (

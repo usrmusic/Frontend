@@ -194,7 +194,7 @@ const Page = () => {
               );
             })}
           </div>
-      <div className="rounded-2xl overflow-hidden [&_.ant-table]:rounded-none! [&_.ant-table-container]:rounded-none!">
+      <div className="rounded-b-2xl overflow-hidden [&_.ant-table]:rounded-none! [&_.ant-table-container]:rounded-none!">
         {/* flex-wrap instead of a fixed grid-cols-N: a rigid column count
             forces every cell — including the two-button group — into an
             equal fraction of the row regardless of whether its content
@@ -256,10 +256,8 @@ const Page = () => {
           </div>
         </div>
         <DataTable
-          wrapperClassName="overflow-x-auto"
           columns={columns}
           dataSource={reportData?.result}
-          scroll={{ x: 1700 }}
           pagination={{
             pageSize: filters.perPage,
             current: filters.page,
