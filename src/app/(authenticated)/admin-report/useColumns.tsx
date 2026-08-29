@@ -24,11 +24,9 @@ export const DEFAULT_VISIBLE_COLUMNS = [
   "company_name",
   "client_name",
   "event_date",
-  "event_status",
   "dj",
   "venue_name",
   "total_price",
-  "profit",
 ];
 
 const useColumns = (
