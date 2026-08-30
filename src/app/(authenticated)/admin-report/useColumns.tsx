@@ -1,5 +1,8 @@
-import { TableColumnsType, Select } from "antd";
+import { TableColumnsType, Select, InputNumber } from "antd";
 import dayjs from "dayjs";
+import { useState } from "react";
+import { toast } from "react-toastify";
+import { useUpdateAdminReportRow } from "@/src/api/reports";
 
 // Plain-text label per column, for the toggle dropdown — column `title` is
 // JSX (label + inline filter input), not usable as a checklist label.
@@ -20,6 +23,15 @@ export const COLUMN_LABELS: Record<string, string> = {
 
 // Kept lean on first load — the detailed cost breakdown columns are opt-in
 // via the toggle dropdown rather than shown by default.
+interface AdminReportRow {
+  event_id: number;
+  event_status_id: number | null;
+  total_price: number;
+  total_cost: number;
+  extra_cost: number;
+  [key: string]: unknown;
+}
+
 export const DEFAULT_VISIBLE_COLUMNS = [
   "company_name",
   "client_name",
@@ -27,6 +39,7 @@ export const DEFAULT_VISIBLE_COLUMNS = [
   "dj",
   "venue_name",
   "total_price",
+  "extra_cost",
 ];
 
 const useColumns = (
@@ -36,6 +49,12 @@ const useColumns = (
   const setFilter = (key: string, value: string) => {
     setColFilters((prev) => ({ ...prev, [key]: value }));
   };
+
+  const updateRow = useUpdateAdminReportRow();
+  // Tracks the in-progress value per row while typing, so we don't fire a
+  // save on every keystroke — only commits on blur, matching Laravel's
+  // explicit Save-button step (just without a separate edit-mode toggle).
+  const [draftExtraCost, setDraftExtraCost] = useState<Record<number, number>>({});
 
   // Helper — returns plain JSX (not a component) so React reconciles <input> in-place
   const textInput = (field: string, placeholder = "Filter…") => (
@@ -49,7 +68,7 @@ const useColumns = (
     />
   );
 
-  const columns: TableColumnsType = [
+  const columns: TableColumnsType<AdminReportRow> = [
     {
       key: "company_name",
       dataIndex: "company_name",
@@ -169,14 +188,47 @@ const useColumns = (
     {
       key: "extra_cost",
       dataIndex: "extra_cost",
-      width: 85,
+      width: 110,
       title: (
         <div>
           <p>Extra Cost</p>
           {textInput("extra_cost", "£ amount")}
         </div>
       ),
-      render: (v: number) => `£${Number(v || 0).toFixed(2)}`,
+      render: (v: number, row: AdminReportRow) => {
+        // Cancelled events are never editable — matches Laravel's dbl-click
+        // block there (a toast warning instead of opening edit mode).
+        // A missing/invalid event_id would otherwise make every row share
+        // the same draft-state key (all rows editing as one) — refuse to
+        // edit rather than risk that, and read-only display instead.
+        if (Number(row.event_status_id) === 4 || !Number.isFinite(row.event_id)) {
+          return `£${Number(v || 0).toFixed(2)}`;
+        }
+        const draft = draftExtraCost[row.event_id];
+        return (
+          <InputNumber
+            size="small"
+            prefix="£"
+            className="w-full"
+            value={draft ?? v ?? 0}
+            disabled={updateRow.isPending}
+            onChange={(val) =>
+              setDraftExtraCost((prev) => ({ ...prev, [row.event_id]: Number(val ?? 0) }))
+            }
+            onBlur={() => {
+              const next = draftExtraCost[row.event_id];
+              if (next == null || next === Number(v || 0)) return;
+              updateRow.mutate({
+                event_id: row.event_id,
+                extra_cost: next,
+                cost: Number(row.total_cost || 0),
+                totalCost: Number(row.total_price || 0),
+              });
+              toast.success("Extra cost updated");
+            }}
+          />
+        );
+      },
     },
     {
       key: "profit",

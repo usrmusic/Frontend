@@ -55,7 +55,7 @@ const useColumns = () => {
           <p className="mb-1">Start Time</p>
         </div>
       ),
-      render: (date) => <>{dayjs(date).format("MM-DD-YYYY")}</>,
+      render: (value) => <>{value ? dayjs(value).format("HH:mm") : ""}</>,
     },
     {
       key: "endTime",
@@ -65,7 +65,7 @@ const useColumns = () => {
           <p className="mb-1">End Time</p>
         </div>
       ),
-      render: (date) => <>{dayjs(date).format("MM-DD-YYYY")}</>,
+      render: (value) => <>{value ? dayjs(value).format("HH:mm") : ""}</>,
     },
     {
       key: "venue",
