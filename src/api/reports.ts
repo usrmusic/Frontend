@@ -129,3 +129,42 @@ export const useUpdateSupplierPayment = () => {
     },
   });
 };
+
+interface UpdateAdminReportRowPayload {
+  event_id: number;
+  extra_cost: number;
+  cost: number;
+  totalCost: number;
+}
+
+export const useUpdateAdminReportRow = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ event_id, extra_cost, cost, totalCost }: UpdateAdminReportRowPayload) => {
+      const response = await AxiosInstance.put(`/reports/admin/${event_id}`, {
+        extra_cost,
+        cost,
+        totalCost,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-report"] });
+    },
+    onError: (error: unknown) => {
+      if (axios.isAxiosError(error)) {
+        notification.error({
+          message: "API Error",
+          description: error.response?.data?.error,
+          placement: "topRight",
+        });
+      } else {
+        notification.error({
+          message: "Unexpected Error",
+          description: "Something went wrong",
+          placement: "topRight",
+        });
+      }
+    },
+  });
+};

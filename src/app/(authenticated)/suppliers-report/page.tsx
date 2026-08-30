@@ -149,9 +149,11 @@ const SuppliersPage = () => {
         </div>
         <div className="flex gap-2">
           {/* <Button icon={<Export />}>Export Data</Button> */}
+          {/* Dead button — no onClick, does nothing.
           <Button>
             <MoreVertical size={18} />
           </Button>
+          */}
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">

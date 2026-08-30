@@ -306,7 +306,7 @@ const Page = () => {
             },
           }}
           loading={isLoading}
-          rowKey={(data) => data.id}
+          rowKey={(data) => data.event_id}
         />
       </div>
     </div>
