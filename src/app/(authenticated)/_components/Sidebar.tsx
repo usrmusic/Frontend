@@ -125,7 +125,7 @@ const Sidebar = () => {
   const moreLinks: LinkItem[] = [
     { href: "/completed-events", icon: <TbReportSearch size={20} />, label: "Completed Events", permission: "complete event" },
     { href: "/file-upload", icon: <TbFileUpload size={20} />, label: "File Upload", permission: "file upload" },
-    { href: "/downloads", icon: <TbFileDownload size={20} />, label: "Downloads", permission: "downloads" },
+    { href: "/downloads", icon: <TbFileDownload size={20} />, label: "Downloads", permissionAny: ["downloads", "media manager"] },
     { href: "/admin-report", icon: <TbReportAnalytics size={20} />, label: "Admin Report", permission: "admin reporting" },
     { href: "/users?title=Users", icon: <Contacts />, label: "Users", permissionAny: ["user", "manage access"] },
   ];
