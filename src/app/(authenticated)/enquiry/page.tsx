@@ -1302,13 +1302,44 @@ const NewEnquiryPage = () => {
                                           setFieldValue("dj", selectedDj ?? null);
                                         }}
                                         options={djOptionsData?.map((dj) => ({
-                                          label: `${dj.name} (${dj.package_users?.[0]?.package_name ?? ""})`,
+                                          label:
+                                            (dj.package_users?.length ?? 0) > 1
+                                              ? `${dj.name} (${dj.package_users!.length} packages)`
+                                              : `${dj.name} (${dj.package_users?.[0]?.package_name ?? ""})`,
                                           value: String(dj.id),
                                         }))}
                                       />
                                       {touched.dj && !!djError && (
                                         <div className="text-red-500 text-xs mt-1">{djError}</div>
                                       )}
+                                      {(() => {
+                                        const selectedDjPackages =
+                                          djOptionsData?.find((dj) => dj.id === values.dj?.id)
+                                            ?.package_users ?? [];
+                                        if (selectedDjPackages.length <= 1) return null;
+                                        return (
+                                          <div className="mt-2">
+                                            <label className="mb-1 block text-xs">Package</label>
+                                            <AntSelect
+                                              className="h-10 w-full"
+                                              placeholder="Choose package"
+                                              disabled={isSubmitting}
+                                              loading={isPackageLoading}
+                                              value={packageParams.package_name || undefined}
+                                              onChange={(val) => {
+                                                setPackageParams((prev) => ({
+                                                  ...prev,
+                                                  package_name: val ?? "",
+                                                }));
+                                              }}
+                                              options={selectedDjPackages.map((p: { id: string; package_name: string }) => ({
+                                                label: p.package_name,
+                                                value: p.package_name,
+                                              }))}
+                                            />
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                   )}
                                 </Field>
