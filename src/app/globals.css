@@ -417,3 +417,38 @@ button:hover {
     margin: 14mm;
   }
 }
+
+/* Real conditional mount, not a height collapse (a max-height guess left
+   residual ghost space when closed). Used with AnimatedMount
+   (src/components/common/AnimatedMount.tsx), which delays the actual unmount
+   until box-disappear finishes, so the close direction gets to play too
+   instead of the element just vanishing instantly. */
+@keyframes box-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes box-disappear {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+.animate-box-appear {
+  animation: box-appear 0.25s ease-out;
+}
+
+.animate-box-disappear {
+  animation: box-disappear 0.2s ease-in;
+}

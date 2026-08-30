@@ -443,6 +443,74 @@ export const useAddConfirmPayment = () => {
   });
 };
 
+export const useUpdateConfirmPayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      paymentId,
+      eventId,
+      payload,
+    }: {
+      paymentId: number | string;
+      eventId: string;
+      payload: { payment_method_id?: number; amount?: number; date?: string };
+    }) => {
+      try {
+        const response = await AxiosInstance.put(
+          `/confirm-event/payment/${paymentId}`,
+          payload,
+        );
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "API Error");
+        } else {
+          toast.error("Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: (_, { eventId }) => {
+      queryClient.invalidateQueries({ queryKey: ["confirm-event", eventId] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success("Payment updated successfully");
+    },
+  });
+};
+
+export const useDeleteConfirmPayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      paymentId,
+    }: {
+      paymentId: number | string;
+      eventId: string;
+    }) => {
+      try {
+        const response = await AxiosInstance.delete(
+          `/confirm-event/payment/${paymentId}`,
+        );
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "API Error");
+        } else {
+          toast.error("Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: (_, { eventId }) => {
+      queryClient.invalidateQueries({ queryKey: ["confirm-event", eventId] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success("Payment deleted successfully");
+    },
+  });
+};
+
 export const useGetTodos = (eventId: number = 423) => {
   return useQuery({
     queryKey: ["todos-list", eventId],

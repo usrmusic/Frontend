@@ -5,11 +5,14 @@ import {
   useDownloadInvoice,
   useGetConfirmEvent,
   useUpdateConfirmEvent,
+  useUpdateConfirmPayment,
+  useDeleteConfirmPayment,
 } from "@/src/api/events";
 import Button from "@/src/components/Button";
 import { BackButton } from "@/src/components/Icons";
 import Input from "@/src/components/Input";
 import EventPaymentDrawer from "@/src/components/common/EventPaymentDrawer";
+import AnimatedMount from "@/src/components/common/AnimatedMount";
 import { Collapse, CollapseProps, Select, Spin, Modal } from "antd";
 import dayjs from "dayjs";
 import { useFormik } from "formik";
@@ -18,7 +21,9 @@ import {
   FileText,
   FolderOpen,
   MoreVertical,
+  Pencil,
   SquareCheckBig,
+  Trash2,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -80,6 +85,45 @@ const ConfirmedEventsPage = () => {
   const [refundAmount, setRefundAmount] = useState<string>("");
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
   const [invoiceTemplate, setInvoiceTemplate] = useState<{ subject: string; body: string } | null>(null);
+  const [editingPayment, setEditingPayment] = useState<ConfirmEventPayment | null>(null);
+  const [editAmount, setEditAmount] = useState<string>("");
+  const [editDate, setEditDate] = useState<string>("");
+  const { mutate: updatePaymentMutation, isPending: isUpdatingPayment } = useUpdateConfirmPayment();
+  const { mutate: deletePaymentMutation } = useDeleteConfirmPayment();
+
+  const openEditPayment = (p: ConfirmEventPayment) => {
+    setEditingPayment(p);
+    setEditAmount(String(p.amount ?? p.payment_amount ?? ""));
+    setEditDate(dayjs(p.date ?? p.payment_date).format("YYYY-MM-DD"));
+  };
+
+  const submitEditPayment = () => {
+    if (!editingPayment || !eventId) return;
+    const amount = Number(editAmount);
+    if (!(amount > 0)) {
+      toast.error("Amount must be greater than 0");
+      return;
+    }
+    updatePaymentMutation(
+      {
+        paymentId: editingPayment.id,
+        eventId,
+        payload: { amount, date: editDate },
+      },
+      { onSuccess: () => setEditingPayment(null) },
+    );
+  };
+
+  const confirmDeletePayment = (p: ConfirmEventPayment) => {
+    if (!eventId) return;
+    Modal.confirm({
+      title: "Delete payment",
+      content: `Delete the £${Number(p.amount ?? p.payment_amount ?? 0).toFixed(2)} payment dated ${dayjs(p.date ?? p.payment_date).format("DD/MM/YYYY")}? This will recalculate the outstanding balance.`,
+      okText: "Delete",
+      okButtonProps: { danger: true },
+      onOk: () => deletePaymentMutation({ paymentId: p.id, eventId }),
+    });
+  };
 
   const eventsOptions = (eventsDropdown?.data as EventsDropdownItem[])?.map(
     (item) => ({
@@ -737,15 +781,16 @@ const ConfirmedEventsPage = () => {
             </Button>
           )}
         </div>
-        {/* Real conditional mounting instead of an animated max-height
-            collapse — the collapse approach left a residual gap/ghost box
-            when closed (the animated box's own padding/border still took up
-            space). A closed box now takes zero space, full stop. Grid only
-            renders at all when something is actually open, and only spans 2
-            columns when both boxes are showing (never for Client, who has
-            no Payments box at all). */}
-        {(showNotes || (showPayments && !isClient)) && (
-          <div className={`grid ${!isClient && showNotes && showPayments ? "grid-cols-2" : "grid-cols-1"} gap-4`}>
+        {/* AnimatedMount (real conditional mount, not a height collapse —
+            a max-height guess left residual ghost space when closed) delays
+            unmounting until the exit animation finishes, so this section
+            gets both an open and a close transition instead of just
+            vanishing instantly. Only spans 2 columns when both boxes are
+            showing (never for Client, who has no Payments box at all). */}
+        <AnimatedMount
+          show={showNotes || (showPayments && !isClient)}
+          className={`grid ${!isClient && showNotes && showPayments ? "grid-cols-2" : "grid-cols-1"} gap-4`}
+        >
             {showNotes && (
               <div className="rounded-xl bg-white border border-gray-200 p-4">
                 <div className="space-y-3">
@@ -784,13 +829,21 @@ const ConfirmedEventsPage = () => {
                       <th className="px-4 py-2 text-left font-medium text-gray-700">
                         Reference
                       </th>
+                      {/* Editing/deleting a payment recalculates the paid
+                          total server-side — same Admin-only gate as Add
+                          Payment, since both mutate that calculation. */}
+                      {isAdmin && (
+                        <th className="px-4 py-2 text-left font-medium text-gray-700">
+                          Actions
+                        </th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
                       {payments.length === 0 ? (
                       <tr>
                         <td
-                          colSpan={3}
+                          colSpan={isAdmin ? 4 : 3}
                           className="px-4 py-2 text-sm text-gray-500"
                         >
                           No payments found.
@@ -804,6 +857,26 @@ const ConfirmedEventsPage = () => {
                           </td>
                           <td className="px-4 py-2">£{Number(p.amount ?? 0)}</td>
                           <td className="px-4 py-2">-</td>
+                          {isAdmin && (
+                            <td className="px-4 py-2">
+                              <div className="flex gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => openEditPayment(p)}
+                                  title="Edit payment"
+                                >
+                                  <Pencil size={14} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => confirmDeletePayment(p)}
+                                  title="Delete payment"
+                                >
+                                  <Trash2 size={14} className="text-red-600" />
+                                </button>
+                              </div>
+                            </td>
+                          )}
                         </tr>
                       ))
                     )}
@@ -811,8 +884,7 @@ const ConfirmedEventsPage = () => {
                 </table>
               </div>
             )}
-          </div>
-        )}
+        </AnimatedMount>
       </form>
       {showModal && (
         <SendBrochureModal
@@ -927,6 +999,31 @@ const ConfirmedEventsPage = () => {
             paidAmount={adjustedPaidAmount}
           />
         )}
+
+        {/* Edit Payment Modal */}
+        <Modal
+          title="Edit Payment"
+          open={!!editingPayment}
+          onCancel={() => setEditingPayment(null)}
+          onOk={submitEditPayment}
+          okText="Save"
+          confirmLoading={isUpdatingPayment}
+        >
+          <div className="space-y-4 mt-4">
+            <Input
+              label="Amount"
+              type="number"
+              value={editAmount}
+              onChange={(e) => setEditAmount(e.target.value)}
+            />
+            <Input
+              label="Date"
+              type="date"
+              value={editDate}
+              onChange={(e) => setEditDate(e.target.value)}
+            />
+          </div>
+        </Modal>
     </div>
   );
 };
