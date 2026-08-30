@@ -11,7 +11,7 @@ import Link from "next/link";
 import useColumns from "./useColumns";
 import { useSuppliersReport } from "@/src/api/reports";
 import SkeletonInput from "antd/es/skeleton/Input";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface StatItem {
   label: string;
@@ -20,6 +20,7 @@ interface StatItem {
   imageAlt: string;
   variant: "white" | "green";
   icon?: string;
+  toggleKey?: "totalPaidStat" | "totalCostStat" | "remainingMoneyStat";
 }
 
 const initialParams = {
@@ -29,7 +30,10 @@ const initialParams = {
   event_status: "",
   event_start_time: "",
   event_end_time: "",
+  year: new Date().getFullYear(),
 };
+
+const money = (value: unknown) => `£${Number(value ?? 0).toFixed(2)}`;
 
 const SuppliersPage = () => {
   const [params, setParams] = useState(initialParams);
@@ -38,6 +42,27 @@ const SuppliersPage = () => {
   const [dateTo, setDateTo] = useState("");
   const [selectedEventStatus, setSelectedEventStatus] = useState<string>(initialParams.event_status || "");
 
+  // Same global year picker the Dashboard listens to (Header.tsx) — the
+  // Laravel report always scopes its stat cards to a selected year, so this
+  // page needs to react to it too instead of only ever showing "this year."
+  useEffect(() => {
+    const handler: EventListener = (ev) => {
+      const custom = ev as CustomEvent<{ year?: number }>;
+      const y = custom?.detail?.year;
+      if (typeof y === "number" && !Number.isNaN(y)) {
+        setParams((prev) => ({ ...prev, year: y, page: 1 }));
+      }
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("dashboard:yearChange", handler);
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("dashboard:yearChange", handler);
+      }
+    };
+  }, []);
+
   const { data: suppliersReportData, isLoading } = useSuppliersReport(params);
 
   const { columns } = useColumns();
@@ -45,43 +70,53 @@ const SuppliersPage = () => {
   const [showStat, setShowStat] = useState({
     totalPaidStat: false,
     totalCostStat: false,
+    remainingMoneyStat: false,
   });
 
-  const toggleKeyMap: Record<string, keyof typeof showStat | undefined> = {
-    "total paid": "totalPaidStat",
-    "total cost": "totalCostStat",
-  };
-
   const statsData = suppliersReportData?.stats;
+  // Five cards, matching the legacy Laravel report exactly: Events count,
+  // Remaining events (Confirmed only), Total Cost, Total Paid, and Remaining
+  // (money) — the two "Remaining" cards are genuinely different metrics
+  // (count vs money) that just happen to share a label there too.
   const stats: StatItem[] = [
     {
       label: "Events",
-      value: "2230",
+      value: String(statsData?.count ?? "—"),
       image: "/svgs/stat-icon.svg",
       imageAlt: "stat",
       variant: "white",
     },
     {
       label: "Remaining",
-      value: statsData?.remaining,
+      value: String(statsData?.remainingEvents ?? "—"),
       image: "/svgs/red-chart.svg",
       imageAlt: "stat",
       variant: "white",
       icon: "/svgs/list-icon.svg",
     },
     {
-      label: "Total Paid",
-      value: statsData?.totalPaid,
-      image: "/svgs/red-chart.svg",
-      imageAlt: "stat",
-      variant: "white",
-    },
-    {
       label: "Total Cost",
-      value: statsData?.totalCost,
+      value: money(statsData?.totalCost),
       image: "/svgs/Line-chart.svg",
       imageAlt: "stat",
       variant: "green",
+      toggleKey: "totalCostStat",
+    },
+    {
+      label: "Total Paid",
+      value: money(statsData?.totalPaid),
+      image: "/svgs/red-chart.svg",
+      imageAlt: "stat",
+      variant: "white",
+      toggleKey: "totalPaidStat",
+    },
+    {
+      label: "Remaining",
+      value: money(statsData?.remaining),
+      image: "/svgs/red-chart.svg",
+      imageAlt: "stat",
+      variant: "white",
+      toggleKey: "remainingMoneyStat",
     },
   ];
 
@@ -119,17 +154,16 @@ const SuppliersPage = () => {
           </Button>
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((item) => {
-          const lookup = (item.label || "").toString().toLowerCase();
-          const statKey = toggleKeyMap[lookup];
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        {stats.map((item, index) => {
+          const statKey = item.toggleKey;
           const isToggleable = Boolean(statKey);
           const isVisible = statKey ? Boolean(showStat[statKey]) : true;
           const iconColor = item.variant === "green" ? "#fff" : undefined;
 
           return (
             <Card
-              key={item.label}
+              key={`${item.label}-${index}`}
               variant={item.variant}
               className={`flex items-center justify-between`}
               onClick={

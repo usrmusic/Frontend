@@ -136,6 +136,9 @@ const Page = () => {
           </Button> */}
         </div>
       </div>
+          {/* Stat cards removed — Admin Report's stats need to be rebuilt to
+              match the legacy Laravel report's actual computation (see the
+              Suppliers Report page's payment_send-based parity work).
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {stats.map((item) => {
               const lookup = (item.label || "").toString().toLowerCase();
@@ -196,6 +199,7 @@ const Page = () => {
               );
             })}
           </div>
+          */}
       <div className="rounded-2xl overflow-hidden [&_.ant-table]:rounded-none! [&_.ant-table-container]:rounded-none!">
         {/* flex-wrap instead of a fixed grid-cols-N: a rigid column count
             forces every cell — including the two-button group — into an

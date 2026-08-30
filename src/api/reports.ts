@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import AxiosInstance from "../lib/axios";
 import axios from "axios";
 import { notification } from "antd";
@@ -9,6 +9,7 @@ type QueryParams = {
   search?: string;
   event_start_time?: string;
   event_end_time?: string;
+  year?: number;
 };
 export const useSuppliersReport = (params: QueryParams) => {
   // Only include keys with truthy values (not empty string, undefined, or null)
@@ -88,6 +89,42 @@ export const useAdminReport = (params: QueryParams) => {
         }
 
         throw error;
+      }
+    },
+  });
+};
+
+interface UpdateSupplierPaymentPayload {
+  rowType: "equipment" | "dj";
+  id: number;
+  payment_send: "yes" | "no" | null;
+  payment_date: string | null;
+}
+
+export const useUpdateSupplierPayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ rowType, id, payment_send, payment_date }: UpdateSupplierPaymentPayload) => {
+      const path = rowType === "dj" ? `/reports/suppliers/dj/${id}/payment` : `/reports/suppliers/equipment/${id}/payment`;
+      const response = await AxiosInstance.put(path, { payment_send, payment_date });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["suppliers-report"] });
+    },
+    onError: (error: unknown) => {
+      if (axios.isAxiosError(error)) {
+        notification.error({
+          message: "API Error",
+          description: error.response?.data?.error,
+          placement: "topRight",
+        });
+      } else {
+        notification.error({
+          message: "Unexpected Error",
+          description: "Something went wrong",
+          placement: "topRight",
+        });
       }
     },
   });

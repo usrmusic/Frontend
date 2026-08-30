@@ -1266,7 +1266,27 @@ const NewEnquiryPage = () => {
                             <div className="flex h-full flex-col gap-4">
                               <div className="grid grid-cols-2 gap-4">
                                 <Field name="dj">
-                                  {(fieldProps: FieldProps) => (
+                                  {(fieldProps: FieldProps) => {
+                                    // One option per (DJ, package) combo — a DJ with several
+                                    // packages (Wedding, Basic, Destination Wedding) gets one
+                                    // row per package rather than silently defaulting to
+                                    // package_users[0]. Composite value since dj.id alone is
+                                    // no longer unique per option.
+                                    const djPackageOptions = (djOptionsData ?? []).flatMap((dj) => {
+                                      const packages = dj.package_users ?? [];
+                                      if (packages.length === 0) {
+                                        return [{ label: `${dj.name} ()`, value: `${dj.id}::` }];
+                                      }
+                                      return packages.map((p: { id: string; package_name: string }) => ({
+                                        label: `${dj.name} (${p.package_name})`,
+                                        value: `${dj.id}::${p.package_name}`,
+                                      }));
+                                    });
+                                    const selectedValue =
+                                      values.dj?.id != null
+                                        ? `${values.dj.id}::${packageParams.package_name ?? ""}`
+                                        : undefined;
+                                    return (
                                     <div className="space-y-1">
                                       <label className="mb-1 block text-xs">Select DJ</label>
                                       <AntSelect
@@ -1277,9 +1297,10 @@ const NewEnquiryPage = () => {
                                         optionFilterProp="label"
                                         disabled={isSubmitting}
                                         loading={isPackageLoading}
-                                        value={values.dj?.id ? String(values.dj.id) : undefined}
+                                        value={selectedValue}
                                         onChange={(val) => {
-                                          const value = Number(val);
+                                          const [djIdPart, packageNamePart] = (val ?? "").split("::");
+                                          const value = Number(djIdPart);
                                           const selectedDj = djOptionsData?.find((item) => item.id === value);
                                           const eventDateFormatted =
                                             packageParams.event_date ||
@@ -1296,21 +1317,19 @@ const NewEnquiryPage = () => {
                                           setPackageParams((prev) => ({
                                             ...prev,
                                             staff: selectedDj?.id ?? null,
-                                            package_name: selectedDj?.package_users?.[0]?.package_name ?? "",
+                                            package_name: packageNamePart ?? "",
                                             event_date: eventDateFormatted,
                                           }));
                                           setFieldValue("dj", selectedDj ?? null);
                                         }}
-                                        options={djOptionsData?.map((dj) => ({
-                                          label: `${dj.name} (${dj.package_users?.[0]?.package_name ?? ""})`,
-                                          value: String(dj.id),
-                                        }))}
+                                        options={djPackageOptions}
                                       />
                                       {touched.dj && !!djError && (
                                         <div className="text-red-500 text-xs mt-1">{djError}</div>
                                       )}
                                     </div>
-                                  )}
+                                    );
+                                  }}
                                 </Field>
                                 <Field name="eventType">
                                   {(fieldProps: FieldProps) => (
@@ -1662,17 +1681,22 @@ const NewEnquiryPage = () => {
                       </div>
                     </Card>
 
-                    {/* Add New Equipment — primary button below Extras card */}
-                    <div className="flex justify-end">
-                      <Button
-                        type="primary"
-                        onClick={() => setAddEquipModalOpen(true)}
-                        className="w-auto flex items-end justify-center gap-2"
-                      >
-                        <PlusIcon size={15} />
-                        Add New Equipment
-                      </Button>
-                    </div>
+                    {/* Add New Equipment — primary button below Extras card.
+                        Equipment CRUD is Admin/Super Admin only on the backend
+                        (matches the legacy Laravel CRM's can:user gate) — Staff
+                        never had it, so hide this rather than let it 403. */}
+                    {isAdmin && (
+                      <div className="flex justify-end">
+                        <Button
+                          type="primary"
+                          onClick={() => setAddEquipModalOpen(true)}
+                          className="w-auto flex items-end justify-center gap-2"
+                        >
+                          <PlusIcon size={15} />
+                          Add New Equipment
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                 {/* Inline sidebar — no separate drawer/overlay. Only once a DJ is
