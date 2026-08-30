@@ -14,6 +14,7 @@ import {
   TbReportAnalytics,
   TbFileDownload,
   TbFileUpload,
+  TbTruckDelivery,
 } from "react-icons/tb";
 import { RiFileListLine } from "react-icons/ri";
 import { MoreHorizontal } from "lucide-react";
@@ -126,6 +127,7 @@ const Sidebar = () => {
     { href: "/completed-events", icon: <TbReportSearch size={20} />, label: "Completed Events", permission: "complete event" },
     { href: "/file-upload", icon: <TbFileUpload size={20} />, label: "File Upload", permission: "file upload" },
     { href: "/downloads", icon: <TbFileDownload size={20} />, label: "Downloads", permissionAny: ["downloads", "media manager"] },
+    { href: "/suppliers-report", icon: <TbTruckDelivery size={20} />, label: "Suppliers Report", permission: "supplier reporting" },
     { href: "/admin-report", icon: <TbReportAnalytics size={20} />, label: "Admin Report", permission: "admin reporting" },
     { href: "/users?title=Users", icon: <Contacts />, label: "Users", permissionAny: ["user", "manage access"] },
   ];
