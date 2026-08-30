@@ -23,6 +23,14 @@ const LoginPage = () => {
         },
         {
           onSuccess: () => router.push("/dashboard"),
+          onError: (err: any) => {
+            const errCode = err?.response?.data?.error;
+            if (errCode === "invalid_credentials") {
+              toast.error("Incorrect email or password.");
+            } else {
+              toast.error(err?.response?.data?.message || "Login failed. Please try again.");
+            }
+          },
         },
       );
     },
