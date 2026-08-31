@@ -66,12 +66,11 @@ const DashboardPage = () => {
       {/* Stat Cards Row */}
       <StatCardsRow
         totalEvents={dashboard?.totalEvents ?? 0}
-        // show pending payments only to admin and personal scopes
-        pendingPayments={
-          dashboard?.scope === 'admin' || dashboard?.scope === 'personal'
-            ? dashboard?.pendingPayments?.length ?? 0
-            : 0
-        }
+        // "Remaining" mirrors Laravel's confirmEnquiryEvents — the count of
+        // confirmed-but-not-yet-completed events, NOT the pending-payments
+        // list (a separate widget). Wiring this to pendingPayments.length
+        // was showing an entirely different number than the legacy CRM.
+        pendingPayments={dashboard?.confirmedEventsCount ?? 0}
         // show money only to admin
         totalTurnover={dashboard?.scope === 'admin' ? dashboard?.totalTurnover ?? 0 : 0}
         totalProfit={dashboard?.scope === 'admin' ? dashboard?.totalProfit ?? 0 : 0}
