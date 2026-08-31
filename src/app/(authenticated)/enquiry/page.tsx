@@ -89,6 +89,7 @@ interface CustomExtra {
   quantity: number;
   notes: string;
   rig_notes: string;
+  selected?: boolean;
 }
 
 type CardsOpen = {
@@ -616,6 +617,7 @@ const NewEnquiryPage = () => {
 
     // Custom extras
     for (const ex of customExtras) {
+      if (ex.selected === false) continue;
       total += Number(ex.sell_price) * Number(ex.quantity);
       eqList.push({ name: ex.name, notes: ex.notes || null });
       if (ex.rig_notes) rnList.push({ name: ex.name, rig_notes: ex.rig_notes });
@@ -793,6 +795,7 @@ const NewEnquiryPage = () => {
 
           // Include custom extras
           for (const ex of customExtras) {
+            if (ex.selected === false) continue;
             if (ex.equipment_id) {
               extra_data.push({
                 equipment_id: ex.equipment_id,
@@ -1616,7 +1619,7 @@ const NewEnquiryPage = () => {
                               );
                             })}
 
-                            {/* Custom extras (always selected) */}
+                            {/* Custom extras */}
                             {customExtras.map((ex) => {
                               const price = ex.sell_price * ex.quantity;
                               return (
@@ -1625,7 +1628,18 @@ const NewEnquiryPage = () => {
                                   className="flex items-center rounded-2xl bg-secondary-50/60 px-3 py-2 text-sm"
                                 >
                                   <div className="flex w-6/12 items-center gap-2">
-                                    <input type="checkbox" checked readOnly className="size-4 rounded accent-primary" />
+                                    <input
+                                      type="checkbox"
+                                      checked={ex.selected !== false}
+                                      onChange={(e) =>
+                                        setCustomExtras((prev) =>
+                                          prev.map((c) =>
+                                            c.tempId === ex.tempId ? { ...c, selected: e.target.checked } : c,
+                                          ),
+                                        )
+                                      }
+                                      className="size-4 rounded accent-primary"
+                                    />
                                     <span>{ex.name}</span>
                                   </div>
                                   <div className="w-2/12 text-center">{ex.sell_price}</div>

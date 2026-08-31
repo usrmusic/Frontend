@@ -452,3 +452,45 @@ button:hover {
 .animate-box-disappear {
   animation: box-disappear 0.2s ease-in;
 }
+
+/* Themed Modal.confirm() (delete/cancel confirmation popups). These are
+   static AntD calls outside the React tree, so they never pick up
+   ConfigProvider's theme tokens (colorPrimary, borderRadius) — they render
+   with AntD's bare defaults (square corners, yellow warning icon, plain
+   grey Cancel button) unless targeted directly like this. Apply via
+   `rootClassName: "usr-confirm-modal"` on the Modal.confirm() call. */
+.usr-confirm-modal .ant-modal-content {
+  border-radius: 16px;
+  padding: 28px;
+}
+
+.usr-confirm-modal .ant-modal-confirm-body > .anticon {
+  color: var(--color-primary);
+}
+
+.usr-confirm-modal .ant-modal-confirm-title {
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.usr-confirm-modal .ant-modal-confirm-content {
+  color: #6B7280;
+}
+
+.usr-confirm-modal .ant-modal-confirm-btns .ant-btn {
+  border-radius: 9999px;
+  height: 38px;
+  padding-inline: 20px;
+  box-shadow: none;
+}
+
+.usr-confirm-modal .ant-modal-confirm-btns .ant-btn-default {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.usr-confirm-modal .ant-modal-confirm-btns .ant-btn-default:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  opacity: 0.85;
+}

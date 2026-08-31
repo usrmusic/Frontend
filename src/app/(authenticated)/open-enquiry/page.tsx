@@ -22,7 +22,14 @@ import {
   Plus,
 } from "lucide-react";
 import { useFormik } from "formik";
-import { Select, DatePicker, TableColumnsType, InputNumber, Popover, Spin } from "antd";
+import {
+  Select,
+  DatePicker,
+  TableColumnsType,
+  InputNumber,
+  Popover,
+  Spin,
+} from "antd";
 import type { TableRowSelection } from "antd/es/table/interface";
 import dayjs from "dayjs";
 import Link from "next/link";
@@ -40,7 +47,7 @@ import useRole from "@/src/hooks/useRole";
 
 const initialParams: {
   page: number;
-  limit: number;
+  limit: number | "all";
   search: string;
   status?: "new" | "open" | "quoted";
   event_type?: string;
@@ -49,6 +56,14 @@ const initialParams: {
   limit: 10,
   search: "",
 };
+
+const PAGE_SIZE_OPTIONS = [
+  { label: "10 / page", value: 10 },
+  { label: "25 / page", value: 25 },
+  { label: "50 / page", value: 50 },
+  { label: "100 / page", value: 100 },
+  { label: "All", value: "all" },
+];
 
 import type { OpenEnquiryList } from "@/src/api/enquiry";
 
@@ -63,7 +78,10 @@ interface CompanyOption {
    progress rather than inventing a taxonomy: quoted -> "Quoted",
    contacted-but-not-quoted -> "Open", untouched -> "New". Rendered as plain
    coloured text, matching the reference design. */
-function deriveStatus(row: OpenEnquiryList): { label: string; className: string } {
+function deriveStatus(row: OpenEnquiryList): {
+  label: string;
+  className: string;
+} {
   if (row.quoted) return { label: "Quoted", className: "text-amber-500" };
   if (row.called) return { label: "Open", className: "text-blue-500" };
   return { label: "New", className: "text-emerald-500" };
@@ -88,7 +106,14 @@ function Sparkline({ id, stroke }: { id: string; stroke: string }) {
         strokeLinejoin="round"
       />
       <defs>
-        <linearGradient id={id} x1="60.2148" y1="19.45" x2="-3.28516" y2="39.4499" gradientUnits="userSpaceOnUse">
+        <linearGradient
+          id={id}
+          x1="60.2148"
+          y1="19.45"
+          x2="-3.28516"
+          y2="39.4499"
+          gradientUnits="userSpaceOnUse"
+        >
           <stop stopColor={stroke} stopOpacity="0" />
           <stop offset="1" stopColor={stroke} />
         </linearGradient>
@@ -142,10 +167,23 @@ function AddNoteControl({
       >
         {addingNote ? (
           <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"
+            />
           </svg>
-        ) : "Add"}
+        ) : (
+          "Add"
+        )}
       </button>
     </div>
   );
@@ -185,7 +223,8 @@ const OpenEnquiryPage = () => {
   const eventTypeSourceParams = { page: 1, limit: 100, search: "" };
   const { data: allEnquiryData } = useOpenEnquiryList(eventTypeSourceParams);
   const { data: companyNameOptions } = useCompanyDropdown();
-  const { data: statusCounts, isLoading: isLoadingStatusCounts } = useEnquiryStatusCounts();
+  const { data: statusCounts, isLoading: isLoadingStatusCounts } =
+    useEnquiryStatusCounts();
 
   const { mutate: addNoteMutation, isPending: addingNote } = useAddNote();
   const { mutate: confirmEventMutation, isPending: confirmingEvent } =
@@ -199,7 +238,9 @@ const OpenEnquiryPage = () => {
   // filtering which OPEN enquiries to show — a narrower, different concept
   // from the KPI cards' business-wide Open/Closed (event_status_id), which
   // cover the whole event lifecycle, not just this page's open-enquiry rows.
-  const [statusFilter, setStatusFilter] = useState<"" | "new" | "open" | "quoted">("");
+  const [statusFilter, setStatusFilter] = useState<
+    "" | "new" | "open" | "quoted"
+  >("");
   const [eventTypeFilter, setEventTypeFilter] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const hasActiveFilters = Boolean(statusFilter || eventTypeFilter);
@@ -211,7 +252,9 @@ const OpenEnquiryPage = () => {
       const v = r.dj_package_name as string | undefined;
       if (v) names.add(v);
     });
-    return Array.from(names).sort().map((v) => ({ label: v, value: v }));
+    return Array.from(names)
+      .sort()
+      .map((v) => ({ label: v, value: v }));
   }, [allEnquiryData]);
 
   // Push filter changes into the same `params` the table's real query uses —
@@ -355,7 +398,8 @@ const OpenEnquiryPage = () => {
   // `disabled` and the Enter handler both read it, so the keyboard path can't
   // fire while the button is greyed out (e.g. a double-tap of Enter mid-save
   // posting the same note twice).
-  const canAddNote = Boolean(selectedRowKeys.length) && Boolean(note.trim()) && !addingNote;
+  const canAddNote =
+    Boolean(selectedRowKeys.length) && Boolean(note.trim()) && !addingNote;
 
   const hanldeAddNote = () => {
     if (!canAddNote) return;
@@ -417,7 +461,13 @@ const OpenEnquiryPage = () => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedRowKeys([String(rows[0].id)]);
     setSelectedRowData([rows[0]]);
-  }, [enquiryData, params.search, params.page, selectedRowKeys.length, searchParams]);
+  }, [
+    enquiryData,
+    params.search,
+    params.page,
+    selectedRowKeys.length,
+    searchParams,
+  ]);
 
   useEffect(() => {
     const s = searchParams?.get("search") ?? "";
@@ -438,12 +488,20 @@ const OpenEnquiryPage = () => {
 
   const selected = selectedRowData?.[0];
   const selectedName =
-    (selected?.users_events_user_idTousers as { name?: string } | undefined)?.name || "";
+    (selected?.users_events_user_idTousers as { name?: string } | undefined)
+      ?.name || "";
   const selectedStatus = selected ? deriveStatus(selected) : null;
-  const selectedVenue = (selected?.venues as { venue?: string } | undefined)?.venue;
-  const selectedMobile = (selected?.users_events_user_idTousers as { contact_number?: string } | undefined)?.contact_number;
-  const selectedEventType = (selected?.dj_package_name as string | undefined) || undefined;
-  const selectedMessage = (selected?.details as string | undefined) || (selected?.event_details as string | undefined);
+  const selectedVenue = (selected?.venues as { venue?: string } | undefined)
+    ?.venue;
+  const selectedMobile = (
+    selected?.users_events_user_idTousers as
+      { contact_number?: string } | undefined
+  )?.contact_number;
+  const selectedEventType =
+    (selected?.dj_package_name as string | undefined) || undefined;
+  const selectedMessage =
+    (selected?.details as string | undefined) ||
+    (selected?.event_details as string | undefined);
   const selectedDate = selected?.date as string | undefined;
   // deposit_amount is a Prisma Decimal — serializeForJson doesn't special-case
   // it, so a set value can arrive as {d:[...], e, s} rather than a plain
@@ -455,7 +513,8 @@ const OpenEnquiryPage = () => {
     if (d == null) return undefined;
     if (typeof d === "object") {
       const obj = d as { d?: unknown[]; amount?: unknown };
-      if (Array.isArray(obj.d) && obj.d.length) return obj.d[0] as number | string;
+      if (Array.isArray(obj.d) && obj.d.length)
+        return obj.d[0] as number | string;
       if (obj.amount != null) return obj.amount as number | string;
       return undefined;
     }
@@ -465,7 +524,6 @@ const OpenEnquiryPage = () => {
 
   return (
     <div className="mt-8 space-y-5">
-
       {/* Page header */}
       <div className="flex flex-col gap-3 justify-between lg:flex-row lg:items-center">
         <div className="flex items-center gap-3">
@@ -474,7 +532,9 @@ const OpenEnquiryPage = () => {
           </Link>
           <div>
             <h2 className="themeH1">Open Enquiry</h2>
-            <p className="text-sm text-gray-500">Manage and respond to your enquiries</p>
+            <p className="text-sm text-gray-500">
+              Manage and respond to your enquiries
+            </p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -490,7 +550,9 @@ const OpenEnquiryPage = () => {
             disabled={!selectedRowKeys.length || Boolean(buttonLoading)}
             onClick={() => {
               if (!selectedRowKeys.length) return;
-              router.push(`/enquiry?select=${encodeURIComponent(String(selectedRowKeys[0]))}`);
+              router.push(
+                `/enquiry?select=${encodeURIComponent(String(selectedRowKeys[0]))}`,
+              );
             }}
           >
             Edit
@@ -503,21 +565,17 @@ const OpenEnquiryPage = () => {
             onClick={() => {
               if (!selectedRowKeys.length) return;
               Modal.confirm({
-                title: (
-                  <div className="flex items-center gap-3">
-                    <span className="text-red-600 text-xl">⚠️</span>
-                    <span className="font-medium">Delete enquiry</span>
-                  </div>
-                ),
-                content: (
-                  <div className="text-sm text-gray-700">
-                    Are you sure you want to delete this enquiry? This action cannot be undone. This will permanently remove the enquiry and related temporary data.
-                  </div>
-                ),
+                rootClassName: "usr-confirm-modal",
+                title: "Delete enquiry",
+                content:
+                  "Are you sure you want to delete this enquiry? This action cannot be undone. This will permanently remove the enquiry and related temporary data.",
                 centered: true,
                 maskClosable: false,
                 okText: "Delete",
-                okButtonProps: { danger: true, className: "!bg-red-600 !border-red-600 hover:!bg-red-700" },
+                okButtonProps: {
+                  danger: true,
+                  className: "!bg-red-600 !border-red-600 hover:!bg-red-700",
+                },
                 cancelText: "Cancel",
                 onOk: () => {
                   const id = String(selectedRowKeys[0]);
@@ -548,7 +606,10 @@ const OpenEnquiryPage = () => {
               if (!selectedRowKeys.length) return;
               setButtonLoading("emailUpdate");
               try {
-                const data = await fetchEmailTemplate(String(selectedRowKeys[0]), "EMAIL FOR UPDATE");
+                const data = await fetchEmailTemplate(
+                  String(selectedRowKeys[0]),
+                  "EMAIL FOR UPDATE",
+                );
                 setModalTemplate(data?.email ?? null);
                 setModalCompanies(data?.companies ?? null);
                 setClickedBtn("brochure");
@@ -572,7 +633,10 @@ const OpenEnquiryPage = () => {
               if (!selectedRowKeys.length) return;
               setButtonLoading("brochure");
               try {
-                const data = await fetchEmailTemplate(String(selectedRowKeys[0]), "EMAIL BROCHURE");
+                const data = await fetchEmailTemplate(
+                  String(selectedRowKeys[0]),
+                  "EMAIL BROCHURE",
+                );
                 setModalTemplate(data?.email ?? null);
                 setModalCompanies(data?.companies ?? null);
                 setClickedBtn("brochure");
@@ -596,7 +660,10 @@ const OpenEnquiryPage = () => {
               if (!selectedRowKeys.length) return;
               setButtonLoading("quote");
               try {
-                const data = await fetchEmailTemplate(String(selectedRowKeys[0]), "SEND QUOTE-OPEN");
+                const data = await fetchEmailTemplate(
+                  String(selectedRowKeys[0]),
+                  "SEND QUOTE-OPEN",
+                );
                 setModalTemplate(data?.email ?? null);
                 setModalCompanies(data?.companies ?? null);
                 setClickedBtn("quote");
@@ -626,13 +693,11 @@ const OpenEnquiryPage = () => {
           Flex lets both pages state the same 29% directly instead of rounding to
           whichever column count happens to be available. */}
       <div className="flex flex-col xl:flex-row gap-6">
-
         {/* Left column: KPI cards, search/filters, table. `min-w-0` is
             required: a flex item defaults to min-width:auto, so the table's
             own scroll container would refuse to shrink and push the panel
             off-screen instead. */}
         <div className="flex-1 min-w-0 space-y-4">
-
           {/* KPI row — business-wide, event_status_id based (not scoped to
               this page's own open-enquiry rows): Total is every event
               regardless of status; Open = OPEN + CONFIRMED (booked but
@@ -642,41 +707,55 @@ const OpenEnquiryPage = () => {
               enquiry.controller.js for the exact grouping. Open + Closed
               always exactly equals Total; no event falls outside both. */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Card variant="white" className="p-5 flex items-center justify-between">
+            <Card
+              variant="white"
+              className="p-5 flex items-center justify-between"
+            >
               <div>
                 <p className="text-sm text-gray-500">Total</p>
                 {isLoadingStatusCounts ? (
                   <Spin size="small" className="mt-2 block" />
                 ) : (
-                  <p className="text-3xl font-semibold text-gray-900 mt-1">{statusCounts?.total ?? "—"}</p>
+                  <p className="text-3xl font-semibold text-gray-900 mt-1">
+                    {statusCounts?.total ?? "—"}
+                  </p>
                 )}
               </div>
               <Sparkline id="oe-spark-total" stroke="#10b981" />
             </Card>
-            <Card variant="white" className="p-5 flex items-center justify-between">
+            <Card
+              variant="white"
+              className="p-5 flex items-center justify-between"
+            >
               <div>
                 <p className="text-sm text-gray-500">Open</p>
                 {isLoadingStatusCounts ? (
                   <Spin size="small" className="mt-2 block" />
                 ) : (
-                  <p className="text-3xl font-semibold text-gray-900 mt-1">{statusCounts?.open ?? "—"}</p>
+                  <p className="text-3xl font-semibold text-gray-900 mt-1">
+                    {statusCounts?.open ?? "—"}
+                  </p>
                 )}
               </div>
               <Sparkline id="oe-spark-open" stroke="#3b82f6" />
             </Card>
-            <Card variant="white" className="p-5 flex items-center justify-between">
+            <Card
+              variant="white"
+              className="p-5 flex items-center justify-between"
+            >
               <div>
                 <p className="text-sm text-gray-500">Closed</p>
                 {isLoadingStatusCounts ? (
                   <Spin size="small" className="mt-2 block" />
                 ) : (
-                  <p className="text-3xl font-semibold text-gray-900 mt-1">{statusCounts?.closed ?? "—"}</p>
+                  <p className="text-3xl font-semibold text-gray-900 mt-1">
+                    {statusCounts?.closed ?? "—"}
+                  </p>
                 )}
               </div>
               <Sparkline id="oe-spark-closed" stroke="#f59e0b" />
             </Card>
           </div>
-
 
           {/* Search + Filters + Table — ONE continuous white box, not two
               separate cards stacked with a gap. The search/filter row is an
@@ -689,126 +768,148 @@ const OpenEnquiryPage = () => {
               used elsewhere on this page; Event Type from the distinct
               dj_package_name values actually present), nothing invented. */}
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="px-2 py-2 flex items-center gap-0 border-b border-gray-100">
-            <div className="flex-1 flex items-center gap-2 px-3 py-1.5">
-              <MagnifyingGlass w={18} h={18} />
-              <input
-                type="text"
-                placeholder="Search by name, mobile, or event details..."
-                className="w-full outline-none text-sm bg-transparent placeholder:text-gray-400"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-              />
-            </div>
-            <div className="w-px self-stretch bg-gray-200 mx-1" />
-            <Popover
-              open={filtersOpen}
-              onOpenChange={setFiltersOpen}
-              trigger="click"
-              placement="bottomRight"
-              content={
-                <div className="w-64 space-y-3 py-1">
-                  <div>
-                    <p className="text-xs font-medium text-gray-500 mb-1">Status</p>
-                    <Select
-                      className="w-full"
-                      allowClear
-                      placeholder="Any status"
-                      value={statusFilter || undefined}
-                      onChange={(v) => setStatusFilter((v as typeof statusFilter) || "")}
-                      options={[
-                        { label: "New", value: "new" },
-                        { label: "Open", value: "open" },
-                        { label: "Quoted", value: "quoted" },
-                      ]}
-                    />
+            <div className="px-2 py-2 flex items-center gap-0 border-b border-gray-100">
+              <div className="flex-1 flex items-center gap-2 px-3 py-1.5">
+                <MagnifyingGlass w={18} h={18} />
+                <input
+                  type="text"
+                  placeholder="Search by name, mobile, or event details..."
+                  className="w-full outline-none text-sm bg-transparent placeholder:text-gray-400"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                />
+              </div>
+              <div className="w-px self-stretch bg-gray-200 mx-1" />
+              <Popover
+                open={filtersOpen}
+                onOpenChange={setFiltersOpen}
+                trigger="click"
+                placement="bottomRight"
+                content={
+                  <div className="w-64 space-y-3 py-1">
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 mb-1">
+                        Status
+                      </p>
+                      <Select
+                        className="w-full"
+                        allowClear
+                        placeholder="Any status"
+                        value={statusFilter || undefined}
+                        onChange={(v) =>
+                          setStatusFilter((v as typeof statusFilter) || "")
+                        }
+                        options={[
+                          { label: "New", value: "new" },
+                          { label: "Open", value: "open" },
+                          { label: "Quoted", value: "quoted" },
+                        ]}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 mb-1">
+                        Event Type
+                      </p>
+                      <Select
+                        className="w-full"
+                        allowClear
+                        placeholder="Any event type"
+                        value={eventTypeFilter || undefined}
+                        onChange={(v) => setEventTypeFilter(v || "")}
+                        options={eventTypeOptions}
+                      />
+                    </div>
+                    {hasActiveFilters && (
+                      <button
+                        type="button"
+                        className="text-xs font-medium text-primary"
+                        onClick={() => {
+                          setStatusFilter("");
+                          setEventTypeFilter("");
+                        }}
+                      >
+                        Clear filters
+                      </button>
+                    )}
                   </div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-500 mb-1">Event Type</p>
-                    <Select
-                      className="w-full"
-                      allowClear
-                      placeholder="Any event type"
-                      value={eventTypeFilter || undefined}
-                      onChange={(v) => setEventTypeFilter(v || "")}
-                      options={eventTypeOptions}
-                    />
-                  </div>
+                }
+              >
+                <button
+                  type="button"
+                  className={`shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors ${
+                    hasActiveFilters
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  <ListFilter size={15} />
+                  Filters
                   {hasActiveFilters && (
-                    <button
-                      type="button"
-                      className="text-xs font-medium text-primary"
-                      onClick={() => {
-                        setStatusFilter("");
-                        setEventTypeFilter("");
-                      }}
-                    >
-                      Clear filters
-                    </button>
+                    <span className="size-1.5 rounded-full bg-primary" />
                   )}
-                </div>
-              }
-            >
+                </button>
+              </Popover>
+              <Select
+                className="shrink-0 ml-1 w-28"
+                size="middle"
+                value={params.limit}
+                onChange={(value) =>
+                  setParams({ ...params, page: 1, limit: value })
+                }
+                options={PAGE_SIZE_OPTIONS}
+              />
               <button
                 type="button"
-                className={`shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors ${
-                  hasActiveFilters
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "text-gray-600 hover:bg-gray-50"
-                }`}
+                className="xl:hidden shrink-0 rounded-lg border border-gray-200 ml-1 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+                onClick={() => setShowSidePanel((v) => !v)}
               >
-                <ListFilter size={15} />
-                Filters
-                {hasActiveFilters && (
-                  <span className="size-1.5 rounded-full bg-primary" />
-                )}
+                {showSidePanel ? "Hide panel" : "Show panel"}
               </button>
-            </Popover>
-            <button
-              type="button"
-              className="xl:hidden shrink-0 rounded-lg border border-gray-200 ml-1 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
-              onClick={() => setShowSidePanel((v) => !v)}
-            >
-              {showSidePanel ? "Hide panel" : "Show panel"}
-            </button>
-          </div>
+            </div>
 
-          <div className="[&_.ant-table-thead_th]:whitespace-nowrap [&_.ant-table-tbody_td]:whitespace-nowrap">
-            <DataTable<OpenEnquiryList>
-              columns={columns}
-              dataSource={enquiryData?.data}
-              loading={isLoading}
-              scroll={{ x: 600 }}
-              rowKey={(data) => String(data.id)}
-              pagination={{
-                pageSize: params.limit,
-                current: params.page,
-                total: enquiryData?.meta?.total,
-                showTotal: (total, range) => `Showing ${range[0]} to ${range[1]} of ${total}`,
-                onChange: (page, pageSize) =>
-                  setParams({ ...params, page, limit: pageSize }),
-              }}
-              rowSelection={rowSelection}
-              rowClassName={(_, index) =>
-                index % 2 === 1 ? "[&>td]:bg-[#F7F7F5]" : ""
-              }
-              onRow={(record) => ({
-                onClick: () => {
-                  try {
+            <div className="[&_.ant-table-thead_th]:whitespace-nowrap [&_.ant-table-tbody_td]:whitespace-nowrap">
+              <DataTable<OpenEnquiryList>
+                columns={columns}
+                dataSource={enquiryData?.data}
+                loading={isLoading}
+                scroll={{ x: 600 }}
+                rowKey={(data) => String(data.id)}
+                pagination={
+                  params.limit === "all"
+                    ? false
+                    : {
+                        pageSize: params.limit,
+                        current: params.page,
+                        total: enquiryData?.meta?.total,
+                        showTotal: (total, range) =>
+                          `Showing ${range[0]} to ${range[1]} of ${total}`,
+                        onChange: (page, pageSize) =>
+                          setParams({ ...params, page, limit: pageSize }),
+                      }
+                }
+                rowSelection={rowSelection}
+                rowClassName={(_, index) =>
+                  index % 2 === 1 ? "[&>td]:bg-[#F7F7F5]" : ""
+                }
+                onRow={(record) => ({
+                  onClick: () => {
+                    try {
+                      const id = record?.id;
+                      if (!id) return;
+                      setSelectedRowKeys([String(id)]);
+                      setSelectedRowData([record]);
+                    } catch {}
+                  },
+                  onDoubleClick: () => {
                     const id = record?.id;
                     if (!id) return;
-                    setSelectedRowKeys([String(id)]);
-                    setSelectedRowData([record]);
-                  } catch {}
-                },
-                onDoubleClick: () => {
-                  const id = record?.id;
-                  if (!id) return;
-                  router.push(`/enquiry?select=${encodeURIComponent(String(id))}`);
-                },
-              })}
-            />
-          </div>
+                    router.push(
+                      `/enquiry?select=${encodeURIComponent(String(id))}`,
+                    );
+                  },
+                })}
+              />
+            </div>
           </div>
         </div>
 
@@ -854,7 +955,9 @@ const OpenEnquiryPage = () => {
                   {selectedName || "Notes & Deposit"}
                 </h3>
                 {selectedStatus && (
-                  <span className={`text-xs font-medium mt-1 inline-flex items-center gap-1 ${selectedStatus.className}`}>
+                  <span
+                    className={`text-xs font-medium mt-1 inline-flex items-center gap-1 ${selectedStatus.className}`}
+                  >
                     <span className="size-1.5 rounded-full bg-current" />
                     {selectedStatus.label}
                   </span>
@@ -893,63 +996,78 @@ const OpenEnquiryPage = () => {
                   under the tabs (visible regardless of which tab is active),
                   matching the original pre-redesign position. Admin only. */}
               {isAdmin && (
-              <div className="shrink-0 p-5 border-b border-gray-100">
-                <p className="text-sm font-semibold text-gray-900 mb-2.5">Record Deposit</p>
-                <form className="space-y-2.5" onSubmit={formik.handleSubmit}>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Select
-                      className="w-full h-10"
-                      placeholder="Company"
-                      options={companyOptions}
-                      value={formik.values.company_name || undefined}
-                      onChange={(value) => formik.setFieldValue("company_name", value)}
-                    />
-                    <DatePicker
-                      placeholder="Date"
-                      className="w-full h-10"
-                      format="DD/MM/YYYY"
-                      value={
-                        formik.values.event_date
-                          ? dayjs(formik.values.event_date, "DD-MM-YYYY")
-                          : undefined
-                      }
-                      onChange={(val) =>
-                        formik.setFieldValue("event_date", val ? dayjs(val).format("DD-MM-YYYY") : "")
-                      }
-                      allowClear
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <InputNumber
-                      placeholder="Amount"
-                      className="w-full h-10"
-                      style={{ width: "100%" }}
-                      value={formik.values.deposit_amount ? Number(formik.values.deposit_amount) : undefined}
-                      onChange={(val) => formik.setFieldValue("deposit_amount", val ?? "")}
-                    />
-                    <Select
-                      placeholder="Payment"
-                      className="w-full h-10"
-                      value={formik.values.payment_method_id || undefined}
-                      onChange={(val) => formik.setFieldValue("payment_method_id", val)}
-                      options={[
-                        { label: "Cash", value: "1" },
-                        { label: "BACS", value: "2" },
-                        { label: "Other", value: "3" },
-                      ]}
-                    />
-                  </div>
-                  <Button
-                    type="primary"
-                    className="w-full! h-10! font-semibold"
-                    htmlType="submit"
-                    loading={confirmingEvent}
-                    disabled={!selectedRowKeys.length}
-                  >
-                    Deposit Received
-                  </Button>
-                </form>
-              </div>
+                <div className="shrink-0 p-5 border-b border-gray-100">
+                  <p className="text-sm font-semibold text-gray-900 mb-2.5">
+                    Record Deposit
+                  </p>
+                  <form className="space-y-2.5" onSubmit={formik.handleSubmit}>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Select
+                        className="w-full h-10"
+                        placeholder="Company"
+                        options={companyOptions}
+                        value={formik.values.company_name || undefined}
+                        onChange={(value) =>
+                          formik.setFieldValue("company_name", value)
+                        }
+                      />
+                      <DatePicker
+                        placeholder="Date"
+                        className="w-full h-10"
+                        format="DD/MM/YYYY"
+                        value={
+                          formik.values.event_date
+                            ? dayjs(formik.values.event_date, "DD-MM-YYYY")
+                            : undefined
+                        }
+                        onChange={(val) =>
+                          formik.setFieldValue(
+                            "event_date",
+                            val ? dayjs(val).format("DD-MM-YYYY") : "",
+                          )
+                        }
+                        allowClear
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <InputNumber
+                        placeholder="Amount"
+                        className="w-full h-10"
+                        style={{ width: "100%" }}
+                        value={
+                          formik.values.deposit_amount
+                            ? Number(formik.values.deposit_amount)
+                            : undefined
+                        }
+                        onChange={(val) =>
+                          formik.setFieldValue("deposit_amount", val ?? "")
+                        }
+                      />
+                      <Select
+                        placeholder="Payment"
+                        className="w-full h-10"
+                        value={formik.values.payment_method_id || undefined}
+                        onChange={(val) =>
+                          formik.setFieldValue("payment_method_id", val)
+                        }
+                        options={[
+                          { label: "Cash", value: "1" },
+                          { label: "BACS", value: "2" },
+                          { label: "Other", value: "3" },
+                        ]}
+                      />
+                    </div>
+                    <Button
+                      type="primary"
+                      className="w-full! h-10! font-semibold"
+                      htmlType="submit"
+                      loading={confirmingEvent}
+                      disabled={!selectedRowKeys.length}
+                    >
+                      Deposit Received
+                    </Button>
+                  </form>
+                </div>
               )}
 
               <div className="flex-1 min-h-0 flex flex-col">
@@ -977,40 +1095,75 @@ const OpenEnquiryPage = () => {
                         11px/gray-400 this box used before. */}
                     <div className="p-5 space-y-4 border-b border-gray-100">
                       <div className="flex items-start gap-2.5">
-                        <Phone size={15} className="text-gray-400 mt-0.5 shrink-0" />
+                        <Phone
+                          size={15}
+                          className="text-gray-400 mt-0.5 shrink-0"
+                        />
                         <div className="min-w-0">
-                          <p className="text-xs text-gray-500 leading-tight">Mobile</p>
-                          <p className="text-sm text-gray-900 truncate">{selectedMobile || "--"}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-2.5">
-                        <CalendarDays size={15} className="text-gray-400 mt-0.5 shrink-0" />
-                        <div className="min-w-0">
-                          <p className="text-xs text-gray-500 leading-tight">Event Date</p>
-                          <p className="text-sm text-gray-900">
-                            {selectedDate ? dayjs(selectedDate).format("DD/MM/YYYY") : "--"}
+                          <p className="text-xs text-gray-500 leading-tight">
+                            Mobile
+                          </p>
+                          <p className="text-sm text-gray-900 truncate">
+                            {selectedMobile || "--"}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-start gap-2.5">
-                        <Sparkles size={15} className="text-gray-400 mt-0.5 shrink-0" />
+                        <CalendarDays
+                          size={15}
+                          className="text-gray-400 mt-0.5 shrink-0"
+                        />
                         <div className="min-w-0">
-                          <p className="text-xs text-gray-500 leading-tight">Event Type</p>
-                          <p className="text-sm text-gray-900 truncate">{selectedEventType || "--"}</p>
+                          <p className="text-xs text-gray-500 leading-tight">
+                            Event Date
+                          </p>
+                          <p className="text-sm text-gray-900">
+                            {selectedDate
+                              ? dayjs(selectedDate).format("DD/MM/YYYY")
+                              : "--"}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-start gap-2.5">
-                        <MapPin size={15} className="text-gray-400 mt-0.5 shrink-0" />
+                        <Sparkles
+                          size={15}
+                          className="text-gray-400 mt-0.5 shrink-0"
+                        />
                         <div className="min-w-0">
-                          <p className="text-xs text-gray-500 leading-tight">Location</p>
-                          <p className="text-sm text-gray-900 truncate">{selectedVenue || "--"}</p>
+                          <p className="text-xs text-gray-500 leading-tight">
+                            Event Type
+                          </p>
+                          <p className="text-sm text-gray-900 truncate">
+                            {selectedEventType || "--"}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-start gap-2.5">
-                        <MessageSquare size={15} className="text-gray-400 mt-0.5 shrink-0" />
+                        <MapPin
+                          size={15}
+                          className="text-gray-400 mt-0.5 shrink-0"
+                        />
                         <div className="min-w-0">
-                          <p className="text-xs text-gray-500 leading-tight">Message</p>
-                          <p className="text-sm text-gray-900 leading-snug">{selectedMessage || "--"}</p>
+                          <p className="text-xs text-gray-500 leading-tight">
+                            Location
+                          </p>
+                          <p className="text-sm text-gray-900 truncate">
+                            {selectedVenue || "--"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2.5">
+                        <MessageSquare
+                          size={15}
+                          className="text-gray-400 mt-0.5 shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs text-gray-500 leading-tight">
+                            Message
+                          </p>
+                          <p className="text-sm text-gray-900 leading-snug">
+                            {selectedMessage || "--"}
+                          </p>
                         </div>
                       </div>
                       {/* <div className="flex items-start gap-2.5">
@@ -1072,10 +1225,14 @@ const OpenEnquiryPage = () => {
                                   11px/xs pairing this used before. */}
                               {item.created_at && (
                                 <p className="text-xs leading-tight text-gray-400">
-                                  {dayjs(item.created_at).format("DD/MM/YY HH:mm")}
+                                  {dayjs(item.created_at).format(
+                                    "DD/MM/YY HH:mm",
+                                  )}
                                 </p>
                               )}
-                              <p className="text-sm leading-snug text-gray-700">{item.notes}</p>
+                              <p className="text-sm leading-snug text-gray-700">
+                                {item.notes}
+                              </p>
                             </li>
                           ))}
                         </ul>
