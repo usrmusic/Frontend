@@ -6,7 +6,11 @@ import dayjs from "dayjs";
 import { TableColumnsType, Modal, Input as AntInput } from "antd";
 import { Download, Plus, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useDownloadUpload, useUpdateUpload, useDeleteUpload } from "@/src/api/upload";
+import {
+  useDownloadUpload,
+  useUpdateUpload,
+  useDeleteUpload,
+} from "@/src/api/upload";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { useState } from "react";
@@ -34,14 +38,18 @@ const Files = ({ dataSource, isModifyMode = false, eventId }: FilesProps) => {
   const { mutate: deleteFile } = useDeleteUpload();
   const queryClient = useQueryClient();
 
-  const [downloadingId, setDownloadingId] = useState<number | string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<number | string | null>(
+    null,
+  );
   const [renameRow, setRenameRow] = useState<ConfirmedEventFile | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [isRenaming, setIsRenaming] = useState(false);
 
   const invalidateEvent = () => {
     if (eventId) {
-      queryClient.invalidateQueries({ queryKey: ["confirm-event", String(eventId)] });
+      queryClient.invalidateQueries({
+        queryKey: ["confirm-event", String(eventId)],
+      });
     }
   };
 
@@ -108,6 +116,7 @@ const Files = ({ dataSource, isModifyMode = false, eventId }: FilesProps) => {
     const displayName =
       row.original_name || row.file_name.split("/").pop() || "this file";
     Modal.confirm({
+      rootClassName: "usr-confirm-modal",
       title: "Delete File",
       content: `Are you sure you want to delete "${displayName}"? This cannot be undone.`,
       okText: "Delete",

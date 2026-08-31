@@ -30,7 +30,13 @@ import Link from "next/link";
 import { CSSProperties, useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
-import { ConfirmEventData, EventsDropdownItem, ConfirmEventPayment, ConfirmEventNote, ConfirmEventPackage } from "@/src/types/types";
+import {
+  ConfirmEventData,
+  EventsDropdownItem,
+  ConfirmEventPayment,
+  ConfirmEventNote,
+  ConfirmEventPackage,
+} from "@/src/types/types";
 import SendBrochureModal from "../open-enquiry/SendBrochure";
 import { toast } from "react-toastify";
 import { fetchEmailTemplate } from "@/src/api/enquiry";
@@ -84,11 +90,16 @@ const ConfirmedEventsPage = () => {
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [refundAmount, setRefundAmount] = useState<string>("");
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
-  const [invoiceTemplate, setInvoiceTemplate] = useState<{ subject: string; body: string } | null>(null);
-  const [editingPayment, setEditingPayment] = useState<ConfirmEventPayment | null>(null);
+  const [invoiceTemplate, setInvoiceTemplate] = useState<{
+    subject: string;
+    body: string;
+  } | null>(null);
+  const [editingPayment, setEditingPayment] =
+    useState<ConfirmEventPayment | null>(null);
   const [editAmount, setEditAmount] = useState<string>("");
   const [editDate, setEditDate] = useState<string>("");
-  const { mutate: updatePaymentMutation, isPending: isUpdatingPayment } = useUpdateConfirmPayment();
+  const { mutate: updatePaymentMutation, isPending: isUpdatingPayment } =
+    useUpdateConfirmPayment();
   const { mutate: deletePaymentMutation } = useDeleteConfirmPayment();
 
   const openEditPayment = (p: ConfirmEventPayment) => {
@@ -117,6 +128,7 @@ const ConfirmedEventsPage = () => {
   const confirmDeletePayment = (p: ConfirmEventPayment) => {
     if (!eventId) return;
     Modal.confirm({
+      rootClassName: "usr-confirm-modal",
       title: "Delete payment",
       content: `Delete the £${Number(p.amount ?? p.payment_amount ?? 0).toFixed(2)} payment dated ${dayjs(p.date ?? p.payment_date).format("DD/MM/YYYY")}? This will recalculate the outstanding balance.`,
       okText: "Delete",
@@ -125,26 +137,30 @@ const ConfirmedEventsPage = () => {
     });
   };
 
-  const eventsOptions = (eventsDropdown?.data as EventsDropdownItem[])?.map(
-    (item) => ({
-      label: `${dayjs(item.date).format("DD/MM/YYYY")} - ${item.venues?.venue} (${item.users_events_user_idTousers?.name})`,
-      // normalize to string so Select value/search is consistent
-      value: String(item.id),
-    }),
-  );
+  // Soonest gig first — today's/next event at the top of the dropdown,
+  // matching how staff actually work through this list day to day.
+  const sortedEventsDropdown = [
+    ...((eventsDropdown?.data as EventsDropdownItem[]) ?? []),
+  ].sort((a, b) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf());
+  const eventsOptions = sortedEventsDropdown.map((item) => ({
+    label: `${dayjs(item.date).format("DD/MM/YYYY")} - ${item.venues?.venue} (${item.users_events_user_idTousers?.name})`,
+    // normalize to string so Select value/search is consistent
+    value: String(item.id),
+  }));
 
   useEffect(() => {
-    if (eventsDropdown?.data?.[0]?.id && !eventId) {
-      setEventId(String(eventsDropdown.data[0].id));
+    if (sortedEventsDropdown[0]?.id && !eventId) {
+      setEventId(String(sortedEventsDropdown[0].id));
     }
-  }, [eventsDropdown?.data, eventId]);
+  }, [sortedEventsDropdown, eventId]);
 
   const getInitialValues = (data?: ConfirmEventData) => ({
     first_name: data?.users_events_user_idTousers?.name || "",
     email: data?.users_events_user_idTousers?.email || "",
     phone_number: data?.users_events_user_idTousers?.contact_number || "",
     venue: data?.venues?.venue || data?.venue || "",
-    djName: data?.users_events_dj_idTousers?.name || data?.dj_package_name || "",
+    djName:
+      data?.users_events_dj_idTousers?.name || data?.dj_package_name || "",
     videography: data?.videography || "",
     caterer: data?.caterer || "",
     decor: data?.decor || "",
@@ -228,9 +244,11 @@ const ConfirmedEventsPage = () => {
 
   const handleCancelEvent = () => {
     Modal.confirm({
+      rootClassName: "usr-confirm-modal",
       title: "Confirm cancellation",
       content: "Are you sure you want to cancel this event?",
       okText: "Yes",
+      okButtonProps: { danger: true },
       cancelText: "No",
       centered: true,
       onOk() {
@@ -243,7 +261,7 @@ const ConfirmedEventsPage = () => {
             onError: () => {
               toast.error("Failed to cancel event");
             },
-          }
+          },
         );
       },
     });
@@ -260,7 +278,7 @@ const ConfirmedEventsPage = () => {
         onError: () => {
           toast.error("Failed to download invoice");
         },
-      }
+      },
     );
   };
 
@@ -285,10 +303,12 @@ const ConfirmedEventsPage = () => {
   const payments =
     (selectedEventData?.data as ConfirmEventData)?.event_payments ?? [];
   const paymentsSum = (selectedEventData?.data?.event_payments || []).reduce(
-    (s: number, p: ConfirmEventPayment) => s + Number(p.amount || p.payment_amount || 0),
+    (s: number, p: ConfirmEventPayment) =>
+      s + Number(p.amount || p.payment_amount || 0),
     0,
   );
-  const eventRefundAmount = Number(selectedEventData?.data?.refund_amount || 0) || 0;
+  const eventRefundAmount =
+    Number(selectedEventData?.data?.refund_amount || 0) || 0;
   const adjustedPaidAmount = Math.max(0, paymentsSum - eventRefundAmount);
   const eventNotes =
     (selectedEventData?.data as ConfirmEventData)?.event_notes ?? [];
@@ -311,7 +331,13 @@ const ConfirmedEventsPage = () => {
           Contracts
         </div>
       ),
-      children: <Contracts data={selectedEventData?.data} isModifyMode={isModifyMode} onSignatureChange={setSignatureImage} />,
+      children: (
+        <Contracts
+          data={selectedEventData?.data}
+          isModifyMode={isModifyMode}
+          onSignatureChange={setSignatureImage}
+        />
+      ),
       style: panelStyle,
     },
     {
@@ -353,7 +379,11 @@ const ConfirmedEventsPage = () => {
             <Link href="/dashboard" className="shrink-0">
               <BackButton />
             </Link>
-            <h2 className="themeH1">{(searchParams?.get("from") ?? "") === "completed" ? "Completed Event" : "Confirmed Events"}</h2>
+            <h2 className="themeH1">
+              {(searchParams?.get("from") ?? "") === "completed"
+                ? "Completed Event"
+                : "Confirmed Events"}
+            </h2>
           </div>
           <div className="flex gap-2">
             {eventId && (
@@ -384,7 +414,10 @@ const ConfirmedEventsPage = () => {
                     toolbar is just Modify/Update/Print/Download Invoice — no
                     Cancel, no Send Quote, no Send Invoice. */}
                 {!isClient && (
-                  <Button onClick={handleCancelEvent} loading={isCancelingEvent}>
+                  <Button
+                    onClick={handleCancelEvent}
+                    loading={isCancelingEvent}
+                  >
                     Cancel Event
                   </Button>
                 )}
@@ -447,9 +480,7 @@ const ConfirmedEventsPage = () => {
                 {/* Additional top-level confirmed send invoice + refund buttons —
                     Admin only (see useRole import above) */}
                 {isAdmin && (
-                  <Button
-                    onClick={() => setShowRefundModal(true)}
-                  >
+                  <Button onClick={() => setShowRefundModal(true)}>
                     Refund
                   </Button>
                 )}
@@ -574,7 +605,8 @@ const ConfirmedEventsPage = () => {
                 />
                 <div>
                   <label className="mb-1 block text-xs">
-                    Entrance Song/Style (eg Guests upstanding, napkin waves, any dhol players etc)
+                    Entrance Song/Style (eg Guests upstanding, napkin waves, any
+                    dhol players etc)
                   </label>
                   <textarea
                     name="entranceSong"
@@ -587,7 +619,8 @@ const ConfirmedEventsPage = () => {
                 </div>
                 <div>
                   <label className="mb-1 block text-xs">
-                    Cake Cut Song/Who to feed? (Leave song name blank if you wish for DJ to select)
+                    Cake Cut Song/Who to feed? (Leave song name blank if you
+                    wish for DJ to select)
                   </label>
                   <textarea
                     name="cakeCutSong"
@@ -748,7 +781,7 @@ const ConfirmedEventsPage = () => {
                   <textarea
                     name="donts"
                     className="min-h-20 w-full resize-y rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
-                    placeholder="Enter don'ts"
+                    placeholder="Enter dont's"
                     value={formik.values.donts}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
@@ -791,99 +824,102 @@ const ConfirmedEventsPage = () => {
           show={showNotes || (showPayments && !isClient)}
           className={`grid ${!isClient && showNotes && showPayments ? "grid-cols-2" : "grid-cols-1"} gap-4`}
         >
-            {showNotes && (
-              <div className="rounded-xl bg-white border border-gray-200 p-4">
-                <div className="space-y-3">
-                  {eventNotes.length === 0 ? (
-                    <div className="text-sm text-gray-500">No notes found.</div>
-                  ) : (
-                    eventNotes.map((n: ConfirmEventNote) => (
-                      <div
-                        key={n.id ?? n.notes ?? Math.random()}
-                        className="rounded-lg bg-gray-50 px-3 py-2"
-                      >
-                        <div className="text-sm font-medium text-gray-800">
-                          {n.notes ?? "Note"}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          Created on {n.created_at ? dayjs(n.created_at).format("DD-MM-YYYY HH:mm") : "—"}
-                        </div>
+          {showNotes && (
+            <div className="rounded-xl bg-white border border-gray-200 p-4">
+              <div className="space-y-3">
+                {eventNotes.length === 0 ? (
+                  <div className="text-sm text-gray-500">No notes found.</div>
+                ) : (
+                  eventNotes.map((n: ConfirmEventNote) => (
+                    <div
+                      key={n.id ?? n.notes ?? Math.random()}
+                      className="rounded-lg bg-gray-50 px-3 py-2"
+                    >
+                      <div className="text-sm font-medium text-gray-800">
+                        {n.notes ?? "Note"}
                       </div>
-                    ))
-                  )}
-                </div>
+                      <div className="text-xs text-gray-500">
+                        Created on{" "}
+                        {n.created_at
+                          ? dayjs(n.created_at).format("DD-MM-YYYY HH:mm")
+                          : "—"}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
-            )}
+            </div>
+          )}
 
-            {!isClient && showPayments && (
-              <div className="rounded-xl bg-white border border-gray-200 p-4">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-2 text-left font-medium text-gray-700">
-                        Date
-                      </th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-700">
-                        Amount
-                      </th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-700">
-                        Reference
-                      </th>
-                      {/* Editing/deleting a payment recalculates the paid
+          {!isClient && showPayments && (
+            <div className="rounded-xl bg-white border border-gray-200 p-4">
+              <table className="w-full text-sm table-fixed">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="w-1/4 px-4 py-2 text-left font-medium text-gray-700">
+                      Date
+                    </th>
+                    <th className="w-1/4 px-4 py-2 text-left font-medium text-gray-700">
+                      Amount
+                    </th>
+                    <th className="w-1/4 px-4 py-2 text-left font-medium text-gray-700">
+                      Reference
+                    </th>
+                    {/* Editing/deleting a payment recalculates the paid
                           total server-side — same Admin-only gate as Add
                           Payment, since both mutate that calculation. */}
-                      {isAdmin && (
-                        <th className="px-4 py-2 text-left font-medium text-gray-700">
-                          Actions
-                        </th>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                      {payments.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={isAdmin ? 4 : 3}
-                          className="px-4 py-2 text-sm text-gray-500"
-                        >
-                          No payments found.
-                        </td>
-                      </tr>
-                    ) : (
-                      payments.map((p: ConfirmEventPayment) => (
-                        <tr key={p.id ?? Math.random()}>
-                          <td className="px-4 py-2">
-                            {p.date ? dayjs(p.date).format("DD/MM/YYYY") : "-"}
-                          </td>
-                          <td className="px-4 py-2">£{Number(p.amount ?? 0)}</td>
-                          <td className="px-4 py-2">-</td>
-                          {isAdmin && (
-                            <td className="px-4 py-2">
-                              <div className="flex gap-3">
-                                <button
-                                  type="button"
-                                  onClick={() => openEditPayment(p)}
-                                  title="Edit payment"
-                                >
-                                  <Pencil size={14} />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => confirmDeletePayment(p)}
-                                  title="Delete payment"
-                                >
-                                  <Trash2 size={14} className="text-red-600" />
-                                </button>
-                              </div>
-                            </td>
-                          )}
-                        </tr>
-                      ))
+                    {isAdmin && (
+                      <th className="w-1/4 px-4 py-2 text-right font-medium text-gray-700">
+                        Actions
+                      </th>
                     )}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={isAdmin ? 4 : 3}
+                        className="px-4 py-2 text-sm text-gray-500"
+                      >
+                        No payments found.
+                      </td>
+                    </tr>
+                  ) : (
+                    payments.map((p: ConfirmEventPayment) => (
+                      <tr key={p.id ?? Math.random()}>
+                        <td className="px-4 py-2">
+                          {p.date ? dayjs(p.date).format("DD/MM/YYYY") : "-"}
+                        </td>
+                        <td className="px-4 py-2">£{Number(p.amount ?? 0)}</td>
+                        <td className="px-4 py-2">-</td>
+                        {isAdmin && (
+                          <td className="px-4 py-2">
+                            <div className="flex justify-end gap-3">
+                              <button
+                                type="button"
+                                onClick={() => openEditPayment(p)}
+                                title="Edit payment"
+                              >
+                                <Pencil size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => confirmDeletePayment(p)}
+                                title="Delete payment"
+                              >
+                                <Trash2 size={14} className="text-red-600" />
+                              </button>
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </AnimatedMount>
       </form>
       {showModal && (
@@ -923,107 +959,111 @@ const ConfirmedEventsPage = () => {
         isClientView={isClient}
       />
 
-        {/* Send Invoice Modal */}
-        {showInvoiceModal && (
-          <SendInvoiceModal
-            open={showInvoiceModal}
-            onCancel={() => setShowInvoiceModal(false)}
-            eventId={eventId}
-            template={invoiceTemplate}
-            onSend={(subject, body) => {
-              setButtonLoading("sending");
-              sendInvoiceMutation(
-                {
-                  id: eventId,
-                  payload: {
-                    subject,
-                    body,
-                    company_name_id: selectedEventData?.data?.names_id
-                      ? Number(selectedEventData.data.names_id)
-                      : undefined,
-                    email: selectedEventData?.data?.users_events_user_idTousers?.email,
-                  },
+      {/* Send Invoice Modal */}
+      {showInvoiceModal && (
+        <SendInvoiceModal
+          open={showInvoiceModal}
+          onCancel={() => setShowInvoiceModal(false)}
+          eventId={eventId}
+          template={invoiceTemplate}
+          onSend={(subject, body) => {
+            setButtonLoading("sending");
+            sendInvoiceMutation(
+              {
+                id: eventId,
+                payload: {
+                  subject,
+                  body,
+                  company_name_id: selectedEventData?.data?.names_id
+                    ? Number(selectedEventData.data.names_id)
+                    : undefined,
+                  email:
+                    selectedEventData?.data?.users_events_user_idTousers?.email,
                 },
-                {
-                  onSuccess: () => {
-                    setShowInvoiceModal(false);
-                    setInvoiceTemplate(null);
-                    setButtonLoading(null);
-                  },
-                  onError: () => {
-                    setButtonLoading(null);
-                  },
+              },
+              {
+                onSuccess: () => {
+                  setShowInvoiceModal(false);
+                  setInvoiceTemplate(null);
+                  setButtonLoading(null);
                 },
-              );
-            }}
-            isSending={isSendingInvoice}
-          />
-        )}
+                onError: () => {
+                  setButtonLoading(null);
+                },
+              },
+            );
+          }}
+          isSending={isSendingInvoice}
+        />
+      )}
 
-        {/* Refund Modal */}
-        {showRefundModal && (
-          <RefundModal
-            open={showRefundModal}
-            onCancel={() => {
-              setShowRefundModal(false);
-              setRefundAmount("");
-            }}
-            onRefund={(amount) => {
-              refundMutation(
-                {
-                  id: eventId,
-                  payload: { refund_amount: Number(amount) },
+      {/* Refund Modal */}
+      {showRefundModal && (
+        <RefundModal
+          open={showRefundModal}
+          onCancel={() => {
+            setShowRefundModal(false);
+            setRefundAmount("");
+          }}
+          onRefund={(amount) => {
+            refundMutation(
+              {
+                id: eventId,
+                payload: { refund_amount: Number(amount) },
+              },
+              {
+                onSuccess: () => {
+                  // ensure fresh event data is fetched after refund
+                  queryClient.invalidateQueries({
+                    queryKey: ["confirm-event", eventId],
+                  });
+                  setShowRefundModal(false);
+                  setRefundAmount("");
                 },
-                {
-                  onSuccess: () => {
-                    // ensure fresh event data is fetched after refund
-                    queryClient.invalidateQueries({ queryKey: ["confirm-event", eventId] });
-                    setShowRefundModal(false);
-                    setRefundAmount("");
-                  },
-                },
-              );
-            }}
-            isProcessing={isProcessingRefund}
-            refundAmount={refundAmount}
-            setRefundAmount={setRefundAmount}
-            eventTotal={
-              Number(selectedEventData?.data?.total_cost_for_equipment) ||
-              (Array.isArray(selectedEventData?.data?.event_packages)
-                ? (selectedEventData?.data?.event_packages || []).reduce(
-                    (s: number, p: ConfirmEventPackage) => s + Number(p.total_price || p.sell_price || 0),
-                    0,
-                  )
-                : 0)
-            }
-            paidAmount={adjustedPaidAmount}
-          />
-        )}
+              },
+            );
+          }}
+          isProcessing={isProcessingRefund}
+          refundAmount={refundAmount}
+          setRefundAmount={setRefundAmount}
+          eventTotal={
+            Number(selectedEventData?.data?.total_cost_for_equipment) ||
+            (Array.isArray(selectedEventData?.data?.event_packages)
+              ? (selectedEventData?.data?.event_packages || []).reduce(
+                  (s: number, p: ConfirmEventPackage) =>
+                    s + Number(p.total_price || p.sell_price || 0),
+                  0,
+                )
+              : 0)
+          }
+          paidAmount={adjustedPaidAmount}
+        />
+      )}
 
-        {/* Edit Payment Modal */}
-        <Modal
-          title="Edit Payment"
-          open={!!editingPayment}
-          onCancel={() => setEditingPayment(null)}
-          onOk={submitEditPayment}
-          okText="Save"
-          confirmLoading={isUpdatingPayment}
-        >
-          <div className="space-y-4 mt-4">
-            <Input
-              label="Amount"
-              type="number"
-              value={editAmount}
-              onChange={(e) => setEditAmount(e.target.value)}
-            />
-            <Input
-              label="Date"
-              type="date"
-              value={editDate}
-              onChange={(e) => setEditDate(e.target.value)}
-            />
-          </div>
-        </Modal>
+      {/* Edit Payment Modal */}
+      <Modal
+        title="Edit Payment"
+        open={!!editingPayment}
+        onCancel={() => setEditingPayment(null)}
+        onOk={submitEditPayment}
+        okText="Save"
+        confirmLoading={isUpdatingPayment}
+      >
+        <div className="space-y-4 mt-4">
+          <Input
+            label="Amount"
+            type="number"
+            value={editAmount}
+            onChange={(e) => setEditAmount(e.target.value)}
+          />
+          <Input
+            label="Date"
+            type="date"
+            value={editDate}
+            onChange={(e) => setEditDate(e.target.value)}
+          />
+        </div>
+      </Modal>
     </div>
   );
 };

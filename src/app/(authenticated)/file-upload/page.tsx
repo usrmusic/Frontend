@@ -128,7 +128,10 @@ const FileUploadPage = () => {
       title: "Type",
       dataIndex: "file_type",
       key: "file_type",
-      width: 90,
+      width: 140,
+      render: (type: string) => (
+        <span className="whitespace-nowrap">{type}</span>
+      ),
     },
     {
       title: "Uploaded At",
@@ -155,7 +158,9 @@ const FileUploadPage = () => {
             title="Download"
             onClick={async () => {
               try {
-                const { blob, filename } = await downloadMutation.mutateAsync(upload.id);
+                const { blob, filename } = await downloadMutation.mutateAsync(
+                  upload.id,
+                );
                 const objectUrl = window.URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = objectUrl;
@@ -190,6 +195,7 @@ const FileUploadPage = () => {
             title="Delete"
             onClick={() => {
               Modal.confirm({
+                rootClassName: "usr-confirm-modal",
                 title: "Delete file",
                 content: "Are you sure you want to delete this file?",
                 onOk: async () => {

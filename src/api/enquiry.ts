@@ -6,7 +6,7 @@ import { toast } from "react-toastify";
 
 interface QueryParams {
   page: number;
-  limit: number;
+  limit: number | "all";
 }
 
 interface PackageParams {
@@ -214,6 +214,7 @@ export const useCreateEnquiry = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["enquiry-list"] });
+      queryClient.invalidateQueries({ queryKey: ["enquiry-status-counts"] });
       toast.success("Enquiry created successfully");
       return data;
     },
@@ -266,6 +267,7 @@ export const useUpdateEnquiry = () => {
         queryKey: ["enquiry-item", variables.id],
         refetchType: "all",
       });
+      queryClient.invalidateQueries({ queryKey: ["enquiry-status-counts"] });
     },
     onError: (error: any) => {
       console.error("update enquiry failed:", error?.message || error);
@@ -290,6 +292,7 @@ export const useDeleteEnquiry = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["enquiry-list"] });
+      queryClient.invalidateQueries({ queryKey: ["enquiry-status-counts"] });
     },
   });
 };
@@ -311,6 +314,7 @@ export const useEditEnquiry = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["enquiry-list"] });
+      queryClient.invalidateQueries({ queryKey: ["enquiry-status-counts"] });
     },
   });
 };

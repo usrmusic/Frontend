@@ -47,7 +47,7 @@ const Header = () => {
     return () => { mounted = false; };
   }, []);
 
-  const futureYears = 0;
+  const futureYears = 1;
   const pastYears = 4;
   const currentYear = new Date().getFullYear();
   const yearOptions = Array.from({ length: futureYears + pastYears + 1 }, (_, i) => {
@@ -182,24 +182,28 @@ const Header = () => {
             {dropdownFetching ? <Spin size="small" /> : <MagnifyingGlass />}
           </button>
           </div>
-        <ConfigProvider theme={{ components: { Select: { selectorBg: "transparent" } } }}>
-          <div className="bg-white rounded-full h-10 flex items-center overflow-hidden" style={{ minWidth: 110 }}>
-            <Select
-              variant="borderless"
-              value={year}
-              onChange={handleYearSelectChange}
-              options={yearOptions}
-              className="w-full text-xs"
-              classNames={{ popup: { root: "rounded-md" } }}
-            />
-          </div>
-        </ConfigProvider>
-        {!isClient && (
-          <Link href={"/enquiry"}>
-            <button className="size-12 flex items-center justify-center bg-white rounded-full">
-              <Plus />
-            </button>
-          </Link>
+        {pathname === "/dashboard" && (
+          <>
+            <ConfigProvider theme={{ components: { Select: { selectorBg: "transparent" } } }}>
+              <div className="bg-white rounded-full h-10 flex items-center overflow-hidden" style={{ minWidth: 110 }}>
+                <Select
+                  variant="borderless"
+                  value={year}
+                  onChange={handleYearSelectChange}
+                  options={yearOptions}
+                  className="w-full text-xs"
+                  classNames={{ popup: { root: "rounded-md" } }}
+                />
+              </div>
+            </ConfigProvider>
+            {!isClient && (
+              <Link href={"/enquiry"}>
+                <button className="size-12 flex items-center justify-center bg-white rounded-full">
+                  <Plus />
+                </button>
+              </Link>
+            )}
+          </>
         )}
       </div>
     </div>
