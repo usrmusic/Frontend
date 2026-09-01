@@ -30,7 +30,7 @@ import {
   Popover,
   Spin,
 } from "antd";
-import type { TableRowSelection } from "antd/es/table/interface";
+import type { TableRowSelection, TablePaginationConfig } from "antd/es/table/interface";
 import dayjs from "dayjs";
 import Link from "next/link";
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -859,20 +859,41 @@ const OpenEnquiryPage = () => {
                 scroll={{ x: 600 }}
                 rowKey={(data) => String(data.id)}
                 pagination={
-                  params.limit === "all"
-                    ? false
-                    : {
-                        pageSize: params.limit,
-                        current: params.page,
-                        total: enquiryData?.meta?.total,
-                        showTotal: (total, range) =>
-                          `Showing ${range[0]} to ${range[1]} of ${total}`,
-                        showSizeChanger: true,
-                        pageSizeOptions: ["10", "25", "50", "100"],
+                  {
+                    // AntD needs a real numeric pageSize even in "All" mode
+                    // (it's what the size-changer's own <Select> displays as
+                    // selected) — the actual "fetch everything" behaviour
+                    // comes from the API call using params.limit === "all",
+                    // not from this prop.
+                    pageSize:
+                      params.limit === "all"
+                        ? (enquiryData?.meta?.total ?? 0) || 1
+                        : params.limit,
+                    current: params.page,
+                    total: enquiryData?.meta?.total,
+                    showTotal: (total, range) =>
+                      `Showing ${range[0]} to ${range[1]} of ${total}`,
+                    showSizeChanger: {
+                          options: [
+                            { value: 10, label: "10 / page" },
+                            { value: 25, label: "25 / page" },
+                            { value: 50, label: "50 / page" },
+                            { value: 100, label: "100 / page" },
+                            { value: "all", label: "All" },
+                          ],
+                        } as TablePaginationConfig["showSizeChanger"],
                         onChange: (page, pageSize) =>
-                          setParams({ ...params, page, limit: pageSize }),
+                          setParams({
+                            ...params,
+                            page,
+                            limit: pageSize as number | "all",
+                          }),
                         onShowSizeChange: (page, pageSize) =>
-                          setParams({ ...params, page: 1, limit: pageSize }),
+                          setParams({
+                            ...params,
+                            page: 1,
+                            limit: pageSize as number | "all",
+                          }),
                       }
                 }
                 rowSelection={rowSelection}
@@ -897,21 +918,6 @@ const OpenEnquiryPage = () => {
                   },
                 })}
               />
-              <div className="flex justify-end px-4 pb-3 -mt-2">
-                <button
-                  type="button"
-                  className={`text-xs font-medium ${params.limit === "all" ? "text-primary" : "text-gray-500 hover:text-primary"}`}
-                  onClick={() =>
-                    setParams({
-                      ...params,
-                      page: 1,
-                      limit: params.limit === "all" ? 10 : "all",
-                    })
-                  }
-                >
-                  {params.limit === "all" ? "Show paginated" : "Show all"}
-                </button>
-              </div>
             </div>
           </div>
         </div>
