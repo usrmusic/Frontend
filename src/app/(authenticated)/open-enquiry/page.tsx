@@ -57,14 +57,6 @@ const initialParams: {
   search: "",
 };
 
-const PAGE_SIZE_OPTIONS = [
-  { label: "10 / page", value: 10 },
-  { label: "25 / page", value: 25 },
-  { label: "50 / page", value: 50 },
-  { label: "100 / page", value: 100 },
-  { label: "All", value: "all" },
-];
-
 import type { OpenEnquiryList } from "@/src/api/enquiry";
 
 interface CompanyOption {
@@ -565,6 +557,7 @@ const OpenEnquiryPage = () => {
             onClick={() => {
               if (!selectedRowKeys.length) return;
               Modal.confirm({
+      icon: null,
                 rootClassName: "usr-confirm-modal",
                 title: "Delete enquiry",
                 content:
@@ -849,15 +842,6 @@ const OpenEnquiryPage = () => {
                   )}
                 </button>
               </Popover>
-              <Select
-                className="shrink-0 ml-1 w-28"
-                size="middle"
-                value={params.limit}
-                onChange={(value) =>
-                  setParams({ ...params, page: 1, limit: value })
-                }
-                options={PAGE_SIZE_OPTIONS}
-              />
               <button
                 type="button"
                 className="xl:hidden shrink-0 rounded-lg border border-gray-200 ml-1 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
@@ -883,8 +867,12 @@ const OpenEnquiryPage = () => {
                         total: enquiryData?.meta?.total,
                         showTotal: (total, range) =>
                           `Showing ${range[0]} to ${range[1]} of ${total}`,
+                        showSizeChanger: true,
+                        pageSizeOptions: ["10", "25", "50", "100"],
                         onChange: (page, pageSize) =>
                           setParams({ ...params, page, limit: pageSize }),
+                        onShowSizeChange: (page, pageSize) =>
+                          setParams({ ...params, page: 1, limit: pageSize }),
                       }
                 }
                 rowSelection={rowSelection}
@@ -909,6 +897,21 @@ const OpenEnquiryPage = () => {
                   },
                 })}
               />
+              <div className="flex justify-end px-4 pb-3 -mt-2">
+                <button
+                  type="button"
+                  className={`text-xs font-medium ${params.limit === "all" ? "text-primary" : "text-gray-500 hover:text-primary"}`}
+                  onClick={() =>
+                    setParams({
+                      ...params,
+                      page: 1,
+                      limit: params.limit === "all" ? 10 : "all",
+                    })
+                  }
+                >
+                  {params.limit === "all" ? "Show paginated" : "Show all"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

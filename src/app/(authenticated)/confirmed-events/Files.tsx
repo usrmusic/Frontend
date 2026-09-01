@@ -116,6 +116,7 @@ const Files = ({ dataSource, isModifyMode = false, eventId }: FilesProps) => {
     const displayName =
       row.original_name || row.file_name.split("/").pop() || "this file";
     Modal.confirm({
+      icon: null,
       rootClassName: "usr-confirm-modal",
       title: "Delete File",
       content: `Are you sure you want to delete "${displayName}"? This cannot be undone.`,
