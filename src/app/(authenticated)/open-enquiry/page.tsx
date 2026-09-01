@@ -860,7 +860,24 @@ const OpenEnquiryPage = () => {
               </button>
             </div>
 
-            <div className="[&_.ant-table-thead_th]:whitespace-nowrap [&_.ant-table-tbody_td]:whitespace-nowrap">
+            <div
+              className={[
+                "[&_.ant-table-thead_th]:whitespace-nowrap",
+                "[&_.ant-table-tbody_td]:whitespace-nowrap",
+                // Reorder the pagination row: "Showing X to Y" stays left,
+                // the page-size dropdown moves next to it, and the </>
+                // pager moves to the far right — AntD renders these as
+                // flex children in a fixed total→pager→sizeChanger order
+                // with no prop to rearrange them, so this reorders the
+                // rendered elements directly.
+                "[&_.ant-pagination]:flex",
+                "[&_.ant-pagination-total-text]:order-1",
+                "[&_.ant-pagination-options]:order-2",
+                "[&_.ant-pagination-prev]:order-3",
+                "[&_.ant-pagination-simple-pager]:order-4",
+                "[&_.ant-pagination-next]:order-5",
+              ].join(" ")}
+            >
               <DataTable<OpenEnquiryList>
                 columns={columns}
                 dataSource={enquiryData?.data}
