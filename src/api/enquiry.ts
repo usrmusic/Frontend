@@ -6,7 +6,7 @@ import { toast } from "react-toastify";
 
 interface QueryParams {
   page: number;
-  limit: number | "all";
+  limit: number;
 }
 
 interface PackageParams {

@@ -1,7 +1,16 @@
 // hooks/useLogin.ts
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { setCookie } from "cookies-next";
+import axios from "axios";
 import AxiosInstance from "../lib/axios";
+
+// Plain axios (no auth interceptor / 401 redirect) — the reset-password page
+// is reached by a logged-out user clicking an emailed link, same reasoning
+// as the public contract-signing page's PublicAxios.
+const PublicAxios = axios.create({
+  baseURL: `${process.env.NEXT_PUBLIC_BASE_URL}/api`,
+  headers: { "Content-Type": "application/json", Accept: "application/json" },
+});
 
 export const useLogin = () => {
   const queryClient = useQueryClient();
@@ -26,6 +35,18 @@ export const useLogin = () => {
 
     onError: (error: unknown) => {
       console.error("Login failed:", error);
+    },
+  });
+};
+
+export const useResetPasswordWithToken = () => {
+  return useMutation({
+    mutationFn: async (payload: { email: string; token: string; password: string }) => {
+      const response = await PublicAxios.post<{ ok: boolean }>(
+        "/user/reset-password",
+        payload,
+      );
+      return response.data;
     },
   });
 };

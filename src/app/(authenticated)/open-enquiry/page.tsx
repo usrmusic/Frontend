@@ -47,7 +47,7 @@ import useRole from "@/src/hooks/useRole";
 
 const initialParams: {
   page: number;
-  limit: number | "all";
+  limit: number;
   search: string;
   status?: "new" | "open" | "quoted";
   event_type?: string;
@@ -842,15 +842,6 @@ const OpenEnquiryPage = () => {
                   )}
                 </button>
               </Popover>
-              {params.limit === "all" && (
-                <button
-                  type="button"
-                  className="shrink-0 ml-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-primary font-medium hover:bg-gray-50 transition-colors"
-                  onClick={() => setParams({ ...params, page: 1, limit: 10 })}
-                >
-                  Show paginated
-                </button>
-              )}
               <button
                 type="button"
                 className="xl:hidden shrink-0 rounded-lg border border-gray-200 ml-1 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
@@ -860,67 +851,24 @@ const OpenEnquiryPage = () => {
               </button>
             </div>
 
-            <div
-              className={[
-                "[&_.ant-table-thead_th]:whitespace-nowrap",
-                "[&_.ant-table-tbody_td]:whitespace-nowrap",
-                // Reorder the pagination row: "Showing X to Y" stays left,
-                // the page-size dropdown moves next to it, and the </>
-                // pager moves to the far right — AntD renders these as
-                // flex children in a fixed total→pager→sizeChanger order
-                // with no prop to rearrange them, so this reorders the
-                // rendered elements directly.
-                "[&_.ant-pagination]:flex",
-                "[&_.ant-pagination-total-text]:order-1",
-                "[&_.ant-pagination-options]:order-2",
-                "[&_.ant-pagination-prev]:order-3",
-                "[&_.ant-pagination-simple-pager]:order-4",
-                "[&_.ant-pagination-next]:order-5",
-              ].join(" ")}
-            >
+            <div className="[&_.ant-table-thead_th]:whitespace-nowrap [&_.ant-table-tbody_td]:whitespace-nowrap">
               <DataTable<OpenEnquiryList>
                 columns={columns}
                 dataSource={enquiryData?.data}
                 loading={isLoading}
                 scroll={{ x: 600 }}
                 rowKey={(data) => String(data.id)}
-                pagination={
-                  params.limit === "all"
-                    ? false
-                    : {
-                        pageSize: params.limit,
-                        current: params.page,
-                        total: enquiryData?.meta?.total,
-                        simple: true,
-                        // AntD's built-in size-changer coerces every option
-                        // through Number() before calling onChange — mixing
-                        // in a non-numeric "All" entry silently turns into
-                        // NaN and 400s the API. Keeping the changer purely
-                        // numeric and putting "All" as a plain-text toggle
-                        // inside showTotal instead — that renders in the
-                        // exact same flex row as the rest of the pagination
-                        // bar, so it reads as one control, not a bolted-on
-                        // second row.
-                        showSizeChanger: true,
-                        pageSizeOptions: ["10", "25", "50", "100"],
-                        showTotal: (total, range) => (
-                          <span className="flex items-center gap-2">
-                            {`Showing ${range[0]} to ${range[1]} of ${total}`}
-                            <button
-                              type="button"
-                              className="text-primary hover:underline font-medium"
-                              onClick={() =>
-                                setParams({ ...params, page: 1, limit: "all" })
-                              }
-                            >
-                              Show all
-                            </button>
-                          </span>
-                        ),
-                        onChange: (page, pageSize) =>
-                          setParams({ ...params, page, limit: pageSize }),
-                      }
-                }
+                pagination={{
+                  pageSize: params.limit,
+                  current: params.page,
+                  total: enquiryData?.meta?.total,
+                  // AntD only shows the size-changer by default once total
+                  // exceeds a threshold — Open Enquiry's ~31 rows fell below
+                  // it, so the dropdown silently never rendered.
+                  showSizeChanger: true,
+                  onChange: (page, pageSize) =>
+                    setParams({ ...params, page, limit: pageSize }),
+                }}
                 rowSelection={rowSelection}
                 rowClassName={(_, index) =>
                   index % 2 === 1 ? "[&>td]:bg-[#F7F7F5]" : ""
