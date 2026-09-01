@@ -60,6 +60,7 @@ interface EquipmentItem {
   id?: number | string | null;
   name?: string | null;
   sell_price?: number | null;
+  cost_price?: number | null;
   rig_notes?: string | null;
 }
 
@@ -579,16 +580,16 @@ const NewEnquiryPage = () => {
     const basePrice = packageData?.data?.equipments?.sell_price ?? 0;
     total += Number(basePrice) || 0;
 
-    // Basics — no notes, rig_notes only if user entered via modal
+    // Basics — bundled into the DJ package's base price already (matches Laravel's
+    // price_added_to_bill: the ticked quantity here always equals the quantity that
+    // came bundled with the package, so it must NOT be charged again on top of
+    // `basePrice` above). No notes; rig_notes only if user entered via modal.
     const pkgEquip = (packageData?.data?.equipments?.package_user_equipments ?? []) as PackageUserEquipment[];
     for (const it of pkgEquip) {
       const equipment = it.equipment ?? null;
       const id = it.equipment_id ?? equipment?.id ?? it.id;
       const key = id != null ? String(id) : null;
-      const qty = it.quantity ?? 1;
-      const unit = equipment?.sell_price ?? 0;
       if (key && selectedPackageEquipments[key]) {
-        total += Number(unit) * Number(qty);
         const override = extrasOverrides[key];
         eqList.push({ name: equipment?.name ?? "", notes: null });
         // Fall back to the equipment's own saved rig_notes, same as the Extras
@@ -744,9 +745,19 @@ const NewEnquiryPage = () => {
             values.dj?.id === "" || values.dj?.id == null ? null : Number(values.dj.id);
           const djId = Number.isFinite(parsedDjId) ? parsedDjId : null;
           const djPackageName = packageData?.data?.equipments?.package_name || packageParams.package_name || "";
-          const djCost = Number(packageData?.data?.equipments?.sell_price ?? 0);
+          // What USR pays the DJ (matches Laravel's dj-cost-price-for-event, which
+          // reads the package's cost_price) — NOT sell_price, which is what the
+          // client is billed and is already used as `basePrice` in the total above.
+          const djCost = Number(packageData?.data?.equipments?.cost_price ?? 0);
 
-          type EquipmentPayloadItem = { equipment_id: number; sell_price: number; quantity: number };
+          type EquipmentPayloadItem = {
+            equipment_id: number;
+            sell_price: number;
+            cost_price: number;
+            quantity: number;
+            total_price: number;
+            price_added_to_bill: number;
+          };
           type ExtrasPayloadItem = { equipment_id: number; sell_price: number; quantity: number; notes: string | null };
           type RigNotesItem = { equipment_id: number; rig_notes: string | null };
           const equipment_data: EquipmentPayloadItem[] = [];
@@ -759,10 +770,18 @@ const NewEnquiryPage = () => {
             const key = id != null ? String(id) : null;
             if (key && selectedPackageEquipments[key]) {
               const override = extrasOverrides[key];
+              const qty = Number(it.quantity ?? 1);
+              const unit = Number(equipment?.sell_price ?? 0);
               equipment_data.push({
                 equipment_id: Number(id),
-                sell_price: Number(equipment?.sell_price ?? 0),
-                quantity: Number(it.quantity ?? 1),
+                sell_price: unit,
+                cost_price: Number(equipment?.cost_price ?? 0),
+                quantity: qty,
+                total_price: unit * qty,
+                // Ticked quantity here is always the quantity already bundled
+                // into the DJ package's base price, so nothing extra is billed
+                // — matches Laravel's price_added_to_bill for Basics rows.
+                price_added_to_bill: 0,
               });
               // Same fallback as the live rigNotesList computation above — without
               // it, a Basics item relying on the equipment's own default rig note
