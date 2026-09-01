@@ -195,6 +195,7 @@ const FileUploadPage = () => {
             title="Delete"
             onClick={() => {
               Modal.confirm({
+      icon: null,
                 rootClassName: "usr-confirm-modal",
                 title: "Delete file",
                 content: "Are you sure you want to delete this file?",

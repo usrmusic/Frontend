@@ -128,6 +128,7 @@ const ConfirmedEventsPage = () => {
   const confirmDeletePayment = (p: ConfirmEventPayment) => {
     if (!eventId) return;
     Modal.confirm({
+      icon: null,
       rootClassName: "usr-confirm-modal",
       title: "Delete payment",
       content: `Delete the £${Number(p.amount ?? p.payment_amount ?? 0).toFixed(2)} payment dated ${dayjs(p.date ?? p.payment_date).format("DD/MM/YYYY")}? This will recalculate the outstanding balance.`,
@@ -244,6 +245,7 @@ const ConfirmedEventsPage = () => {
 
   const handleCancelEvent = () => {
     Modal.confirm({
+      icon: null,
       rootClassName: "usr-confirm-modal",
       title: "Confirm cancellation",
       content: "Are you sure you want to cancel this event?",
