@@ -2,6 +2,7 @@
 import { useConfirmEventsDropdown } from "@/src/api/dropdown";
 import {
   useCancelEvent,
+  useReconfirmEvent,
   useDownloadInvoice,
   useGetConfirmEvent,
   useUpdateConfirmEvent,
@@ -13,7 +14,7 @@ import { BackButton } from "@/src/components/Icons";
 import Input from "@/src/components/Input";
 import EventPaymentDrawer from "@/src/components/common/EventPaymentDrawer";
 import AnimatedMount from "@/src/components/common/AnimatedMount";
-import { Collapse, CollapseProps, Select, Spin, Modal } from "antd";
+import { Collapse, CollapseProps, Select, Spin, Modal, Checkbox, Tag } from "antd";
 import dayjs from "dayjs";
 import { useFormik } from "formik";
 import {
@@ -54,6 +55,11 @@ import { SendQuoteModal } from "./_components/SendQuoteModal";
 import { RefundModal } from "./_components/RefundModal";
 import useRole from "@/src/hooks/useRole";
 
+// Matches CANCELLED_STATUS_ID (4) from the backend's event_statuses table —
+// same hardcoded convention used elsewhere on the frontend (see
+// admin-report/useColumns.tsx, dashboard/EventOverview.tsx).
+const CANCELLED_STATUS_ID = 4;
+
 const ConfirmedEventsPage = () => {
   // Add Payment / Refund are Admin-only, matching the legacy Laravel CRM
   // (sidebar_ui_new.blade.php's Add Payment form and confirmed_events.blade.php's
@@ -73,12 +79,16 @@ const ConfirmedEventsPage = () => {
     name: string;
   }> | null>(null);
 
+  const [showCancelledEvents, setShowCancelledEvents] = useState(false);
+
   const { mutate: updateEventMutation, isPending } = useUpdateConfirmEvent();
   const { mutate: downloadInvoiceMutation, isPending: isDownloadingInvoice } =
     useDownloadInvoice();
   const { mutate: cancelEventMutation, isPending: isCancelingEvent } =
     useCancelEvent();
-  const { data: eventsDropdown } = useConfirmEventsDropdown();
+  const { mutate: reconfirmEventMutation, isPending: isReconfirmingEvent } =
+    useReconfirmEvent();
+  const { data: eventsDropdown } = useConfirmEventsDropdown(showCancelledEvents);
   const { data: selectedEventData, isLoading } = useGetConfirmEvent(eventId);
   const router = useRouter();
   const { mutate: sendInvoiceMutation, isPending: isSendingInvoice } =
@@ -155,11 +165,22 @@ const ConfirmedEventsPage = () => {
   const sortedEventsDropdown = [
     ...((eventsDropdown?.data as EventsDropdownItem[]) ?? []),
   ].sort((a, b) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf());
-  const eventsOptions = sortedEventsDropdown.map((item) => ({
-    label: `${dayjs(item.date).format("DD/MM/YYYY")} - ${item.venues?.venue} (${item.users_events_user_idTousers?.name})`,
-    // normalize to string so Select value/search is consistent
-    value: String(item.id),
-  }));
+  const eventsOptions = sortedEventsDropdown.map((item) => {
+    const isCancelled = Number(item.event_status_id) === CANCELLED_STATUS_ID;
+    const plainLabel = `${dayjs(item.date).format("DD/MM/YYYY")} - ${item.venues?.venue} (${item.users_events_user_idTousers?.name})`;
+    return {
+      label: (
+        <span className="flex items-center gap-2">
+          <span>{plainLabel}</span>
+          {isCancelled && <Tag color="red">Cancelled</Tag>}
+        </span>
+      ),
+      // used by filterOption below since `label` is a ReactNode, not a string
+      searchText: plainLabel,
+      // normalize to string so Select value/search is consistent
+      value: String(item.id),
+    };
+  });
 
   useEffect(() => {
     if (sortedEventsDropdown[0]?.id && !eventId) {
@@ -281,6 +302,28 @@ const ConfirmedEventsPage = () => {
     });
   };
 
+  const handleReconfirmEvent = () => {
+    Modal.confirm({
+      icon: null,
+      rootClassName: "usr-confirm-modal",
+      title: "Re-confirm event",
+      content: "Are you sure you want to bring this cancelled event back to Confirmed?",
+      okText: "Yes",
+      cancelText: "No",
+      centered: true,
+      onOk() {
+        reconfirmEventMutation(
+          { id: eventId },
+          {
+            onError: () => {
+              toast.error("Failed to re-confirm event");
+            },
+          },
+        );
+      },
+    });
+  };
+
   const handleDownloadInvoice = () => {
     if (!eventId) {
       toast.error("No event selected");
@@ -326,6 +369,9 @@ const ConfirmedEventsPage = () => {
   const adjustedPaidAmount = Math.max(0, paymentsSum - eventRefundAmount);
   const eventNotes =
     (selectedEventData?.data as ConfirmEventData)?.event_notes ?? [];
+  const isSelectedEventCancelled =
+    Number((selectedEventData?.data as ConfirmEventData)?.event_status_id) ===
+    CANCELLED_STATUS_ID;
 
   const panelStyle: CSSProperties = {
     marginBottom: 14,
@@ -423,11 +469,21 @@ const ConfirmedEventsPage = () => {
                     Modify
                   </Button>
                 )}
-                {/* Cancel Event / Send Quote / Send Invoice: Admin + Staff only.
-                    Laravel's Client-facing confirmed_events_client.blade.php
-                    toolbar is just Modify/Update/Print/Download Invoice — no
-                    Cancel, no Send Quote, no Send Invoice. */}
-                {!isClient && (
+                {/* Cancel Event / Re-confirm / Send Quote / Send Invoice: Admin +
+                    Staff only. Laravel's Client-facing
+                    confirmed_events_client.blade.php toolbar is just
+                    Modify/Update/Print/Download Invoice — no Cancel, no
+                    Re-confirm, no Send Quote, no Send Invoice. */}
+                {!isClient && isSelectedEventCancelled && (
+                  <Button
+                    type="primary"
+                    onClick={handleReconfirmEvent}
+                    loading={isReconfirmingEvent}
+                  >
+                    Re-confirm Event
+                  </Button>
+                )}
+                {!isClient && !isSelectedEventCancelled && (
                   <Button
                     onClick={handleCancelEvent}
                     loading={isCancelingEvent}
@@ -507,7 +563,7 @@ const ConfirmedEventsPage = () => {
             )}
           </div>
         </div>
-        <div className="max-w-100">
+        <div className="max-w-100 space-y-2">
           <Select
             value={eventId || undefined}
             className="w-[430px]"
@@ -515,7 +571,7 @@ const ConfirmedEventsPage = () => {
             options={eventsOptions}
             showSearch
             filterOption={(input, option) =>
-              String(option?.label ?? "")
+              String(option?.searchText ?? "")
                 .toLowerCase()
                 .includes(String(input).toLowerCase()) ||
               String(option?.value ?? "")
@@ -528,6 +584,16 @@ const ConfirmedEventsPage = () => {
             }}
             allowClear
           />
+          {!isClient && (
+            <div>
+              <Checkbox
+                checked={showCancelledEvents}
+                onChange={(e) => setShowCancelledEvents(e.target.checked)}
+              >
+                Show cancelled events
+              </Checkbox>
+            </div>
+          )}
         </div>
         <div className="relative">
           {isLoading && (

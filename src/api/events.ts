@@ -165,6 +165,38 @@ export const useCancelEvent = () => {
     },
   });
 };
+export const useReconfirmEvent = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id }: { id: string }) => {
+      try {
+        const response = await AxiosInstance.post(
+          `/confirm-event/reconfirm?id=${id}`,
+        );
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "API Error");
+        } else {
+          toast.error("Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: (_, { id }) => {
+      // Invalidate confirm-event detail and dropdown lists so the event
+      // shows back up as Confirmed everywhere.
+      try {
+        queryClient.invalidateQueries({ queryKey: ["confirm-event", id] });
+      } catch (e) {}
+      try {
+        queryClient.invalidateQueries({ queryKey: ["confirm-events-dropdown"] });
+      } catch (e) {}
+      toast.success("Event re-confirmed successfully");
+    },
+  });
+};
 export const useDownloadInvoice = () => {
   return useMutation({
     mutationFn: async ({ id }: { id: string }) => {
