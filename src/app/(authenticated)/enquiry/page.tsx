@@ -132,7 +132,21 @@ const validationSchema = Yup.object({
   tellMeMore: Yup.string().max(500, "Additional information must be at most 500 characters"),
 });
 
+// Next.js App Router does not remount a page component when only the query
+// string changes on the same route — navigating from `/enquiry?select=1476`
+// (editing) to plain `/enquiry` (sidebar "Enquiry" link, i.e. "new enquiry")
+// keeps every useState/useRef in NewEnquiryPageInner alive with the previous
+// event's data, even though the extensive editId-driven reset effects below
+// try to clear it. Rather than extend that already-fragile reset chain
+// further, force a clean remount whenever the edit target changes by keying
+// the inner component on it — React then re-runs every hook from scratch.
 const NewEnquiryPage = () => {
+  const searchParams = useSearchParams();
+  const editId = searchParams?.get("select") ?? null;
+  return <NewEnquiryPageInner key={editId || "new"} />;
+};
+
+const NewEnquiryPageInner = () => {
   const [showNameInput, setShowNameInput] = useState(false);
   const [showVenueInput, setShowVenueInput] = useState(false);
   // Summary sidebar defaults to open once a DJ is picked (item 8); the 3-dot
@@ -146,6 +160,15 @@ const NewEnquiryPage = () => {
   });
   const [selectedPackageEquipments, setSelectedPackageEquipments] =
     useState<Record<string, boolean>>({});
+  // Basics (Starting Package) items are bundled into the DJ package's base
+  // price up to their default `quantity` (from package_user_equipments), but
+  // — matching Laravel's editable Qty spinner — staff can bump a row's
+  // quantity higher, in which case only the excess over the bundled default
+  // is billed (see calculatePriceAddedToBill in the legacy app). Keyed by
+  // equipment id, same as selectedPackageEquipments; a missing key means
+  // "use the bundled default quantity".
+  const [packageEquipmentQty, setPackageEquipmentQty] =
+    useState<Record<string, number>>({});
   const [selectedExtras, setSelectedExtras] = useState<Record<string, boolean>>({});
   const [restoredEditSelections, setRestoredEditSelections] = useState(false);
   // Flips true the moment the user picks a DJ from the dropdown themselves
@@ -381,6 +404,7 @@ const NewEnquiryPage = () => {
         setSelectedExtras({});
         setCustomExtras([]);
         setExtrasOverrides({});
+        setPackageEquipmentQty({});
         try { formikRef.current.resetForm(); } catch {}
         if (editId) {
           try {
@@ -468,6 +492,7 @@ const NewEnquiryPage = () => {
       const pkgMap: Record<string, boolean> = {};
       const extrasMap: Record<string, boolean> = {};
       const overridesMap: Record<string, { notes: string; rig_notes: string }> = {};
+      const qtyMap: Record<string, number> = {};
       if (Array.isArray(enquiryItem.event_packages)) {
         for (const p of enquiryItem.event_packages) {
           const eqId = p?.equipment_id ?? p?.equipment?.id ?? null;
@@ -495,6 +520,14 @@ const NewEnquiryPage = () => {
             if (savedNotes || savedRigNotes) {
               overridesMap[key] = { notes: savedNotes, rig_notes: savedRigNotes };
             }
+            // Restore the previously-saved edited quantity for Basics rows
+            // (event_package.quantity holds the full edited quantity, same
+            // semantics as Laravel) so re-opening a confirmed event's
+            // enquiry shows the staff-entered qty rather than resetting to
+            // the DJ package's bundled default.
+            if ((isBasic || (!isExtra && !isBasic)) && p?.quantity != null) {
+              qtyMap[key] = Number(p.quantity);
+            }
           }
         }
       }
@@ -502,6 +535,7 @@ const NewEnquiryPage = () => {
         setSelectedPackageEquipments(pkgMap);
         setSelectedExtras(extrasMap);
         setExtrasOverrides(overridesMap);
+        setPackageEquipmentQty(qtyMap);
         setRestoredEditSelections(true);
       });
     } catch {}
@@ -568,6 +602,11 @@ const NewEnquiryPage = () => {
         }
         setSelectedPackageEquipments(initPkg);
         setSelectedExtras(initExtras);
+        // Fresh enquiry, or the user just switched to a different DJ mid-edit:
+        // there's no prior saved quantity to protect for this package, so
+        // drop any overrides and fall back to the new DJ's bundled defaults
+        // (packageEquipmentQty[key] ?? item.quantity, read at render time).
+        setPackageEquipmentQty({});
       });
     }
   }, [packageData, editId, restoredEditSelections]);
@@ -580,16 +619,22 @@ const NewEnquiryPage = () => {
     const basePrice = packageData?.data?.equipments?.sell_price ?? 0;
     total += Number(basePrice) || 0;
 
-    // Basics — bundled into the DJ package's base price already (matches Laravel's
-    // price_added_to_bill: the ticked quantity here always equals the quantity that
-    // came bundled with the package, so it must NOT be charged again on top of
-    // `basePrice` above). No notes; rig_notes only if user entered via modal.
+    // Basics — bundled into the DJ package's base price up to each item's
+    // default `quantity` (matches Laravel's price_added_to_bill). Staff can
+    // edit the Qty box higher than that default; only the excess over the
+    // bundled default gets billed on top of `basePrice` above. No notes;
+    // rig_notes only if user entered via modal.
     const pkgEquip = (packageData?.data?.equipments?.package_user_equipments ?? []) as PackageUserEquipment[];
     for (const it of pkgEquip) {
       const equipment = it.equipment ?? null;
       const id = it.equipment_id ?? equipment?.id ?? it.id;
       const key = id != null ? String(id) : null;
       if (key && selectedPackageEquipments[key]) {
+        const basicQty = Number(it.quantity ?? 1);
+        const editedQty = Number(packageEquipmentQty[key] ?? basicQty);
+        const unit = Number(equipment?.sell_price ?? 0);
+        const billedQty = Math.max(0, editedQty - basicQty);
+        total += unit * billedQty;
         const override = extrasOverrides[key];
         eqList.push({ name: equipment?.name ?? "", notes: null });
         // Fall back to the equipment's own saved rig_notes, same as the Extras
@@ -625,7 +670,7 @@ const NewEnquiryPage = () => {
     }
 
     return { equipmentList: eqList, rigNotesList: rnList, totalPrice: total };
-  }, [packageData, selectedPackageEquipments, selectedExtras, extrasOverrides, customExtras]);
+  }, [packageData, selectedPackageEquipments, packageEquipmentQty, selectedExtras, extrasOverrides, customExtras]);
 
   const openNotesModal = (
     title: string,
@@ -770,18 +815,22 @@ const NewEnquiryPage = () => {
             const key = id != null ? String(id) : null;
             if (key && selectedPackageEquipments[key]) {
               const override = extrasOverrides[key];
-              const qty = Number(it.quantity ?? 1);
+              const basicQty = Number(it.quantity ?? 1);
+              const qty = Number(packageEquipmentQty[key] ?? basicQty);
               const unit = Number(equipment?.sell_price ?? 0);
+              // Only the quantity edited ABOVE the DJ package's bundled
+              // default is billable — matches Laravel's
+              // calculatePriceAddedToBill for Basics rows. `total_price`
+              // still reflects the full line value (unit × edited qty),
+              // same semantics as Laravel's event_package.total_price.
+              const billedQty = Math.max(0, qty - basicQty);
               equipment_data.push({
                 equipment_id: Number(id),
                 sell_price: unit,
                 cost_price: Number(equipment?.cost_price ?? 0),
                 quantity: qty,
                 total_price: unit * qty,
-                // Ticked quantity here is always the quantity already bundled
-                // into the DJ package's base price, so nothing extra is billed
-                // — matches Laravel's price_added_to_bill for Basics rows.
-                price_added_to_bill: 0,
+                price_added_to_bill: unit * billedQty,
               });
               // Same fallback as the live rigNotesList computation above — without
               // it, a Basics item relying on the equipment's own default rig note
@@ -1511,9 +1560,16 @@ const NewEnquiryPage = () => {
                                 const equipment = item.equipment ?? null;
                                 const id = item.equipment_id ?? equipment?.id ?? item.id ?? `pkg-${idx}`;
                                 const key = String(id);
-                                const unitPrice = equipment?.sell_price ?? 0;
-                                const qty = item.quantity ?? 1;
-                                const price = unitPrice * qty;
+                                const unitPrice = Number(equipment?.sell_price ?? 0);
+                                // The DJ package bundles `basicQty` of this item for
+                                // free; staff can bump the Qty box higher (matches
+                                // Laravel's editable spinner), and only the excess
+                                // over the bundled default is billed.
+                                const basicQty = Number(item.quantity ?? 1);
+                                const editedQty = Number(packageEquipmentQty[key] ?? basicQty);
+                                const billedQty = Math.max(0, editedQty - basicQty);
+                                const billedPrice = unitPrice * billedQty;
+                                const checked = Boolean(selectedPackageEquipments[key]);
                                 return (
                                   <div
                                     key={key}
@@ -1522,7 +1578,7 @@ const NewEnquiryPage = () => {
                                     <div className="flex w-6/12 items-center gap-2">
                                       <input
                                         type="checkbox"
-                                        checked={Boolean(selectedPackageEquipments[key])}
+                                        checked={checked}
                                         onChange={() =>
                                           setSelectedPackageEquipments((prev) => ({
                                             ...prev,
@@ -1534,9 +1590,24 @@ const NewEnquiryPage = () => {
                                       <span>{equipment?.name}</span>
                                     </div>
                                     <div className="w-2/12 text-center">{unitPrice}</div>
-                                    <div className="w-1/12 text-center">{qty}</div>
-                                    <div className="w-1/12 text-center">{price}</div>
-                                    <div className="w-2/12 text-center">{price}</div>
+                                    <div className="w-1/12 flex justify-center">
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        value={editedQty}
+                                        disabled={!checked}
+                                        onChange={(e) => {
+                                          const val = e.target.value === "" ? basicQty : Number(e.target.value);
+                                          setPackageEquipmentQty((prev) => ({
+                                            ...prev,
+                                            [key]: Number.isFinite(val) ? val : basicQty,
+                                          }));
+                                        }}
+                                        className="h-8 w-14 rounded-lg border border-gray-200 bg-white px-1 text-center text-sm outline-none focus:border-primary transition-colors disabled:bg-gray-100 disabled:text-gray-400"
+                                      />
+                                    </div>
+                                    <div className="w-1/12 text-center">{billedPrice}</div>
+                                    <div className="w-2/12 text-center">{billedPrice}</div>
                                   </div>
                                 );
                               },

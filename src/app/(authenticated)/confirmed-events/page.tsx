@@ -44,8 +44,13 @@ import Files from "./Files";
 import Contracts from "./Contracts";
 import Todos from "./_components/Todos";
 import { parseTimeTo24 } from "@/src/utils/timeConverter";
-import { useSendConfirmInvoice, useRefundConfirmEvent } from "@/src/api/events";
+import {
+  useSendConfirmInvoice,
+  useSendConfirmQuote,
+  useRefundConfirmEvent,
+} from "@/src/api/events";
 import { SendInvoiceModal } from "./_components/SendInvoiceModal";
+import { SendQuoteModal } from "./_components/SendQuoteModal";
 import { RefundModal } from "./_components/RefundModal";
 import useRole from "@/src/hooks/useRole";
 
@@ -78,6 +83,8 @@ const ConfirmedEventsPage = () => {
   const router = useRouter();
   const { mutate: sendInvoiceMutation, isPending: isSendingInvoice } =
     useSendConfirmInvoice();
+  const { mutate: sendQuoteMutation, isPending: isSendingQuote } =
+    useSendConfirmQuote();
   const { mutate: refundMutation, isPending: isProcessingRefund } =
     useRefundConfirmEvent();
   const queryClient = useQueryClient();
@@ -87,10 +94,15 @@ const ConfirmedEventsPage = () => {
   // drawer. Grepped clean before removal: none of these were referenced
   // anywhere on this page outside the drawer's own markup.
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [refundAmount, setRefundAmount] = useState<string>("");
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
   const [invoiceTemplate, setInvoiceTemplate] = useState<{
+    subject: string;
+    body: string;
+  } | null>(null);
+  const [quoteTemplate, setQuoteTemplate] = useState<{
     subject: string;
     body: string;
   } | null>(null);
@@ -433,10 +445,8 @@ const ConfirmedEventsPage = () => {
                           String(eventId),
                           "SEND QUOTE-CONFIRMED",
                         );
-                        setModalTemplate(data?.email ?? null);
-                        setModalCompanies(data?.companies ?? null);
-                        setSendMode("quote");
-                        setShowModal(true);
+                        setQuoteTemplate(data?.email ?? null);
+                        setShowQuoteModal(true);
                       } catch {
                         toast.error("Failed to load email template");
                       } finally {
@@ -996,6 +1006,42 @@ const ConfirmedEventsPage = () => {
             );
           }}
           isSending={isSendingInvoice}
+        />
+      )}
+
+      {/* Send Quote Modal */}
+      {showQuoteModal && (
+        <SendQuoteModal
+          open={showQuoteModal}
+          onCancel={() => setShowQuoteModal(false)}
+          eventId={eventId}
+          template={quoteTemplate}
+          onSend={(subject, body) => {
+            setButtonLoading("sending-quote");
+            sendQuoteMutation(
+              {
+                id: eventId,
+                payload: {
+                  subject,
+                  body,
+                  company_name_id: selectedEventData?.data?.names_id
+                    ? Number(selectedEventData.data.names_id)
+                    : undefined,
+                },
+              },
+              {
+                onSuccess: () => {
+                  setShowQuoteModal(false);
+                  setQuoteTemplate(null);
+                  setButtonLoading(null);
+                },
+                onError: () => {
+                  setButtonLoading(null);
+                },
+              },
+            );
+          }}
+          isSending={isSendingQuote}
         />
       )}
 

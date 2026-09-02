@@ -699,6 +699,80 @@ export const useSendConfirmInvoice = () => {
   });
 };
 
+export const useSendConfirmQuote = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: {
+        subject?: string;
+        body?: string;
+        company_name_id?: number;
+      };
+    }) => {
+      try {
+        const response = await AxiosInstance.post(`/confirm-event/quote`, {
+          id,
+          ...payload,
+        });
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Failed to send quote");
+        } else {
+          toast.error("Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ["confirm-event", id] });
+      toast.success("Quote sent successfully");
+    },
+  });
+};
+
+export const useSendThankYouEmail = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: {
+        subject: string;
+        body: string;
+      };
+    }) => {
+      try {
+        const response = await AxiosInstance.post(
+          `/confirm-event/completed/thank-you`,
+          { id, ...payload },
+        );
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Failed to send email");
+        } else {
+          toast.error("Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ["confirm-event", id] });
+      queryClient.invalidateQueries({ queryKey: ["completed-events"] });
+      toast.success("Email sent successfully");
+    },
+  });
+};
+
 export const useRefundConfirmEvent = () => {
   const queryClient = useQueryClient();
   return useMutation({
