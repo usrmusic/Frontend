@@ -22,8 +22,20 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
     return null;
   })();
 
-  const adminSignatureUrl =
-    data?.company_names?.admin_signature_url ?? data?.company?.admin_signature_url ?? null;
+  const company = data?.company_names ?? data?.company ?? null;
+  const adminSignatureUrl = company?.admin_signature_url ?? null;
+
+  // The real signed date — was hardcoded to "today" regardless of when the
+  // contract was actually signed. Prefer the signed contract's own
+  // signed_at, fall back to the event's contract_signed_at.
+  const signedAt = (() => {
+    if (Array.isArray(data?.contracts)) {
+      for (const c of data.contracts) {
+        if (c?.signed_at) return c.signed_at;
+      }
+    }
+    return data?.contract_signed_at ?? null;
+  })();
 
   return (
     <div className="md:mx-[150px] mx-10">
@@ -43,7 +55,7 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
           </p>
           <p>
             <strong>Date:</strong>{" "}
-            {dayjs(new Date().toLocaleDateString()).format("DD MMM YYYY")}
+            {signedAt ? dayjs(signedAt).format("DD MMM YYYY") : "Not yet signed"}
           </p>
         </div>
         <div>
@@ -97,10 +109,12 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
               : "—"}{" "}
             on signature of Contract. Remaining balance of price payable 1 week before the event.
           </p>
-          <p className="text-red-600">
-            Please make payment to: Account Name: USR Music Ltd, Account No: 10265352, Sort Code:
-            60-83-71
-          </p>
+          {company?.bank_name || company?.account_number || company?.sort_code ? (
+            <p className="text-red-600">
+              Please make payment to: Account Name: {company?.name || "—"}, Account No:{" "}
+              {company?.account_number || "—"}, Sort Code: {company?.sort_code || "—"}
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -117,9 +131,9 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
         {/* Company / Admin column */}
         <div>
           <p className="text-[11pt] font-semibold text-center">
-            Signed by <span className="font-bold">Gurpreet Sanghera</span>
+            Signed by <span className="font-bold">{company?.contact_name || company?.name || "—"}</span>
             <br />
-            <span className="text-sm">for and on behalf of USR</span>
+            <span className="text-sm">for and on behalf of {company?.name || "the company"}</span>
           </p>
 
           <div className="mt-3 bg-white rounded-md border border-gray-200 p-4 text-center">

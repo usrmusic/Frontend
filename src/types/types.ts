@@ -45,6 +45,10 @@ export type ConfirmEventCompany = {
   name?: string | null;
   admin_signature?: string | null;
   admin_signature_url?: string | null;
+  contact_name?: string | null;
+  bank_name?: string | null;
+  account_number?: string | null;
+  sort_code?: string | null;
 };
 
 export type ConfirmEventData = {

@@ -155,7 +155,7 @@ const ConfirmedEventsPage = () => {
       title: "Delete payment",
       content: `Delete the £${Number(p.amount ?? p.payment_amount ?? 0).toFixed(2)} payment dated ${dayjs(p.date ?? p.payment_date).format("DD/MM/YYYY")}? This will recalculate the outstanding balance.`,
       okText: "Delete",
-      okButtonProps: { danger: true },
+      okButtonProps: { type: "primary" },
       onOk: () => deletePaymentMutation({ paymentId: p.id, eventId }),
     });
   };
@@ -283,7 +283,7 @@ const ConfirmedEventsPage = () => {
       title: "Confirm cancellation",
       content: "Are you sure you want to cancel this event?",
       okText: "Yes",
-      okButtonProps: { danger: true },
+      okButtonProps: { type: "primary" },
       cancelText: "No",
       centered: true,
       onOk() {
@@ -870,27 +870,21 @@ const ConfirmedEventsPage = () => {
           </div>
         </div>
         <div className="flex items-center justify-end gap-3 py-4">
+          {/* Notes and Payments now open/close together as a single toggle —
+              Client has no Payments box at all (aggregate total only, no
+              per-payment records), so their toggle only ever affects Notes. */}
           <Button
             htmlType="button"
             type="primary"
-            onClick={() => setShowNotes((v) => !v)}
+            onClick={() => {
+              const next = !(showNotes || showPayments);
+              setShowNotes(next);
+              if (!isClient) setShowPayments(next);
+            }}
             className="px-3 py-1"
           >
-            {showNotes ? "Hide Notes" : "Show Notes"}
+            {showNotes || showPayments ? "Hide Notes/Payments" : "Show Notes/Payments"}
           </Button>
-          {/* Line-item payment history (Date/Amount/Reference) is Admin/Staff
-              only — the legacy Laravel CRM's Client view only ever shows an
-              aggregate total + outstanding figure, never per-payment records. */}
-          {!isClient && (
-            <Button
-              htmlType="button"
-              type="primary"
-              onClick={() => setShowPayments((v) => !v)}
-              className="px-3 py-1"
-            >
-              {showPayments ? "Hide Payments" : "Show Payments"}
-            </Button>
-          )}
         </div>
         {/* AnimatedMount (real conditional mount, not a height collapse —
             a max-height guess left residual ghost space when closed) delays

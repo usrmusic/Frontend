@@ -5,6 +5,7 @@ import AxiosInstance from "../lib/axios";
 import { toast } from "react-toastify";
 import { ApiResponse } from "../types/types";
 import { TodoFormValues } from "../app/(authenticated)/confirmed-events/_components/TodoModal";
+import { invalidateAllStats } from "../lib/invalidateStats";
 
 interface EventPayment {
   amount: number;
@@ -131,6 +132,7 @@ export const useUpdateConfirmEvent = () => {
     },
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["confirm-event", id] });
+      invalidateAllStats(queryClient);
     },
   });
 };
@@ -161,6 +163,7 @@ export const useCancelEvent = () => {
       try {
         queryClient.invalidateQueries({ queryKey: ["events-dropdown"] });
       } catch (e) {}
+      invalidateAllStats(queryClient);
       toast.success("Event canceled successfully");
     },
   });
@@ -193,6 +196,7 @@ export const useReconfirmEvent = () => {
       try {
         queryClient.invalidateQueries({ queryKey: ["confirm-events-dropdown"] });
       } catch (e) {}
+      invalidateAllStats(queryClient);
       toast.success("Event re-confirmed successfully");
     },
   });
@@ -433,6 +437,10 @@ export const useConfirmEvent = () => {
       try {
         queryClient.invalidateQueries({ queryKey: ["events-dropdown"] });
       } catch (e) {}
+      // Moving an enquiry to Confirmed changes counts on the Dashboard,
+      // Open Enquiry page, and Admin Report all at once.
+      queryClient.invalidateQueries({ queryKey: ["enquiry-status-counts"] });
+      invalidateAllStats(queryClient);
     },
   });
 };
@@ -465,11 +473,9 @@ export const useAddConfirmPayment = () => {
     },
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["confirm-event", id] });
-      // The dashboard's Pending Payments widget reads outstanding balances
-      // from this same event — without this it would keep showing a payment
-      // just recorded (from either the confirmed-events drawer or the
-      // dashboard's own quick-add drawer) as still outstanding until next reload.
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      // Payments affect Dashboard KPIs, Admin Report, and Pending Payments —
+      // refresh every stat cache, not just this one event's own view.
+      invalidateAllStats(queryClient);
       toast.success("Payment added successfully");
     },
   });
@@ -505,7 +511,7 @@ export const useUpdateConfirmPayment = () => {
     },
     onSuccess: (_, { eventId }) => {
       queryClient.invalidateQueries({ queryKey: ["confirm-event", eventId] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      invalidateAllStats(queryClient);
       toast.success("Payment updated successfully");
     },
   });
@@ -537,7 +543,7 @@ export const useDeleteConfirmPayment = () => {
     },
     onSuccess: (_, { eventId }) => {
       queryClient.invalidateQueries({ queryKey: ["confirm-event", eventId] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      invalidateAllStats(queryClient);
       toast.success("Payment deleted successfully");
     },
   });
@@ -590,6 +596,7 @@ export const useAddTodo = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["todos-list"] });
+      invalidateAllStats(queryClient);
     },
   });
 };
@@ -621,6 +628,7 @@ export const useDeleteTodo = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["todos-list"] });
+      invalidateAllStats(queryClient);
     },
   });
 };
@@ -655,6 +663,7 @@ export const useUpdateTodo = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["todos-list"] });
+      invalidateAllStats(queryClient);
     },
   });
 };
@@ -689,6 +698,7 @@ export const useToggleTodoComplete = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["todos-list"] });
+      invalidateAllStats(queryClient);
     },
   });
 };
@@ -833,6 +843,7 @@ export const useRefundConfirmEvent = () => {
     },
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["confirm-event", id] });
+      invalidateAllStats(queryClient);
       toast.success("Refund processed successfully");
     },
   });

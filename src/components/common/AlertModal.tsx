@@ -24,7 +24,7 @@ const AlertModal = ({
       <p>{text}</p>
       <div className="flex justify-end gap-3">
         <Button onClick={handleCancel}>Cancel</Button>
-        <Button onClick={onYes} danger variant="solid" loading={loading}>
+        <Button onClick={onYes} type="primary" variant="solid" loading={loading}>
           Yes
         </Button>
       </div>

@@ -15,6 +15,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { useState } from "react";
 
+// Strips the backend's storage-uniqueness prefix (`<timestamp><hex>_`) so the
+// user only ever sees the real filename they uploaded, not the internal key.
+const stripStoragePrefix = (name: string) =>
+  name.replace(/^\d{10,}[0-9a-f]{0,8}_/, "");
+
 export type ConfirmedEventFile = {
   id: number | string;
   file_name: string;
@@ -64,7 +69,7 @@ const Files = ({ dataSource, isModifyMode = false, eventId }: FilesProps) => {
       a.download =
         filename ||
         row.original_name ||
-        row.file_name.split("/").pop() ||
+        stripStoragePrefix(row.file_name.split("/").pop() || row.file_name) ||
         "download";
       document.body.appendChild(a);
       a.click();
@@ -80,7 +85,8 @@ const Files = ({ dataSource, isModifyMode = false, eventId }: FilesProps) => {
 
   const handleRenameClick = (row: ConfirmedEventFile) => {
     const displayName =
-      row.original_name || row.file_name.split("/").pop() || row.file_name;
+      row.original_name ||
+      stripStoragePrefix(row.file_name.split("/").pop() || row.file_name);
     setRenameRow(row);
     setRenameValue(displayName.replace(/\.[^/.]+$/, ""));
   };
@@ -94,7 +100,8 @@ const Files = ({ dataSource, isModifyMode = false, eventId }: FilesProps) => {
         ? oldKey.substring(0, oldKey.lastIndexOf("/"))
         : "";
       const displayName =
-        renameRow.original_name || oldKey.split("/").pop() || "";
+        renameRow.original_name ||
+        stripStoragePrefix(oldKey.split("/").pop() || oldKey);
       const ext = displayName.match(/\.[^/.]+$/)?.[0] || "";
       const newKey = folder
         ? `${folder}/${renameValue.trim()}${ext}`
@@ -114,14 +121,16 @@ const Files = ({ dataSource, isModifyMode = false, eventId }: FilesProps) => {
 
   const handleDelete = (row: ConfirmedEventFile) => {
     const displayName =
-      row.original_name || row.file_name.split("/").pop() || "this file";
+      row.original_name ||
+      stripStoragePrefix(row.file_name.split("/").pop() || row.file_name) ||
+      "this file";
     Modal.confirm({
       icon: null,
       rootClassName: "usr-confirm-modal",
       title: "Delete File",
       content: `Are you sure you want to delete "${displayName}"? This cannot be undone.`,
       okText: "Delete",
-      okButtonProps: { danger: true },
+      okButtonProps: { type: "primary" },
       cancelText: "Cancel",
       centered: true,
       onOk() {
@@ -140,7 +149,8 @@ const Files = ({ dataSource, isModifyMode = false, eventId }: FilesProps) => {
       title: "File Name",
       key: "file_name",
       render: (row: ConfirmedEventFile) =>
-        row.original_name || row.file_name.split("/").pop() || row.file_name,
+        row.original_name ||
+        stripStoragePrefix(row.file_name.split("/").pop() || row.file_name),
     },
     {
       title: "Type",

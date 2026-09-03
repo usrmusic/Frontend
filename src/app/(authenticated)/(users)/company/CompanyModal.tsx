@@ -139,111 +139,119 @@ const CompanyModal = ({
     <Modal
       open={modalOpen}
       onCancel={handleCancel}
-      title="Add Company"
+      title={isEditMode ? "Edit Company" : "Add Company"}
       centered
       footer={false}
-      width={700}
+      width="min(1400px, 95vw)"
     >
       <form onSubmit={formik.handleSubmit}>
-        <div className="space-y-4">
-          <div className="space-y-3">
-            <p className="text-center font-medium">Company Details</p>
-            <Input
-              label="Company Name"
-              labelIcon={<Building2 size={14} />}
-              name="name"
-              value={formik.values.name}
-              onChange={formik.handleChange}
-            />
-          </div>
-          <div className="space-y-3">
-            <p className="text-center font-medium">Files</p>
-            <Input
-              label="Company Logo"
-              type="file"
-              labelIcon={<FileInput size={14} />}
-              name="company_logo"
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                formik.setFieldValue(
-                  "company_logo",
-                  e.currentTarget.files?.[0] || null,
-                );
-              }}
-            />
-            <Input
-              label="Brochure"
-              type="file"
-              labelIcon={<FileInput size={14} />}
-              name="brochure"
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                formik.setFieldValue(
-                  "brochure",
-                  e.currentTarget.files?.[0] || null,
-                );
-              }}
-            />
-          </div>
-          <div className="space-y-3">
-            <p className="text-center font-medium">Admin Signature</p>
-            {!showPad && initialValues?.admin_signature_url ? (
-              <div className="flex flex-col items-center gap-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={initialValues?.admin_signature_url as string}
-                  alt="Admin signature"
-                  className="border rounded p-2 max-h-24"
-                />
-                <button
-                  type="button"
-                  className="text-xs text-blue-600 underline"
-                  onClick={() => setShowPad(true)}
-                >
-                  Replace signature
-                </button>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-2">
-                <SignaturePad
-                  ref={padRef}
-                  width={500}
-                  height={160}
-                  onChange={(empty) => {
-                    formik.setFieldValue(
-                      "admin_signature",
-                      empty ? null : padRef.current?.toDataURL() ?? null,
-                    );
-                  }}
-                />
-                <div className="flex gap-3">
+        {/* Four columns side-by-side instead of one long scrolling stack —
+            everything visible at once on a wide screen, wraps to fewer
+            columns as the viewport narrows. */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-x-6 gap-y-6">
+          {/* Column 1: Company Details + Files + Admin Signature */}
+          <div className="space-y-5">
+            <div className="space-y-3">
+              <p className="font-medium text-gray-900">Company Details</p>
+              <Input
+                label="Company Name"
+                labelIcon={<Building2 size={14} />}
+                name="name"
+                value={formik.values.name}
+                onChange={formik.handleChange}
+              />
+            </div>
+            <div className="space-y-3">
+              <p className="font-medium text-gray-900">Files</p>
+              <Input
+                label="Company Logo"
+                type="file"
+                labelIcon={<FileInput size={14} />}
+                name="company_logo"
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  formik.setFieldValue(
+                    "company_logo",
+                    e.currentTarget.files?.[0] || null,
+                  );
+                }}
+              />
+              <Input
+                label="Brochure"
+                type="file"
+                labelIcon={<FileInput size={14} />}
+                name="brochure"
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  formik.setFieldValue(
+                    "brochure",
+                    e.currentTarget.files?.[0] || null,
+                  );
+                }}
+              />
+            </div>
+            <div className="space-y-3">
+              <p className="font-medium text-gray-900">Admin Signature</p>
+              {!showPad && initialValues?.admin_signature_url ? (
+                <div className="flex flex-col items-start gap-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={initialValues?.admin_signature_url as string}
+                    alt="Admin signature"
+                    className="border rounded p-2 max-h-24"
+                  />
                   <button
                     type="button"
-                    className="text-xs text-gray-600 underline"
-                    onClick={() => {
-                      padRef.current?.clear();
-                      formik.setFieldValue("admin_signature", null);
-                    }}
+                    className="text-xs text-blue-600 underline"
+                    onClick={() => setShowPad(true)}
                   >
-                    Clear
+                    Replace signature
                   </button>
-                  {initialValues?.admin_signature_url && (
+                </div>
+              ) : (
+                <div className="flex flex-col items-start gap-2">
+                  <SignaturePad
+                    ref={padRef}
+                    width={280}
+                    height={140}
+                    onChange={(empty) => {
+                      formik.setFieldValue(
+                        "admin_signature",
+                        empty ? null : padRef.current?.toDataURL() ?? null,
+                      );
+                    }}
+                  />
+                  <div className="flex gap-3">
                     <button
                       type="button"
                       className="text-xs text-gray-600 underline"
                       onClick={() => {
                         padRef.current?.clear();
                         formik.setFieldValue("admin_signature", null);
-                        setShowPad(false);
                       }}
                     >
-                      Keep existing
+                      Clear
                     </button>
-                  )}
+                    {initialValues?.admin_signature_url && (
+                      <button
+                        type="button"
+                        className="text-xs text-gray-600 underline"
+                        onClick={() => {
+                          padRef.current?.clear();
+                          formik.setFieldValue("admin_signature", null);
+                          setShowPad(false);
+                        }}
+                      >
+                        Keep existing
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
+
+          {/* Column 2: Contact Details */}
           <div className="space-y-3">
-            <p className="text-center font-medium">Contact Details</p>
+            <p className="font-medium text-gray-900">Contact Details</p>
             <Input
               label="Name"
               labelIcon={<User size={14} />}
@@ -290,8 +298,10 @@ const CompanyModal = ({
               onChange={formik.handleChange}
             />
           </div>
+
+          {/* Column 3: Address Details */}
           <div className="space-y-3">
-            <p className="text-center font-medium">Address Details</p>
+            <p className="font-medium text-gray-900">Address Details</p>
             <Input
               label="Address Name Number"
               labelIcon={<NotebookTabs size={14} />}
@@ -320,8 +330,10 @@ const CompanyModal = ({
               onChange={formik.handleChange}
             />
           </div>
+
+          {/* Column 4: Bank Details */}
           <div className="space-y-3">
-            <p className="text-center font-medium">Bank Details</p>
+            <p className="font-medium text-gray-900">Bank Details</p>
             <Input
               label="Bank Name"
               labelIcon={<Landmark size={14} />}
@@ -358,7 +370,7 @@ const CompanyModal = ({
             />
           </div>
         </div>
-        <div className="mt-4">
+        <div className="mt-6 flex justify-end">
           <ModalFooter
             loading={loading}
             mode={isEditMode ? "edit" : "add"}
