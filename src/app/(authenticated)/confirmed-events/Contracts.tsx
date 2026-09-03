@@ -104,7 +104,9 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
         <div className="pt-3">
           <p>
             Deposit payable £
-            {data?.deposit_amount != null && data.deposit_amount !== ""
+            {data?.deposit_amount != null &&
+            data.deposit_amount !== "" &&
+            Number.isFinite(Number(data.deposit_amount))
               ? Number(data.deposit_amount).toLocaleString("en-GB")
               : "—"}{" "}
             on signature of Contract. Remaining balance of price payable 1 week before the event.

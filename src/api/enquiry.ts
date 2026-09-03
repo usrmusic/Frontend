@@ -190,7 +190,7 @@ export const useAddNote = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["enquiry-list"] });
+      queryClient.invalidateQueries({ queryKey: ["enquiry-list"], refetchType: "all" });
     },
     onError: (error) => {
       console.error("add supplier failed:", error.message);
@@ -214,8 +214,13 @@ export const useCreateEnquiry = () => {
       }
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["enquiry-list"] });
-      queryClient.invalidateQueries({ queryKey: ["enquiry-status-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["enquiry-list"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["enquiry-status-counts"], refetchType: "all" });
+      // Creating an enquiry can create a brand new client record — without
+      // these, the Clients page and the New Enquiry autocomplete both kept
+      // showing stale data until something unrelated forced a refetch.
+      queryClient.invalidateQueries({ queryKey: ["clients"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["client-dropdown"], refetchType: "all" });
       invalidateAllStats(queryClient);
       toast.success("Enquiry created successfully");
       return data;
@@ -254,7 +259,7 @@ export const useUpdateEnquiry = () => {
       }
     },
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["enquiry-list"] });
+      queryClient.invalidateQueries({ queryKey: ["enquiry-list"], refetchType: "all" });
       // Global query defaults have refetchOnMount:false, so plain
       // invalidateQueries() only marks an INACTIVE query (e.g. this enquiry's
       // edit page, already unmounted after a successful save + navigate
@@ -269,7 +274,10 @@ export const useUpdateEnquiry = () => {
         queryKey: ["enquiry-item", variables.id],
         refetchType: "all",
       });
-      queryClient.invalidateQueries({ queryKey: ["enquiry-status-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["enquiry-status-counts"], refetchType: "all" });
+      // Editing an enquiry can also update the linked client's own details.
+      queryClient.invalidateQueries({ queryKey: ["clients"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["client-dropdown"], refetchType: "all" });
       invalidateAllStats(queryClient);
     },
     onError: (error: any) => {
@@ -294,8 +302,8 @@ export const useDeleteEnquiry = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["enquiry-list"] });
-      queryClient.invalidateQueries({ queryKey: ["enquiry-status-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["enquiry-list"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["enquiry-status-counts"], refetchType: "all" });
       invalidateAllStats(queryClient);
     },
   });
@@ -317,8 +325,8 @@ export const useEditEnquiry = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["enquiry-list"] });
-      queryClient.invalidateQueries({ queryKey: ["enquiry-status-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["enquiry-list"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["enquiry-status-counts"], refetchType: "all" });
       invalidateAllStats(queryClient);
     },
   });

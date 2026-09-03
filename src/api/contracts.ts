@@ -32,6 +32,9 @@ export type ContractCompany = {
   city?: string | null;
   postal_code?: string | null;
   admin_signature_url?: string | null;
+  bank_name?: string | null;
+  account_number?: string | null;
+  sort_code?: string | null;
 };
 
 export type ContractView = {
@@ -81,7 +84,7 @@ export function useSignContract(token: string | null | undefined) {
       return resp.data.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["contract-token", token] });
+      queryClient.invalidateQueries({ queryKey: ["contract-token", token], refetchType: "all" });
     },
   });
 }
@@ -161,9 +164,9 @@ export function useDeleteContract(eventId?: number | string | null) {
     onSuccess: () => {
       // Refresh the table, plus the parent confirmed-event row so the
       // "signed" badge updates if the deleted row was the latest.
-      queryClient.invalidateQueries({ queryKey: ["event-contracts", eventId] });
-      queryClient.invalidateQueries({ queryKey: ["confirm-event", eventId] });
-      queryClient.invalidateQueries({ queryKey: ["confirm-events"] });
+      queryClient.invalidateQueries({ queryKey: ["event-contracts", eventId], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["confirm-event", eventId], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["confirm-events"], refetchType: "all" });
     },
   });
 }

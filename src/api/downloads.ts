@@ -39,7 +39,7 @@ export const useDeleteFile = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["downloads-list"] });
+      queryClient.invalidateQueries({ queryKey: ["downloads-list"], refetchType: "all" });
     },
   });
 };
