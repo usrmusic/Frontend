@@ -65,8 +65,8 @@ export const useAssignRolePermissions = (roleId?: string | number) => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["role-permissions"] });
-      queryClient.invalidateQueries({ queryKey: ["manage-access"] });
+      queryClient.invalidateQueries({ queryKey: ["role-permissions"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["manage-access"], refetchType: "all" });
       notification.success({ message: "Permissions updated" });
     },
   });
@@ -88,8 +88,8 @@ export const useAssignPermissions = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["role-permissions"] });
-      queryClient.invalidateQueries({ queryKey: ["manage-access"] });
+      queryClient.invalidateQueries({ queryKey: ["role-permissions"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["manage-access"], refetchType: "all" });
       notification.success({ message: "Permissions assigned" });
     },
   });

@@ -567,6 +567,7 @@ const OpenEnquiryPage = () => {
                 okText: "Delete",
                 okButtonProps: {
                   type: "primary",
+                  className: "!bg-primary !border-primary hover:!opacity-90",
                 },
                 cancelText: "Cancel",
                 onOk: () => {

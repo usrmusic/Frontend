@@ -131,7 +131,7 @@ export const useUpdateConfirmEvent = () => {
       }
     },
     onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: ["confirm-event", id] });
+      queryClient.invalidateQueries({ queryKey: ["confirm-event", id], refetchType: "all" });
       invalidateAllStats(queryClient);
     },
   });
@@ -158,10 +158,10 @@ export const useCancelEvent = () => {
     onSuccess: (_, { id }) => {
       // Invalidate confirm-event detail and dropdown lists so cancelled event disappears
       try {
-        queryClient.invalidateQueries({ queryKey: ["confirm-event", id] });
+        queryClient.invalidateQueries({ queryKey: ["confirm-event", id], refetchType: "all" });
       } catch (e) {}
       try {
-        queryClient.invalidateQueries({ queryKey: ["events-dropdown"] });
+        queryClient.invalidateQueries({ queryKey: ["events-dropdown"], refetchType: "all" });
       } catch (e) {}
       invalidateAllStats(queryClient);
       toast.success("Event canceled successfully");
@@ -191,10 +191,10 @@ export const useReconfirmEvent = () => {
       // Invalidate confirm-event detail and dropdown lists so the event
       // shows back up as Confirmed everywhere.
       try {
-        queryClient.invalidateQueries({ queryKey: ["confirm-event", id] });
+        queryClient.invalidateQueries({ queryKey: ["confirm-event", id], refetchType: "all" });
       } catch (e) {}
       try {
-        queryClient.invalidateQueries({ queryKey: ["confirm-events-dropdown"] });
+        queryClient.invalidateQueries({ queryKey: ["confirm-events-dropdown"], refetchType: "all" });
       } catch (e) {}
       invalidateAllStats(queryClient);
       toast.success("Event re-confirmed successfully");
@@ -432,14 +432,14 @@ export const useConfirmEvent = () => {
     },
     onSuccess: (_, { id }) => {
       try {
-        queryClient.invalidateQueries({ queryKey: ["enquiry-list"] });
+        queryClient.invalidateQueries({ queryKey: ["enquiry-list"], refetchType: "all" });
       } catch (e) {}
       try {
-        queryClient.invalidateQueries({ queryKey: ["events-dropdown"] });
+        queryClient.invalidateQueries({ queryKey: ["events-dropdown"], refetchType: "all" });
       } catch (e) {}
       // Moving an enquiry to Confirmed changes counts on the Dashboard,
       // Open Enquiry page, and Admin Report all at once.
-      queryClient.invalidateQueries({ queryKey: ["enquiry-status-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["enquiry-status-counts"], refetchType: "all" });
       invalidateAllStats(queryClient);
     },
   });
@@ -472,7 +472,7 @@ export const useAddConfirmPayment = () => {
       }
     },
     onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: ["confirm-event", id] });
+      queryClient.invalidateQueries({ queryKey: ["confirm-event", id], refetchType: "all" });
       // Payments affect Dashboard KPIs, Admin Report, and Pending Payments —
       // refresh every stat cache, not just this one event's own view.
       invalidateAllStats(queryClient);
@@ -510,7 +510,7 @@ export const useUpdateConfirmPayment = () => {
       }
     },
     onSuccess: (_, { eventId }) => {
-      queryClient.invalidateQueries({ queryKey: ["confirm-event", eventId] });
+      queryClient.invalidateQueries({ queryKey: ["confirm-event", eventId], refetchType: "all" });
       invalidateAllStats(queryClient);
       toast.success("Payment updated successfully");
     },
@@ -542,7 +542,7 @@ export const useDeleteConfirmPayment = () => {
       }
     },
     onSuccess: (_, { eventId }) => {
-      queryClient.invalidateQueries({ queryKey: ["confirm-event", eventId] });
+      queryClient.invalidateQueries({ queryKey: ["confirm-event", eventId], refetchType: "all" });
       invalidateAllStats(queryClient);
       toast.success("Payment deleted successfully");
     },
@@ -595,7 +595,7 @@ export const useAddTodo = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["todos-list"] });
+      queryClient.invalidateQueries({ queryKey: ["todos-list"], refetchType: "all" });
       invalidateAllStats(queryClient);
     },
   });
@@ -627,7 +627,7 @@ export const useDeleteTodo = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["todos-list"] });
+      queryClient.invalidateQueries({ queryKey: ["todos-list"], refetchType: "all" });
       invalidateAllStats(queryClient);
     },
   });
@@ -662,7 +662,7 @@ export const useUpdateTodo = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["todos-list"] });
+      queryClient.invalidateQueries({ queryKey: ["todos-list"], refetchType: "all" });
       invalidateAllStats(queryClient);
     },
   });
@@ -697,7 +697,7 @@ export const useToggleTodoComplete = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["todos-list"] });
+      queryClient.invalidateQueries({ queryKey: ["todos-list"], refetchType: "all" });
       invalidateAllStats(queryClient);
     },
   });
@@ -735,7 +735,7 @@ export const useSendConfirmInvoice = () => {
       }
     },
     onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: ["confirm-event", id] });
+      queryClient.invalidateQueries({ queryKey: ["confirm-event", id], refetchType: "all" });
       toast.success("Invoice sent successfully");
     },
   });
@@ -772,7 +772,7 @@ export const useSendConfirmQuote = () => {
       }
     },
     onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: ["confirm-event", id] });
+      queryClient.invalidateQueries({ queryKey: ["confirm-event", id], refetchType: "all" });
       toast.success("Quote sent successfully");
     },
   });
@@ -808,8 +808,8 @@ export const useSendThankYouEmail = () => {
       }
     },
     onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: ["confirm-event", id] });
-      queryClient.invalidateQueries({ queryKey: ["completed-events"] });
+      queryClient.invalidateQueries({ queryKey: ["confirm-event", id], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["completed-events"], refetchType: "all" });
       toast.success("Email sent successfully");
     },
   });
@@ -842,7 +842,7 @@ export const useRefundConfirmEvent = () => {
       }
     },
     onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: ["confirm-event", id] });
+      queryClient.invalidateQueries({ queryKey: ["confirm-event", id], refetchType: "all" });
       invalidateAllStats(queryClient);
       toast.success("Refund processed successfully");
     },

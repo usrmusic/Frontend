@@ -155,7 +155,7 @@ const ConfirmedEventsPage = () => {
       title: "Delete payment",
       content: `Delete the £${Number(p.amount ?? p.payment_amount ?? 0).toFixed(2)} payment dated ${dayjs(p.date ?? p.payment_date).format("DD/MM/YYYY")}? This will recalculate the outstanding balance.`,
       okText: "Delete",
-      okButtonProps: { type: "primary" },
+      okButtonProps: { type: "primary", className: "!bg-primary !border-primary hover:!opacity-90" },
       onOk: () => deletePaymentMutation({ paymentId: p.id, eventId }),
     });
   };
@@ -266,10 +266,22 @@ const ConfirmedEventsPage = () => {
           id: eventId,
         },
         {
-          onSuccess: () => {
+          onSuccess: (response: { warning?: string } | undefined) => {
             setIsModifyMode(false);
             setSignatureImage(null);
-            toast.success("Event updated successfully");
+            // The backend can save the event fields successfully but still
+            // fail to save an attached signature (PDF generation, S3 upload,
+            // etc.) — it flags that with a `warning` field on an otherwise
+            // 200 response. Without checking this, a failed signature save
+            // looked identical to a successful one until the next refresh
+            // silently reverted it back to unsigned.
+            if (response?.warning === "signature_save_failed") {
+              toast.error(
+                "Event updated, but the signature failed to save. Please try signing again.",
+              );
+            } else {
+              toast.success("Event updated successfully");
+            }
           },
         },
       );
@@ -283,7 +295,7 @@ const ConfirmedEventsPage = () => {
       title: "Confirm cancellation",
       content: "Are you sure you want to cancel this event?",
       okText: "Yes",
-      okButtonProps: { type: "primary" },
+      okButtonProps: { type: "primary", className: "!bg-primary !border-primary hover:!opacity-90" },
       cancelText: "No",
       centered: true,
       onOk() {
@@ -501,7 +513,22 @@ const ConfirmedEventsPage = () => {
                           String(eventId),
                           "SEND QUOTE-CONFIRMED",
                         );
-                        setQuoteTemplate(data?.email ?? null);
+                        const rawTemplate = data?.email ?? null;
+                        // Substitute the deposit placeholder with the real
+                        // amount before showing it in the compose box —
+                        // otherwise it displays the literal "{--amount--}"
+                        // token until send-time, which reads as broken.
+                        const depositAmount = Number(selectedEventData?.data?.deposit_amount) || 0;
+                        const template = rawTemplate
+                          ? {
+                              ...rawTemplate,
+                              body: String(rawTemplate.body ?? "").replace(
+                                "{--amount--}",
+                                `£${depositAmount}`,
+                              ),
+                            }
+                          : rawTemplate;
+                        setQuoteTemplate(template);
                         setShowQuoteModal(true);
                       } catch {
                         toast.error("Failed to load email template");

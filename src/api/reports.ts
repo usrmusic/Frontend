@@ -110,7 +110,7 @@ export const useUpdateSupplierPayment = () => {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["suppliers-report"] });
+      queryClient.invalidateQueries({ queryKey: ["suppliers-report"], refetchType: "all" });
     },
     onError: (error: unknown) => {
       if (axios.isAxiosError(error)) {
@@ -149,7 +149,7 @@ export const useUpdateAdminReportRow = () => {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-report"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-report"], refetchType: "all" });
     },
     onError: (error: unknown) => {
       if (axios.isAxiosError(error)) {

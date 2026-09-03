@@ -148,6 +148,15 @@ export default function ContractSigningPage() {
           </div>
         </section>
 
+        {company?.bank_name || company?.account_number || company?.sort_code ? (
+          <section>
+            <p className="text-sm text-red-600">
+              Please make payment to: Account Name: {company?.name || "—"}, Account No:{" "}
+              {company?.account_number || "—"}, Sort Code: {company?.sort_code || "—"}
+            </p>
+          </section>
+        ) : null}
+
         <section>
           <h2 className="text-sm font-semibold text-gray-700 mb-2">
             Terms &amp; Conditions
@@ -167,6 +176,26 @@ export default function ContractSigningPage() {
           <h2 className="text-sm font-semibold text-gray-700 mb-2">
             {alreadySigned ? "Signed" : "Sign here"}
           </h2>
+
+          {/* Company's own signature — shown alongside the client's, same as
+              the old system's two-column signature block. */}
+          <div className="mb-4 border rounded-md p-4 max-w-xs">
+            <p className="text-xs text-gray-500 mb-2">
+              Signed by {company?.contact_name || companyName}
+              <br />
+              for and on behalf of {companyName}
+            </p>
+            {company?.admin_signature_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={company.admin_signature_url}
+                alt="Company signature"
+                className="max-h-20 object-contain"
+              />
+            ) : (
+              <p className="text-xs text-gray-400">No company signature on file</p>
+            )}
+          </div>
 
           {alreadySigned ? (
             <div className="border border-green-200 bg-green-50 rounded-md p-4 text-sm text-green-800">

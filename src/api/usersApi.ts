@@ -346,7 +346,7 @@ export const useUpdateEmailContent = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["email-content"] });
+      queryClient.invalidateQueries({ queryKey: ["email-content"], refetchType: "all" });
     },
     onError: (error) => {
       console.error("update email content failed:", error.message);
@@ -386,7 +386,7 @@ export const useAddClient = () => {
       console.error("add client failed:", error.message);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clients"] });
+      queryClient.invalidateQueries({ queryKey: ["clients"], refetchType: "all" });
     },
   });
 };
@@ -409,7 +409,7 @@ export const useAddVenue = () => {
       console.error("add venue failed:", error.message);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["venues"] });
+      queryClient.invalidateQueries({ queryKey: ["venues"], refetchType: "all" });
     },
   });
 };
@@ -432,7 +432,7 @@ export const useAddSupplier = () => {
       console.error("add supplier failed:", error.message);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+      queryClient.invalidateQueries({ queryKey: ["suppliers"], refetchType: "all" });
     },
   });
 };
@@ -456,7 +456,7 @@ export const useEditClient = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clients"] });
+      queryClient.invalidateQueries({ queryKey: ["clients"], refetchType: "all" });
     },
     onError: (error) => {
       console.error("edit client failed:", error.message);
@@ -482,7 +482,7 @@ export const useEditVenue = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["venues"] });
+      queryClient.invalidateQueries({ queryKey: ["venues"], refetchType: "all" });
     },
     onError: (error) => {
       console.error("edit venue failed:", error.message);
@@ -508,7 +508,7 @@ export const useEditSupplier = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+      queryClient.invalidateQueries({ queryKey: ["suppliers"], refetchType: "all" });
     },
     onError: (error) => {
       console.error("edit supplier failed:", error.message);
@@ -534,12 +534,12 @@ export const useEditUser = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["users"], refetchType: "all" });
       // user-dropdown embeds each DJ's package_users — a role/name change (or a
       // user newly becoming DJ-eligible) needs it refetched, and this cache is
       // never touched by anything else (refetchOnMount/refetchOnWindowFocus are
       // both off app-wide, so a stale entry sticks around indefinitely).
-      queryClient.invalidateQueries({ queryKey: ["user-dropdown"] });
+      queryClient.invalidateQueries({ queryKey: ["user-dropdown"], refetchType: "all" });
     },
     onError: (error) => {
       console.error("edit user failed:", error.message);
@@ -566,8 +566,8 @@ export const useUpdateProfile = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["auth", "user"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["users"], refetchType: "all" });
     },
     onError: (error) => {
       console.error("update profile failed:", (error as Error).message);
@@ -595,10 +595,10 @@ export const useEditPackage = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["packages"] });
+      queryClient.invalidateQueries({ queryKey: ["packages"], refetchType: "all" });
       // See useEditUser — user-dropdown carries each DJ's package_users and is
       // never otherwise refetched (refetchOnMount/refetchOnWindowFocus off).
-      queryClient.invalidateQueries({ queryKey: ["user-dropdown"] });
+      queryClient.invalidateQueries({ queryKey: ["user-dropdown"], refetchType: "all" });
     },
     onError: (error) => {
       console.error("edit package failed:", error.message);
@@ -617,7 +617,7 @@ export const useAddRole = () => {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["manage-access"] });
+      queryClient.invalidateQueries({ queryKey: ["manage-access"], refetchType: "all" });
     },
     onError: (error) => {
       console.error("add role failed:", error.message);
@@ -645,7 +645,7 @@ export const useAddCompany = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["companies"] });
+      queryClient.invalidateQueries({ queryKey: ["companies"], refetchType: "all" });
     },
     onError: (error) => {
       console.error("add company failed:", error.message);
@@ -672,7 +672,7 @@ export const useEditCompany = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["companies"] });
+      queryClient.invalidateQueries({ queryKey: ["companies"], refetchType: "all" });
     },
     onError: (error) => {
       console.error("edit company failed:", error.message);
@@ -696,10 +696,10 @@ export const useAddUser = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["users"], refetchType: "all" });
       // A brand-new DJ won't appear in the enquiry form's DJ picker at all
       // until this refetches — see useEditUser for why nothing else does it.
-      queryClient.invalidateQueries({ queryKey: ["user-dropdown"] });
+      queryClient.invalidateQueries({ queryKey: ["user-dropdown"], refetchType: "all" });
     },
     onError: (error) => {
       console.error("add user failed:", error.message);
@@ -726,8 +726,8 @@ export const useVerifyEmail = () => {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
-      queryClient.invalidateQueries({ queryKey: ["user"] });
+      queryClient.invalidateQueries({ queryKey: ["auth", "user"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["user"], refetchType: "all" });
     },
     onError: (error) => {
       console.error("verify email failed:", (error as Error).message);
@@ -743,7 +743,7 @@ export const useRequestVerifyEmail = () => {
       return response.data as { ok?: boolean; emailSent?: boolean; verificationToken?: string };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
+      queryClient.invalidateQueries({ queryKey: ["auth", "user"], refetchType: "all" });
     },
     onError: (error) => {
       console.error("request verify email failed:", (error as Error).message);
@@ -767,12 +767,12 @@ export const useAddPackage = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["packages"] });
+      queryClient.invalidateQueries({ queryKey: ["packages"], refetchType: "all" });
       // See useEditUser — without this, a package just added to a DJ won't
       // show its equipment in the enquiry form until something else happens
       // to evict the cache (this was the reported bug: new DJ + new package,
       // equipment missing from both Basics and Extras when editing an enquiry).
-      queryClient.invalidateQueries({ queryKey: ["user-dropdown"] });
+      queryClient.invalidateQueries({ queryKey: ["user-dropdown"], refetchType: "all" });
     },
     onError: (error) => {
       console.error("add package failed:", error.message);
@@ -810,7 +810,7 @@ export const useDeleteClient = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clients"] });
+      queryClient.invalidateQueries({ queryKey: ["clients"], refetchType: "all" });
     },
     onError: (error) => {
       console.error("delete failed:", error.message);
@@ -837,7 +837,7 @@ export const useDeleteVenue = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["venues"] });
+      queryClient.invalidateQueries({ queryKey: ["venues"], refetchType: "all" });
     },
     onError: (error) => {
       console.error("delete failed:", error.message);
@@ -864,7 +864,7 @@ export const useDeleteSupplier = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["venues"] });
+      queryClient.invalidateQueries({ queryKey: ["venues"], refetchType: "all" });
     },
     onError: (error) => {
       console.error("delete failed:", error.message);
@@ -891,10 +891,10 @@ export const useDeletePackage = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["packages"] });
+      queryClient.invalidateQueries({ queryKey: ["packages"], refetchType: "all" });
       // See useEditUser — a deleted package must stop appearing as a DJ's
       // package_users entry in the enquiry form's DJ picker too.
-      queryClient.invalidateQueries({ queryKey: ["user-dropdown"] });
+      queryClient.invalidateQueries({ queryKey: ["user-dropdown"], refetchType: "all" });
     },
     onError: (error) => {
       console.error("delete failed:", error.message);
@@ -918,7 +918,7 @@ export const useDeleteUser = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["users"], refetchType: "all" });
     },
     onError: (error) => {
       console.error("delete failed:", error.message);
@@ -941,8 +941,8 @@ export const useResetUserPassword = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] });
-      queryClient.invalidateQueries({ queryKey: ["clients"] });
+      queryClient.invalidateQueries({ queryKey: ["users"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["clients"], refetchType: "all" });
     },
   });
 };
@@ -967,7 +967,7 @@ export const useDeleteCompany = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["users"], refetchType: "all" });
     },
     onError: (error) => {
       console.error("delete failed:", error.message);
@@ -1014,7 +1014,7 @@ export const useReorderEquipment = () => {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["equipment"] });
+      queryClient.invalidateQueries({ queryKey: ["equipment"], refetchType: "all" });
     },
   });
 };
@@ -1047,10 +1047,10 @@ export const useAddEquipment = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["equipment"] });
+      queryClient.invalidateQueries({ queryKey: ["equipment"], refetchType: "all" });
       // In case adding equipment created a new supplier via supplier_name, refresh supplier dropdown/cache
-      queryClient.invalidateQueries({ queryKey: ["supplier-dropdown"] });
-      queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-dropdown"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["suppliers"], refetchType: "all" });
     },
   });
 };
@@ -1072,10 +1072,10 @@ export const useEditEquipment = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["equipment"] });
+      queryClient.invalidateQueries({ queryKey: ["equipment"], refetchType: "all" });
       // Ensure supplier lists are refreshed if update created a supplier
-      queryClient.invalidateQueries({ queryKey: ["supplier-dropdown"] });
-      queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-dropdown"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["suppliers"], refetchType: "all" });
     },
   });
 };
@@ -1101,7 +1101,7 @@ export const useDeleteEquipment = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["equipment"] });
+      queryClient.invalidateQueries({ queryKey: ["equipment"], refetchType: "all" });
     },
   });
 };

@@ -130,7 +130,7 @@ const Files = ({ dataSource, isModifyMode = false, eventId }: FilesProps) => {
       title: "Delete File",
       content: `Are you sure you want to delete "${displayName}"? This cannot be undone.`,
       okText: "Delete",
-      okButtonProps: { type: "primary" },
+      okButtonProps: { type: "primary", className: "!bg-primary !border-primary hover:!opacity-90" },
       cancelText: "Cancel",
       centered: true,
       onOk() {

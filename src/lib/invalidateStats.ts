@@ -21,6 +21,13 @@ const STATS_QUERY_KEYS: unknown[][] = [
 
 export function invalidateAllStats(queryClient: QueryClient) {
   STATS_QUERY_KEYS.forEach((queryKey) => {
-    queryClient.invalidateQueries({ queryKey });
+    // refetchType: "all" — without it, invalidateQueries only refetches a
+    // query that's currently mounted/observed. Whichever of these screens
+    // isn't open right now (e.g. confirming a deposit from Open Enquiry
+    // while the Dashboard tab isn't mounted) would be marked stale but never
+    // actually re-fetched — and since this app's query defaults disable
+    // refetch-on-mount, navigating back later just replayed the old cached
+    // snapshot forever instead of showing the update.
+    queryClient.invalidateQueries({ queryKey, refetchType: "all" });
   });
 }
