@@ -128,13 +128,23 @@ const PackagesPage = () => {
       deletePackage.mutate(
         { ids: selectedRowKeys, force: false },
         {
-          onSuccess: () => {
+          onSuccess: (res) => {
             setAlertModal(false);
-            notification.success({
-              message: "Success",
-              description: "Package(s) deleted successfully.",
-              placement: "topRight",
-            });
+            const deletedCount = res?.count ?? 0;
+            const blockedCount = res?.blocked?.length ?? 0;
+            if (deletedCount > 0 && blockedCount === 0) {
+              notification.success({
+                message: "Success",
+                description: "Package(s) deleted successfully.",
+                placement: "topRight",
+              });
+            } else if (blockedCount > 0) {
+              notification.warning({
+                message: deletedCount > 0 ? "Partially deleted" : "Not deleted",
+                description: `${blockedCount} package(s) can't be deleted while their DJ has events.${deletedCount > 0 ? ` ${deletedCount} other package(s) were deleted.` : ""}`,
+                placement: "topRight",
+              });
+            }
           },
         },
       );
