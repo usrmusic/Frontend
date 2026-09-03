@@ -71,11 +71,13 @@ export const useRigListEventsDropdown = () => {
 // List is genuinely never a Client feature). The confirmed-events page's own
 // event picker isn't a rig-list concern, so it gets its own properly-scoped
 // endpoint instead of borrowing rig-list's.
-export const useConfirmEventsDropdown = () => {
+export const useConfirmEventsDropdown = (includeCancelled: boolean = false) => {
   return useQuery({
-    queryKey: ["confirm-events-dropdown"],
+    queryKey: ["confirm-events-dropdown", includeCancelled],
     queryFn: async () => {
-      const response = await AxiosInstance.get("/confirm-event/events-dropdown");
+      const response = await AxiosInstance.get("/confirm-event/events-dropdown", {
+        params: includeCancelled ? { include_cancelled: true } : undefined,
+      });
       return response.data;
     },
   });

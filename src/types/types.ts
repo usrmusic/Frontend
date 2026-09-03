@@ -13,6 +13,7 @@ export type ApiResponse<T> = {
 export type EventsDropdownItem = {
   id: string | number;
   date: string;
+  event_status_id?: number;
   venues?: {
     venue?: string;
   };
@@ -44,11 +45,16 @@ export type ConfirmEventCompany = {
   name?: string | null;
   admin_signature?: string | null;
   admin_signature_url?: string | null;
+  contact_name?: string | null;
+  bank_name?: string | null;
+  account_number?: string | null;
+  sort_code?: string | null;
 };
 
 export type ConfirmEventData = {
   id?: string | number;
   user_id?: string | number | null;
+  event_status_id?: number;
   users_events_user_idTousers?: {
     id?: string | number;
     name?: string;

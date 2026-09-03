@@ -10,7 +10,8 @@ import { TableColumnsType, TableProps, Select } from "antd";
 import { useRouter } from "next/navigation";
 import SendBrochureModal from "../open-enquiry/SendBrochure";
 import { fetchEmailTemplate } from "@/src/api/enquiry";
-import { useDownloadInvoice } from "@/src/api/events";
+import { useDownloadInvoice, useSendThankYouEmail } from "@/src/api/events";
+import { ThankYouModal } from "./_components/ThankYouModal";
 import { toast } from "react-toastify";
 import dayjs from "dayjs";
 import { MoreVertical } from "lucide-react";
@@ -33,6 +34,7 @@ const CompletedEventsPage = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [sendMode, setSendMode] = useState<"quote" | "invoice">("quote");
+  const [showThankYouModal, setShowThankYouModal] = useState(false);
   const [buttonLoading, setButtonLoading] = useState<string | null>(null);
   const [modalTemplate, setModalTemplate] = useState<null>(null);
   const [modalCompanies, setModalCompanies] = useState<Array<{
@@ -70,6 +72,8 @@ const CompletedEventsPage = () => {
   });
   const { mutate: downloadInvoiceMutation, isPending: isDownloadingInvoice } =
     useDownloadInvoice();
+  const { mutate: sendThankYouMutation, isPending: isSendingThankYou } =
+    useSendThankYouEmail();
   const rowSelection: TableProps["rowSelection"] = {
     type: "radio",
     selectedRowKeys,
@@ -172,27 +176,13 @@ const CompletedEventsPage = () => {
             </Button>
             <Button
               type="primary"
-              onClick={async () => {
-                if (!selectedId) return;
-                setButtonLoading("quote");
-                try {
-                  const data = await fetchEmailTemplate(
-                    String(selectedId),
-                    "SEND QUOTE-CONFIRMED",
-                  );
-                  setModalTemplate(data?.email ?? null);
-                  setModalCompanies(data?.companies ?? null);
-                  setSendMode("quote");
-                  setShowModal(true);
-                } catch (err) {
-                  toast.error(
-                    (err as string) ?? "Failed to load email template",
-                  );
-                } finally {
-                  setButtonLoading(null);
+              onClick={() => {
+                if (!selectedId) {
+                  toast.error("Please select an event first");
+                  return;
                 }
+                setShowThankYouModal(true);
               }}
-              loading={buttonLoading === "quote"}
               disabled={!selectedId}
             >
               Send Email
@@ -317,6 +307,24 @@ const CompletedEventsPage = () => {
             template={modalTemplate}
             companies={modalCompanies}
             onCancel={() => setShowModal(false)}
+          />
+        )}
+        {showThankYouModal && (
+          <ThankYouModal
+            open={showThankYouModal}
+            onCancel={() => setShowThankYouModal(false)}
+            onSend={(subject, body) => {
+              if (!selectedId) return;
+              sendThankYouMutation(
+                { id: selectedId, payload: { subject, body } },
+                {
+                  onSuccess: () => {
+                    setShowThankYouModal(false);
+                  },
+                },
+              );
+            }}
+            isSending={isSendingThankYou}
           />
         )}
       </div>

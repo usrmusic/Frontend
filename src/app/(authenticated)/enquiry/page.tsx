@@ -117,9 +117,9 @@ const validationSchema = Yup.object({
     .matches(/^[0-9\s\-\+\(\)]*$/, "Invalid phone number")
     .max(20, "Number must be at most 20 characters")
     .required("Number is required"),
-  venue: Yup.string()
-    .max(100, "Venue must be at most 100 characters")
-    .required("Venue is required"),
+  // Not required — staff may not know the venue yet at enquiry stage
+  // (matches Laravel, which never requires venue on this form either).
+  venue: Yup.string().max(100, "Venue must be at most 100 characters"),
   eventDate: Yup.date().required("Event date is required"),
   endTime: Yup.string().required("End time is required"),
   startTime: Yup.string().required("Start time is required"),
@@ -132,7 +132,21 @@ const validationSchema = Yup.object({
   tellMeMore: Yup.string().max(500, "Additional information must be at most 500 characters"),
 });
 
+// Next.js App Router does not remount a page component when only the query
+// string changes on the same route — navigating from `/enquiry?select=1476`
+// (editing) to plain `/enquiry` (sidebar "Enquiry" link, i.e. "new enquiry")
+// keeps every useState/useRef in NewEnquiryPageInner alive with the previous
+// event's data, even though the extensive editId-driven reset effects below
+// try to clear it. Rather than extend that already-fragile reset chain
+// further, force a clean remount whenever the edit target changes by keying
+// the inner component on it — React then re-runs every hook from scratch.
 const NewEnquiryPage = () => {
+  const searchParams = useSearchParams();
+  const editId = searchParams?.get("select") ?? null;
+  return <NewEnquiryPageInner key={editId || "new"} />;
+};
+
+const NewEnquiryPageInner = () => {
   const [showNameInput, setShowNameInput] = useState(false);
   const [showVenueInput, setShowVenueInput] = useState(false);
   // Summary sidebar defaults to open once a DJ is picked (item 8); the 3-dot
@@ -146,7 +160,26 @@ const NewEnquiryPage = () => {
   });
   const [selectedPackageEquipments, setSelectedPackageEquipments] =
     useState<Record<string, boolean>>({});
+  // Basics (Starting Package) items are bundled into the DJ package's base
+  // price up to their default `quantity` (from package_user_equipments), but
+  // — matching Laravel's editable Qty spinner — staff can bump a row's
+  // quantity higher, in which case only the excess over the bundled default
+  // is billed (see calculatePriceAddedToBill in the legacy app). Keyed by
+  // equipment id, same as selectedPackageEquipments; a missing key means
+  // "use the bundled default quantity".
+  const [packageEquipmentQty, setPackageEquipmentQty] =
+    useState<Record<string, number>>({});
+  // Unit-price override for Basics items — matches Laravel's dblclick-to-edit
+  // price field (new_enquiry.js `.create-sell-price`/`.new-sell-price`).
+  // Missing key means "use the equipment's catalog sell_price".
+  const [packageEquipmentPrice, setPackageEquipmentPrice] =
+    useState<Record<string, number>>({});
   const [selectedExtras, setSelectedExtras] = useState<Record<string, boolean>>({});
+  // Unit-price and quantity overrides for the DJ-package's predefined Extras
+  // list — same parity requirement as Basics above (Laravel allows editing
+  // both fields via the same dblclick pattern for Extras rows).
+  const [extrasPrice, setExtrasPrice] = useState<Record<string, number>>({});
+  const [extrasQty, setExtrasQty] = useState<Record<string, number>>({});
   const [restoredEditSelections, setRestoredEditSelections] = useState(false);
   // Flips true the moment the user picks a DJ from the dropdown themselves
   // (as opposed to packageParams.staff being set by the edit-hydration effect
@@ -381,6 +414,10 @@ const NewEnquiryPage = () => {
         setSelectedExtras({});
         setCustomExtras([]);
         setExtrasOverrides({});
+        setPackageEquipmentQty({});
+        setPackageEquipmentPrice({});
+        setExtrasPrice({});
+        setExtrasQty({});
         try { formikRef.current.resetForm(); } catch {}
         if (editId) {
           try {
@@ -468,6 +505,10 @@ const NewEnquiryPage = () => {
       const pkgMap: Record<string, boolean> = {};
       const extrasMap: Record<string, boolean> = {};
       const overridesMap: Record<string, { notes: string; rig_notes: string }> = {};
+      const qtyMap: Record<string, number> = {};
+      const basicPriceMap: Record<string, number> = {};
+      const extraPriceMap: Record<string, number> = {};
+      const extraQtyMap: Record<string, number> = {};
       if (Array.isArray(enquiryItem.event_packages)) {
         for (const p of enquiryItem.event_packages) {
           const eqId = p?.equipment_id ?? p?.equipment?.id ?? null;
@@ -495,6 +536,26 @@ const NewEnquiryPage = () => {
             if (savedNotes || savedRigNotes) {
               overridesMap[key] = { notes: savedNotes, rig_notes: savedRigNotes };
             }
+            // Restore the previously-saved edited quantity for Basics rows
+            // (event_package.quantity holds the full edited quantity, same
+            // semantics as Laravel) so re-opening a confirmed event's
+            // enquiry shows the staff-entered qty rather than resetting to
+            // the DJ package's bundled default.
+            if ((isBasic || (!isExtra && !isBasic)) && p?.quantity != null) {
+              qtyMap[key] = Number(p.quantity);
+            }
+            // Restore a staff-edited unit price the same way as quantity —
+            // event_package.sell_price holds whatever was saved, catalog
+            // default or edited, and re-opening this enquiry must show that
+            // exact value back rather than silently reverting to catalog.
+            if (p?.sell_price != null) {
+              if (isExtra) {
+                extraPriceMap[key] = Number(p.sell_price);
+                if (p?.quantity != null) extraQtyMap[key] = Number(p.quantity);
+              } else if (isBasic || (!isExtra && !isBasic)) {
+                basicPriceMap[key] = Number(p.sell_price);
+              }
+            }
           }
         }
       }
@@ -502,6 +563,10 @@ const NewEnquiryPage = () => {
         setSelectedPackageEquipments(pkgMap);
         setSelectedExtras(extrasMap);
         setExtrasOverrides(overridesMap);
+        setPackageEquipmentQty(qtyMap);
+        setPackageEquipmentPrice(basicPriceMap);
+        setExtrasPrice(extraPriceMap);
+        setExtrasQty(extraQtyMap);
         setRestoredEditSelections(true);
       });
     } catch {}
@@ -568,6 +633,14 @@ const NewEnquiryPage = () => {
         }
         setSelectedPackageEquipments(initPkg);
         setSelectedExtras(initExtras);
+        // Fresh enquiry, or the user just switched to a different DJ mid-edit:
+        // there's no prior saved quantity to protect for this package, so
+        // drop any overrides and fall back to the new DJ's bundled defaults
+        // (packageEquipmentQty[key] ?? item.quantity, read at render time).
+        setPackageEquipmentQty({});
+        setPackageEquipmentPrice({});
+        setExtrasPrice({});
+        setExtrasQty({});
       });
     }
   }, [packageData, editId, restoredEditSelections]);
@@ -580,16 +653,22 @@ const NewEnquiryPage = () => {
     const basePrice = packageData?.data?.equipments?.sell_price ?? 0;
     total += Number(basePrice) || 0;
 
-    // Basics — bundled into the DJ package's base price already (matches Laravel's
-    // price_added_to_bill: the ticked quantity here always equals the quantity that
-    // came bundled with the package, so it must NOT be charged again on top of
-    // `basePrice` above). No notes; rig_notes only if user entered via modal.
+    // Basics — bundled into the DJ package's base price up to each item's
+    // default `quantity` (matches Laravel's price_added_to_bill). Staff can
+    // edit the Qty box higher than that default; only the excess over the
+    // bundled default gets billed on top of `basePrice` above. No notes;
+    // rig_notes only if user entered via modal.
     const pkgEquip = (packageData?.data?.equipments?.package_user_equipments ?? []) as PackageUserEquipment[];
     for (const it of pkgEquip) {
       const equipment = it.equipment ?? null;
       const id = it.equipment_id ?? equipment?.id ?? it.id;
       const key = id != null ? String(id) : null;
       if (key && selectedPackageEquipments[key]) {
+        const basicQty = Number(it.quantity ?? 1);
+        const editedQty = Number(packageEquipmentQty[key] ?? basicQty);
+        const unit = Number(packageEquipmentPrice[key] ?? equipment?.sell_price ?? 0);
+        const billedQty = Math.max(0, editedQty - basicQty);
+        total += unit * billedQty;
         const override = extrasOverrides[key];
         eqList.push({ name: equipment?.name ?? "", notes: null });
         // Fall back to the equipment's own saved rig_notes, same as the Extras
@@ -604,8 +683,9 @@ const NewEnquiryPage = () => {
     const extras = (packageData?.data?.extras ?? []) as ExtraItem[];
     for (const ex of extras) {
       const id = ex.id;
-      const qty = ex.quantity ?? 1;
-      const unit = ex.sell_price ?? 0;
+      const extKey = id != null ? String(id) : "";
+      const qty = Number(extrasQty[extKey] ?? ex.quantity ?? 1);
+      const unit = Number(extrasPrice[extKey] ?? ex.sell_price ?? 0);
       if (id != null && selectedExtras[String(id)]) {
         total += Number(unit) * Number(qty);
         const override = extrasOverrides[String(id)];
@@ -625,7 +705,17 @@ const NewEnquiryPage = () => {
     }
 
     return { equipmentList: eqList, rigNotesList: rnList, totalPrice: total };
-  }, [packageData, selectedPackageEquipments, selectedExtras, extrasOverrides, customExtras]);
+  }, [
+    packageData,
+    selectedPackageEquipments,
+    packageEquipmentQty,
+    packageEquipmentPrice,
+    selectedExtras,
+    extrasOverrides,
+    extrasPrice,
+    extrasQty,
+    customExtras,
+  ]);
 
   const openNotesModal = (
     title: string,
@@ -770,18 +860,22 @@ const NewEnquiryPage = () => {
             const key = id != null ? String(id) : null;
             if (key && selectedPackageEquipments[key]) {
               const override = extrasOverrides[key];
-              const qty = Number(it.quantity ?? 1);
-              const unit = Number(equipment?.sell_price ?? 0);
+              const basicQty = Number(it.quantity ?? 1);
+              const qty = Number(packageEquipmentQty[key] ?? basicQty);
+              const unit = Number(packageEquipmentPrice[key] ?? equipment?.sell_price ?? 0);
+              // Only the quantity edited ABOVE the DJ package's bundled
+              // default is billable — matches Laravel's
+              // calculatePriceAddedToBill for Basics rows. `total_price`
+              // still reflects the full line value (unit × edited qty),
+              // same semantics as Laravel's event_package.total_price.
+              const billedQty = Math.max(0, qty - basicQty);
               equipment_data.push({
                 equipment_id: Number(id),
                 sell_price: unit,
                 cost_price: Number(equipment?.cost_price ?? 0),
                 quantity: qty,
                 total_price: unit * qty,
-                // Ticked quantity here is always the quantity already bundled
-                // into the DJ package's base price, so nothing extra is billed
-                // — matches Laravel's price_added_to_bill for Basics rows.
-                price_added_to_bill: 0,
+                price_added_to_bill: unit * billedQty,
               });
               // Same fallback as the live rigNotesList computation above — without
               // it, a Basics item relying on the equipment's own default rig note
@@ -799,10 +893,11 @@ const NewEnquiryPage = () => {
           for (const ex of extras) {
             if (ex.id != null && selectedExtras[String(ex.id)]) {
               const override = extrasOverrides[String(ex.id)];
+              const extKey = String(ex.id);
               extra_data.push({
                 equipment_id: Number(ex.id),
-                sell_price: Number(ex.sell_price ?? 0),
-                quantity: Number(ex.quantity ?? 1),
+                sell_price: Number(extrasPrice[extKey] ?? ex.sell_price ?? 0),
+                quantity: Number(extrasQty[extKey] ?? ex.quantity ?? 1),
                 notes: (override?.notes ?? (ex as ExtraItem & { notes?: string }).notes)?.trim() || null,
               });
               rig_notes_data.push({
@@ -868,9 +963,9 @@ const NewEnquiryPage = () => {
             if (editId) {
               await updateEnquiry.mutateAsync({ id: editId, body: payload });
               toast.success("Enquiry updated");
-              router.push(
-                `/open-enquiry?search=${encodeURIComponent(String(editId))}&name=${encodeURIComponent(String(clientName))}`,
-              );
+              // Stay on this edit page with the form as-is instead of
+              // navigating back to the Open Enquiry list — the user wants to
+              // keep working on the same enquiry after saving.
             } else {
               const response = await createEnquiry.mutateAsync(payload);
               const newId =
@@ -915,8 +1010,16 @@ const NewEnquiryPage = () => {
               }
 
               const data = await fetchEmailTemplate(id, "SEND QUOTE-OPEN");
+              const rawTemplate = (data as { email?: { subject?: string; body?: string; [k: string]: unknown } } | null)?.email ?? null;
+              // Substitute the deposit placeholder with what's actually in the
+              // form right now, so the compose box shows the real amount
+              // instead of the literal "{--amount--}" token before sending.
+              const depositAmount = Number(values.depositAmount) || 0;
+              const template = rawTemplate
+                ? { ...rawTemplate, body: String(rawTemplate.body ?? "").replace("{--amount--}", `£${depositAmount}`) }
+                : rawTemplate;
               setSendQuoteData({
-                template: (data as { email?: unknown } | null)?.email ?? null,
+                template,
                 companies: (data as { companies?: unknown } | null)?.companies ?? null,
                 eventId: id,
               });
@@ -1175,7 +1278,7 @@ const NewEnquiryPage = () => {
                                     onChange={fieldProps.field.onChange}
                                     placeholder="Enter address"
                                     className="bg-secondary-100"
-                                    disabled={!showNameInput || isSubmitting}
+                                    disabled={isSubmitting}
                                     error={touched.address ? (errors.address as string | undefined) : undefined}
                                     required
                                   />
@@ -1189,7 +1292,7 @@ const NewEnquiryPage = () => {
                                     type="email"
                                     placeholder="Enter email"
                                     className="bg-secondary-100"
-                                    disabled={!showNameInput || isSubmitting}
+                                    disabled={isSubmitting}
                                     error={touched.email ? (errors.email as string | undefined) : undefined}
                                     required
                                     value={values.email}
@@ -1210,7 +1313,7 @@ const NewEnquiryPage = () => {
                                       value={values.number}
                                       placeholder="Enter contact number"
                                       className="bg-secondary-100"
-                                      disabled={!showNameInput || isSubmitting}
+                                      disabled={isSubmitting}
                                       error={touched.number ? (errors.number as string | undefined) : undefined}
                                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                         const value = e.target.value;
@@ -1511,9 +1614,20 @@ const NewEnquiryPage = () => {
                                 const equipment = item.equipment ?? null;
                                 const id = item.equipment_id ?? equipment?.id ?? item.id ?? `pkg-${idx}`;
                                 const key = String(id);
-                                const unitPrice = equipment?.sell_price ?? 0;
-                                const qty = item.quantity ?? 1;
-                                const price = unitPrice * qty;
+                                // Unit price is editable (matches Laravel's
+                                // dblclick-to-edit sell price field) so staff
+                                // can apply a discount per line item — missing
+                                // key falls back to the equipment's catalog price.
+                                const unitPrice = Number(packageEquipmentPrice[key] ?? equipment?.sell_price ?? 0);
+                                // The DJ package bundles `basicQty` of this item for
+                                // free; staff can bump the Qty box higher (matches
+                                // Laravel's editable spinner), and only the excess
+                                // over the bundled default is billed.
+                                const basicQty = Number(item.quantity ?? 1);
+                                const editedQty = Number(packageEquipmentQty[key] ?? basicQty);
+                                const billedQty = Math.max(0, editedQty - basicQty);
+                                const billedPrice = unitPrice * billedQty;
+                                const checked = Boolean(selectedPackageEquipments[key]);
                                 return (
                                   <div
                                     key={key}
@@ -1522,7 +1636,7 @@ const NewEnquiryPage = () => {
                                     <div className="flex w-6/12 items-center gap-2">
                                       <input
                                         type="checkbox"
-                                        checked={Boolean(selectedPackageEquipments[key])}
+                                        checked={checked}
                                         onChange={() =>
                                           setSelectedPackageEquipments((prev) => ({
                                             ...prev,
@@ -1533,10 +1647,41 @@ const NewEnquiryPage = () => {
                                       />
                                       <span>{equipment?.name}</span>
                                     </div>
-                                    <div className="w-2/12 text-center">{unitPrice}</div>
-                                    <div className="w-1/12 text-center">{qty}</div>
-                                    <div className="w-1/12 text-center">{price}</div>
-                                    <div className="w-2/12 text-center">{price}</div>
+                                    <div className="w-2/12 flex justify-center">
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        step="0.01"
+                                        value={unitPrice}
+                                        disabled={!checked}
+                                        onChange={(e) => {
+                                          const val = e.target.value === "" ? 0 : Number(e.target.value);
+                                          setPackageEquipmentPrice((prev) => ({
+                                            ...prev,
+                                            [key]: Number.isFinite(val) ? val : 0,
+                                          }));
+                                        }}
+                                        className="h-8 w-16 rounded-lg border border-gray-200 bg-white px-1 text-center text-sm outline-none focus:border-primary transition-colors disabled:bg-gray-100 disabled:text-gray-400"
+                                      />
+                                    </div>
+                                    <div className="w-1/12 flex justify-center">
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        value={editedQty}
+                                        disabled={!checked}
+                                        onChange={(e) => {
+                                          const val = e.target.value === "" ? basicQty : Number(e.target.value);
+                                          setPackageEquipmentQty((prev) => ({
+                                            ...prev,
+                                            [key]: Number.isFinite(val) ? val : basicQty,
+                                          }));
+                                        }}
+                                        className="h-8 w-14 rounded-lg border border-gray-200 bg-white px-1 text-center text-sm outline-none focus:border-primary transition-colors disabled:bg-gray-100 disabled:text-gray-400"
+                                      />
+                                    </div>
+                                    <div className="w-1/12 text-center">{billedPrice}</div>
+                                    <div className="w-2/12 text-center">{billedPrice}</div>
                                   </div>
                                 );
                               },
@@ -1584,10 +1729,15 @@ const NewEnquiryPage = () => {
                             {packageData?.data?.extras?.map((extra: ExtraItem) => {
                               const id = extra.id;
                               const key = String(id ?? "");
-                              const unitPrice = extra.sell_price ?? 0;
-                              const qty = extra.quantity ?? 1;
+                              // Both price and quantity are editable (matches
+                              // Laravel's dblclick-to-edit fields for Extras
+                              // rows) — missing key falls back to the
+                              // package's saved defaults.
+                              const unitPrice = Number(extrasPrice[key] ?? extra.sell_price ?? 0);
+                              const qty = Number(extrasQty[key] ?? extra.quantity ?? 1);
                               const price = unitPrice * qty;
                               const override = extrasOverrides[key];
+                              const checked = Boolean(selectedExtras[key]);
                               return (
                                 <div
                                   key={id}
@@ -1596,7 +1746,7 @@ const NewEnquiryPage = () => {
                                   <div className="flex w-6/12 items-center gap-2">
                                     <input
                                       type="checkbox"
-                                      checked={Boolean(selectedExtras[key])}
+                                      checked={checked}
                                       onChange={() =>
                                         setSelectedExtras((prev) => ({
                                           ...prev,
@@ -1607,8 +1757,39 @@ const NewEnquiryPage = () => {
                                     />
                                     <span>{extra.name}</span>
                                   </div>
-                                  <div className="w-2/12 text-center">{unitPrice}</div>
-                                  <div className="w-1/12 text-center">{qty}</div>
+                                  <div className="w-2/12 flex justify-center">
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      step="0.01"
+                                      value={unitPrice}
+                                      disabled={!checked}
+                                      onChange={(e) => {
+                                        const val = e.target.value === "" ? 0 : Number(e.target.value);
+                                        setExtrasPrice((prev) => ({
+                                          ...prev,
+                                          [key]: Number.isFinite(val) ? val : 0,
+                                        }));
+                                      }}
+                                      className="h-8 w-16 rounded-lg border border-gray-200 bg-white px-1 text-center text-sm outline-none focus:border-primary transition-colors disabled:bg-gray-100 disabled:text-gray-400"
+                                    />
+                                  </div>
+                                  <div className="w-1/12 flex justify-center">
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      value={qty}
+                                      disabled={!checked}
+                                      onChange={(e) => {
+                                        const val = e.target.value === "" ? 1 : Number(e.target.value);
+                                        setExtrasQty((prev) => ({
+                                          ...prev,
+                                          [key]: Number.isFinite(val) ? val : 1,
+                                        }));
+                                      }}
+                                      className="h-8 w-14 rounded-lg border border-gray-200 bg-white px-1 text-center text-sm outline-none focus:border-primary transition-colors disabled:bg-gray-100 disabled:text-gray-400"
+                                    />
+                                  </div>
                                   <div className="w-1/12 text-center">{price}</div>
                                   <div className="w-2/12 flex justify-center">
                                     <button

@@ -16,6 +16,7 @@ interface PackageParams {
 }
 
 import type { ConfirmEventNote } from "@/src/types/types";
+import { invalidateAllStats } from "../lib/invalidateStats";
 
 export interface OpenEnquiryList {
   id: string | number;
@@ -215,6 +216,7 @@ export const useCreateEnquiry = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["enquiry-list"] });
       queryClient.invalidateQueries({ queryKey: ["enquiry-status-counts"] });
+      invalidateAllStats(queryClient);
       toast.success("Enquiry created successfully");
       return data;
     },
@@ -268,6 +270,7 @@ export const useUpdateEnquiry = () => {
         refetchType: "all",
       });
       queryClient.invalidateQueries({ queryKey: ["enquiry-status-counts"] });
+      invalidateAllStats(queryClient);
     },
     onError: (error: any) => {
       console.error("update enquiry failed:", error?.message || error);
@@ -293,6 +296,7 @@ export const useDeleteEnquiry = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["enquiry-list"] });
       queryClient.invalidateQueries({ queryKey: ["enquiry-status-counts"] });
+      invalidateAllStats(queryClient);
     },
   });
 };
@@ -315,6 +319,7 @@ export const useEditEnquiry = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["enquiry-list"] });
       queryClient.invalidateQueries({ queryKey: ["enquiry-status-counts"] });
+      invalidateAllStats(queryClient);
     },
   });
 };

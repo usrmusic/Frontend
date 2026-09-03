@@ -2,6 +2,7 @@
 import { useConfirmEventsDropdown } from "@/src/api/dropdown";
 import {
   useCancelEvent,
+  useReconfirmEvent,
   useDownloadInvoice,
   useGetConfirmEvent,
   useUpdateConfirmEvent,
@@ -13,7 +14,7 @@ import { BackButton } from "@/src/components/Icons";
 import Input from "@/src/components/Input";
 import EventPaymentDrawer from "@/src/components/common/EventPaymentDrawer";
 import AnimatedMount from "@/src/components/common/AnimatedMount";
-import { Collapse, CollapseProps, Select, Spin, Modal } from "antd";
+import { Collapse, CollapseProps, Select, Spin, Modal, Checkbox, Tag } from "antd";
 import dayjs from "dayjs";
 import { useFormik } from "formik";
 import {
@@ -44,10 +45,20 @@ import Files from "./Files";
 import Contracts from "./Contracts";
 import Todos from "./_components/Todos";
 import { parseTimeTo24 } from "@/src/utils/timeConverter";
-import { useSendConfirmInvoice, useRefundConfirmEvent } from "@/src/api/events";
+import {
+  useSendConfirmInvoice,
+  useSendConfirmQuote,
+  useRefundConfirmEvent,
+} from "@/src/api/events";
 import { SendInvoiceModal } from "./_components/SendInvoiceModal";
+import { SendQuoteModal } from "./_components/SendQuoteModal";
 import { RefundModal } from "./_components/RefundModal";
 import useRole from "@/src/hooks/useRole";
+
+// Matches CANCELLED_STATUS_ID (4) from the backend's event_statuses table —
+// same hardcoded convention used elsewhere on the frontend (see
+// admin-report/useColumns.tsx, dashboard/EventOverview.tsx).
+const CANCELLED_STATUS_ID = 4;
 
 const ConfirmedEventsPage = () => {
   // Add Payment / Refund are Admin-only, matching the legacy Laravel CRM
@@ -68,16 +79,22 @@ const ConfirmedEventsPage = () => {
     name: string;
   }> | null>(null);
 
+  const [showCancelledEvents, setShowCancelledEvents] = useState(false);
+
   const { mutate: updateEventMutation, isPending } = useUpdateConfirmEvent();
   const { mutate: downloadInvoiceMutation, isPending: isDownloadingInvoice } =
     useDownloadInvoice();
   const { mutate: cancelEventMutation, isPending: isCancelingEvent } =
     useCancelEvent();
-  const { data: eventsDropdown } = useConfirmEventsDropdown();
+  const { mutate: reconfirmEventMutation, isPending: isReconfirmingEvent } =
+    useReconfirmEvent();
+  const { data: eventsDropdown } = useConfirmEventsDropdown(showCancelledEvents);
   const { data: selectedEventData, isLoading } = useGetConfirmEvent(eventId);
   const router = useRouter();
   const { mutate: sendInvoiceMutation, isPending: isSendingInvoice } =
     useSendConfirmInvoice();
+  const { mutate: sendQuoteMutation, isPending: isSendingQuote } =
+    useSendConfirmQuote();
   const { mutate: refundMutation, isPending: isProcessingRefund } =
     useRefundConfirmEvent();
   const queryClient = useQueryClient();
@@ -87,10 +104,15 @@ const ConfirmedEventsPage = () => {
   // drawer. Grepped clean before removal: none of these were referenced
   // anywhere on this page outside the drawer's own markup.
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [refundAmount, setRefundAmount] = useState<string>("");
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
   const [invoiceTemplate, setInvoiceTemplate] = useState<{
+    subject: string;
+    body: string;
+  } | null>(null);
+  const [quoteTemplate, setQuoteTemplate] = useState<{
     subject: string;
     body: string;
   } | null>(null);
@@ -133,7 +155,7 @@ const ConfirmedEventsPage = () => {
       title: "Delete payment",
       content: `Delete the £${Number(p.amount ?? p.payment_amount ?? 0).toFixed(2)} payment dated ${dayjs(p.date ?? p.payment_date).format("DD/MM/YYYY")}? This will recalculate the outstanding balance.`,
       okText: "Delete",
-      okButtonProps: { danger: true },
+      okButtonProps: { type: "primary" },
       onOk: () => deletePaymentMutation({ paymentId: p.id, eventId }),
     });
   };
@@ -143,11 +165,22 @@ const ConfirmedEventsPage = () => {
   const sortedEventsDropdown = [
     ...((eventsDropdown?.data as EventsDropdownItem[]) ?? []),
   ].sort((a, b) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf());
-  const eventsOptions = sortedEventsDropdown.map((item) => ({
-    label: `${dayjs(item.date).format("DD/MM/YYYY")} - ${item.venues?.venue} (${item.users_events_user_idTousers?.name})`,
-    // normalize to string so Select value/search is consistent
-    value: String(item.id),
-  }));
+  const eventsOptions = sortedEventsDropdown.map((item) => {
+    const isCancelled = Number(item.event_status_id) === CANCELLED_STATUS_ID;
+    const plainLabel = `${dayjs(item.date).format("DD/MM/YYYY")} - ${item.venues?.venue} (${item.users_events_user_idTousers?.name})`;
+    return {
+      label: (
+        <span className="flex items-center gap-2">
+          <span>{plainLabel}</span>
+          {isCancelled && <Tag color="red">Cancelled</Tag>}
+        </span>
+      ),
+      // used by filterOption below since `label` is a ReactNode, not a string
+      searchText: plainLabel,
+      // normalize to string so Select value/search is consistent
+      value: String(item.id),
+    };
+  });
 
   useEffect(() => {
     if (sortedEventsDropdown[0]?.id && !eventId) {
@@ -250,7 +283,7 @@ const ConfirmedEventsPage = () => {
       title: "Confirm cancellation",
       content: "Are you sure you want to cancel this event?",
       okText: "Yes",
-      okButtonProps: { danger: true },
+      okButtonProps: { type: "primary" },
       cancelText: "No",
       centered: true,
       onOk() {
@@ -262,6 +295,28 @@ const ConfirmedEventsPage = () => {
             },
             onError: () => {
               toast.error("Failed to cancel event");
+            },
+          },
+        );
+      },
+    });
+  };
+
+  const handleReconfirmEvent = () => {
+    Modal.confirm({
+      icon: null,
+      rootClassName: "usr-confirm-modal",
+      title: "Re-confirm event",
+      content: "Are you sure you want to bring this cancelled event back to Confirmed?",
+      okText: "Yes",
+      cancelText: "No",
+      centered: true,
+      onOk() {
+        reconfirmEventMutation(
+          { id: eventId },
+          {
+            onError: () => {
+              toast.error("Failed to re-confirm event");
             },
           },
         );
@@ -314,6 +369,9 @@ const ConfirmedEventsPage = () => {
   const adjustedPaidAmount = Math.max(0, paymentsSum - eventRefundAmount);
   const eventNotes =
     (selectedEventData?.data as ConfirmEventData)?.event_notes ?? [];
+  const isSelectedEventCancelled =
+    Number((selectedEventData?.data as ConfirmEventData)?.event_status_id) ===
+    CANCELLED_STATUS_ID;
 
   const panelStyle: CSSProperties = {
     marginBottom: 14,
@@ -411,11 +469,21 @@ const ConfirmedEventsPage = () => {
                     Modify
                   </Button>
                 )}
-                {/* Cancel Event / Send Quote / Send Invoice: Admin + Staff only.
-                    Laravel's Client-facing confirmed_events_client.blade.php
-                    toolbar is just Modify/Update/Print/Download Invoice — no
-                    Cancel, no Send Quote, no Send Invoice. */}
-                {!isClient && (
+                {/* Cancel Event / Re-confirm / Send Quote / Send Invoice: Admin +
+                    Staff only. Laravel's Client-facing
+                    confirmed_events_client.blade.php toolbar is just
+                    Modify/Update/Print/Download Invoice — no Cancel, no
+                    Re-confirm, no Send Quote, no Send Invoice. */}
+                {!isClient && isSelectedEventCancelled && (
+                  <Button
+                    type="primary"
+                    onClick={handleReconfirmEvent}
+                    loading={isReconfirmingEvent}
+                  >
+                    Re-confirm Event
+                  </Button>
+                )}
+                {!isClient && !isSelectedEventCancelled && (
                   <Button
                     onClick={handleCancelEvent}
                     loading={isCancelingEvent}
@@ -433,10 +501,8 @@ const ConfirmedEventsPage = () => {
                           String(eventId),
                           "SEND QUOTE-CONFIRMED",
                         );
-                        setModalTemplate(data?.email ?? null);
-                        setModalCompanies(data?.companies ?? null);
-                        setSendMode("quote");
-                        setShowModal(true);
+                        setQuoteTemplate(data?.email ?? null);
+                        setShowQuoteModal(true);
                       } catch {
                         toast.error("Failed to load email template");
                       } finally {
@@ -497,7 +563,7 @@ const ConfirmedEventsPage = () => {
             )}
           </div>
         </div>
-        <div className="max-w-100">
+        <div className="max-w-100 space-y-2">
           <Select
             value={eventId || undefined}
             className="w-[430px]"
@@ -505,7 +571,7 @@ const ConfirmedEventsPage = () => {
             options={eventsOptions}
             showSearch
             filterOption={(input, option) =>
-              String(option?.label ?? "")
+              String(option?.searchText ?? "")
                 .toLowerCase()
                 .includes(String(input).toLowerCase()) ||
               String(option?.value ?? "")
@@ -518,6 +584,16 @@ const ConfirmedEventsPage = () => {
             }}
             allowClear
           />
+          {!isClient && (
+            <div>
+              <Checkbox
+                checked={showCancelledEvents}
+                onChange={(e) => setShowCancelledEvents(e.target.checked)}
+              >
+                Show cancelled events
+              </Checkbox>
+            </div>
+          )}
         </div>
         <div className="relative">
           {isLoading && (
@@ -794,27 +870,21 @@ const ConfirmedEventsPage = () => {
           </div>
         </div>
         <div className="flex items-center justify-end gap-3 py-4">
+          {/* Notes and Payments now open/close together as a single toggle —
+              Client has no Payments box at all (aggregate total only, no
+              per-payment records), so their toggle only ever affects Notes. */}
           <Button
             htmlType="button"
             type="primary"
-            onClick={() => setShowNotes((v) => !v)}
+            onClick={() => {
+              const next = !(showNotes || showPayments);
+              setShowNotes(next);
+              if (!isClient) setShowPayments(next);
+            }}
             className="px-3 py-1"
           >
-            {showNotes ? "Hide Notes" : "Show Notes"}
+            {showNotes || showPayments ? "Hide Notes/Payments" : "Show Notes/Payments"}
           </Button>
-          {/* Line-item payment history (Date/Amount/Reference) is Admin/Staff
-              only — the legacy Laravel CRM's Client view only ever shows an
-              aggregate total + outstanding figure, never per-payment records. */}
-          {!isClient && (
-            <Button
-              htmlType="button"
-              type="primary"
-              onClick={() => setShowPayments((v) => !v)}
-              className="px-3 py-1"
-            >
-              {showPayments ? "Hide Payments" : "Show Payments"}
-            </Button>
-          )}
         </div>
         {/* AnimatedMount (real conditional mount, not a height collapse —
             a max-height guess left residual ghost space when closed) delays
@@ -996,6 +1066,42 @@ const ConfirmedEventsPage = () => {
             );
           }}
           isSending={isSendingInvoice}
+        />
+      )}
+
+      {/* Send Quote Modal */}
+      {showQuoteModal && (
+        <SendQuoteModal
+          open={showQuoteModal}
+          onCancel={() => setShowQuoteModal(false)}
+          eventId={eventId}
+          template={quoteTemplate}
+          onSend={(subject, body) => {
+            setButtonLoading("sending-quote");
+            sendQuoteMutation(
+              {
+                id: eventId,
+                payload: {
+                  subject,
+                  body,
+                  company_name_id: selectedEventData?.data?.names_id
+                    ? Number(selectedEventData.data.names_id)
+                    : undefined,
+                },
+              },
+              {
+                onSuccess: () => {
+                  setShowQuoteModal(false);
+                  setQuoteTemplate(null);
+                  setButtonLoading(null);
+                },
+                onError: () => {
+                  setButtonLoading(null);
+                },
+              },
+            );
+          }}
+          isSending={isSendingQuote}
         />
       )}
 

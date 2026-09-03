@@ -122,7 +122,12 @@ const FileUploadPage = () => {
       key: "file_name",
       width: 260,
       ellipsis: true,
-      render: (name: string) => name?.split("/").pop() || name,
+      render: (name: string) => {
+        const base = name?.split("/").pop() || name;
+        // Strip the unique-id prefix the backend adds for storage
+        // (`<timestamp><hex>_realname.ext`) so only the real filename shows.
+        return base?.replace(/^\d{10,}[0-9a-f]{0,8}_/, "") || base;
+      },
     },
     {
       title: "Type",

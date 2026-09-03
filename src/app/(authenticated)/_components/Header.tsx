@@ -47,10 +47,11 @@ const Header = () => {
     return () => { mounted = false; };
   }, []);
 
-  const futureYears = 1;
-  const pastYears = 4;
+  const futureYears = 5;
+  const pastYears = 5;
   const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: futureYears + pastYears + 1 }, (_, i) => {
+  // 10 years total: current year + 5 forward + 4 back.
+  const yearOptions = Array.from({ length: futureYears + pastYears }, (_, i) => {
     const y = currentYear + futureYears - i;
     return { label: String(y), value: y };
   });

@@ -566,8 +566,7 @@ const OpenEnquiryPage = () => {
                 maskClosable: false,
                 okText: "Delete",
                 okButtonProps: {
-                  danger: true,
-                  className: "!bg-red-600 !border-red-600 hover:!bg-red-700",
+                  type: "primary",
                 },
                 cancelText: "Cancel",
                 onOk: () => {
