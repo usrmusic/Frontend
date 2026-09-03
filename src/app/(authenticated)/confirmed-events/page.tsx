@@ -518,13 +518,17 @@ const ConfirmedEventsPage = () => {
                         // amount before showing it in the compose box —
                         // otherwise it displays the literal "{--amount--}"
                         // token until send-time, which reads as broken.
-                        const depositAmount = Number(selectedEventData?.data?.deposit_amount) || 0;
+                        // Uses actual payments received (minus refunds), not
+                        // the events.deposit_amount column — that column only
+                        // gets set if a deposit was entered at confirm-time,
+                        // so it reads 0 whenever the deposit was recorded as
+                        // a payment afterwards instead.
                         const template = rawTemplate
                           ? {
                               ...rawTemplate,
                               body: String(rawTemplate.body ?? "").replace(
                                 "{--amount--}",
-                                `£${depositAmount}`,
+                                `£${adjustedPaidAmount}`,
                               ),
                             }
                           : rawTemplate;
