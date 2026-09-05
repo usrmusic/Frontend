@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import AxiosInstance from "../lib/axios";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
+import axios from "axios";
 import { ApiResponse } from "../types/types";
 
 interface QueryParams {
@@ -54,7 +55,12 @@ export const useUploadFile = () => {
       queryClient.invalidateQueries({ queryKey: ["uploads-list"] }),
     onError: (err) => {
       console.error(err);
-      toast.error("Upload failed");
+      // Surface the real reason (e.g. "File type ... isn't supported", or
+      // "file_too_large") instead of a flat "Upload failed" that gave no
+      // clue why — that's what made an unsupported file type look like a
+      // mystery crash.
+      const message = axios.isAxiosError(err) ? err.response?.data?.error : null;
+      toast.error(message || "Upload failed");
     },
   });
 };

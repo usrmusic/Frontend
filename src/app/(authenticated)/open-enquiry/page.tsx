@@ -51,6 +51,9 @@ const initialParams: {
   search: string;
   status?: "new" | "open" | "quoted";
   event_type?: string;
+  view?: "open" | "closed";
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 } = {
   page: 1,
   limit: 10,
@@ -207,6 +210,17 @@ const OpenEnquiryPage = () => {
     "brochure" | "quote" | "invoice"
   >("invoice");
   const [activeTab, setActiveTab] = useState<"details" | "notes">("details");
+  // Open Enquiry / Closed (Cancelled) list toggle — see getStatusCounts in
+  // enquiry.controller.js for why "Closed" means Cancelled specifically.
+  const [enquiryView, setEnquiryView] = useState<"open" | "closed">("open");
+  // Server-side sort — the table used to sort with a local compare function,
+  // which only reordered whatever 10 rows happened to be on the current
+  // page rather than the whole list. `usr_name` is the flat, already
+  // Joi-whitelisted column backing the Name column's display value.
+  const [sortState, setSortState] = useState<{
+    field: "usr_name" | "date";
+    order: "asc" | "desc";
+  } | null>(null);
 
   const { data: enquiryData, isLoading } = useOpenEnquiryList(params);
   // A separate, small fetch purely to build the Event Type filter's option
@@ -256,11 +270,16 @@ const OpenEnquiryPage = () => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setParams((prev) => ({
       ...prev,
-      status: statusFilter || undefined,
+      // "Status" (New/Open/Quoted) only makes sense for the Open tab — never
+      // send it on Closed, where every row is Cancelled regardless.
+      status: enquiryView === "closed" ? undefined : statusFilter || undefined,
       event_type: eventTypeFilter || undefined,
+      view: enquiryView,
+      sortBy: sortState?.field,
+      sortOrder: sortState?.order,
       page: 1,
     }));
-  }, [statusFilter, eventTypeFilter]);
+  }, [statusFilter, eventTypeFilter, enquiryView, sortState]);
 
   // Memoize options to prevent unnecessary re-renders and fix TS mapping
   const companyOptions = useMemo(() => {
@@ -341,13 +360,15 @@ const OpenEnquiryPage = () => {
       key: "name",
       width: 150,
       ellipsis: true,
-      sorter: (a, b) => {
-        const an =
-          (a.users_events_user_idTousers as { name?: string })?.name ?? "";
-        const bn =
-          (b.users_events_user_idTousers as { name?: string })?.name ?? "";
-        return an.localeCompare(bn);
-      },
+      // Server-side (see sortState above) — sorts the whole list, not just
+      // the current page.
+      sorter: true,
+      sortOrder:
+        sortState?.field === "usr_name"
+          ? sortState.order === "asc"
+            ? "ascend"
+            : "descend"
+          : undefined,
     },
     {
       title: "Mobile",
@@ -362,8 +383,13 @@ const OpenEnquiryPage = () => {
       key: "date",
       width: 120,
       ellipsis: true,
-      sorter: (a, b) =>
-        dayjs(a.date as string).valueOf() - dayjs(b.date as string).valueOf(),
+      sorter: true,
+      sortOrder:
+        sortState?.field === "date"
+          ? sortState.order === "asc"
+            ? "ascend"
+            : "descend"
+          : undefined,
       render: (value: string) =>
         value ? dayjs(value).format("DD/MM/YYYY") : "-",
     },
@@ -691,14 +717,16 @@ const OpenEnquiryPage = () => {
             own scroll container would refuse to shrink and push the panel
             off-screen instead. */}
         <div className="flex-1 min-w-0 space-y-4">
-          {/* KPI row — business-wide, event_status_id based (not scoped to
-              this page's own open-enquiry rows): Total is every event
-              regardless of status; Open = OPEN + CONFIRMED (booked but
-              nothing about it is finished yet); Closed = COMPLETED +
-              CANCELLED (the event has run its course, either way). Backed by
-              GET /enquiry/status-counts — see getStatusCounts in
-              enquiry.controller.js for the exact grouping. Open + Closed
-              always exactly equals Total; no event falls outside both. */}
+          {/* KPI row — this page's own enquiry lifecycle, not the whole
+              business: Total = Open + Closed. Open = still-pending enquiries
+              (event_status_id 1). Closed = Cancelled (status 4) — a lead
+              that went nowhere. Confirmed/Completed enquiries graduated into
+              real bookings and already have their own pages (Confirmed
+              Events, Completed Events), so they're deliberately not counted
+              here. Backed by GET /enquiry/status-counts — see
+              getStatusCounts in enquiry.controller.js. The Closed card is
+              clickable — it switches the table below to the Closed
+              (Cancelled) list. */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card
               variant="white"
@@ -718,7 +746,8 @@ const OpenEnquiryPage = () => {
             </Card>
             <Card
               variant="white"
-              className="p-5 flex items-center justify-between"
+              className={`p-5 flex items-center justify-between cursor-pointer transition-colors ${enquiryView === "open" ? "ring-2 ring-primary" : ""}`}
+              onClick={() => setEnquiryView("open")}
             >
               <div>
                 <p className="text-sm text-gray-500">Open</p>
@@ -734,7 +763,8 @@ const OpenEnquiryPage = () => {
             </Card>
             <Card
               variant="white"
-              className="p-5 flex items-center justify-between"
+              className={`p-5 flex items-center justify-between cursor-pointer transition-colors ${enquiryView === "closed" ? "ring-2 ring-primary" : ""}`}
+              onClick={() => setEnquiryView("closed")}
             >
               <div>
                 <p className="text-sm text-gray-500">Closed</p>
@@ -780,6 +810,10 @@ const OpenEnquiryPage = () => {
                 placement="bottomRight"
                 content={
                   <div className="w-64 space-y-3 py-1">
+                    {/* New/Open/Quoted is a status derived from an active
+                        enquiry's called/quoted flags — meaningless on the
+                        Closed tab, where every row is Cancelled. */}
+                    {enquiryView === "open" && (
                     <div>
                       <p className="text-xs font-medium text-gray-500 mb-1">
                         Status
@@ -799,6 +833,7 @@ const OpenEnquiryPage = () => {
                         ]}
                       />
                     </div>
+                    )}
                     <div>
                       <p className="text-xs font-medium text-gray-500 mb-1">
                         Event Type
@@ -858,6 +893,24 @@ const OpenEnquiryPage = () => {
                 loading={isLoading}
                 scroll={{ x: 600 }}
                 rowKey={(data) => String(data.id)}
+                onChange={(_pagination, _filters, sorter) => {
+                  const s = Array.isArray(sorter) ? sorter[0] : sorter;
+                  if (!s || !s.order) {
+                    setSortState(null);
+                    return;
+                  }
+                  const field =
+                    s.columnKey === "name"
+                      ? "usr_name"
+                      : s.columnKey === "date"
+                        ? "date"
+                        : null;
+                  if (!field) return;
+                  setSortState({
+                    field,
+                    order: s.order === "ascend" ? "asc" : "desc",
+                  });
+                }}
                 pagination={{
                   pageSize: params.limit,
                   current: params.page,

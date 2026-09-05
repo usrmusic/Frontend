@@ -77,26 +77,32 @@ export default function SalesAnalytics({
 
   const topDjs = djEntries.slice(0, 3);
 
+  // confirmedEventsCount here is "Remaining" — confirmed events still ahead
+  // on the calendar (date >= today), not events already completed. Percent
+  // completed is the complement of that against the year's total, not the
+  // remaining count itself — the old formula (remaining / total) showed the
+  // inverse of what its "% Events Completed" label claimed.
   const completedPercent = totalEvents
-    ? Math.round((confirmedEventsCount / Math.max(1, totalEvents)) * 100)
+    ? Math.round(((totalEvents - confirmedEventsCount) / Math.max(1, totalEvents)) * 100)
     : 0;
 
   return (
     <Card variant="white" className="shadow-sm p-4 flex flex-col h-full">
-      <div className="mb-2 gap-2 flex flex-col">
-        <h4 className="text-base font-semibold text-gray-900 flex items-center min-h-8">
-          Sales Analytics
-        </h4>
-        <p className="text-sm text-gray-400">Events Progress</p>
-        <div className="flex items-baseline gap-2 mt-1">
-          <span className="text-2xl font-bold text-gray-900">
-            {isLoading ? "..." : confirmedEventsCount}
-          </span>
-          <span className="text-sm text-gray-400">
-            /{isLoading ? "..." : totalEvents}
-          </span>
+      <div className="mb-2 gap-1 flex flex-col">
+        <div className="flex items-baseline justify-between gap-2">
+          <h4 className="text-base font-semibold text-gray-900">
+            Sales Analytics
+          </h4>
+          <div className="flex items-baseline gap-1 shrink-0">
+            <span className="text-2xl font-bold text-gray-900">
+              {isLoading ? "..." : confirmedEventsCount}
+            </span>
+            <span className="text-sm text-gray-400">
+              /{isLoading ? "..." : totalEvents}
+            </span>
+          </div>
         </div>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-gray-500">
           {completedPercent}% Events Completed
         </p>
       </div>

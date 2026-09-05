@@ -502,8 +502,12 @@ const PackagesPage = () => {
           onYes={handleDelete}
           open={alertModal}
           handleCancel={() => setAlertModal(false)}
-          title="Delete Pacakge"
-          text="Are you sure you want to delete package(s)?"
+          title={activeTab === 'packages' ? "Delete Package" : "Delete Equipment"}
+          text={
+            activeTab === 'packages'
+              ? "Are you sure you want to delete package(s)?"
+              : "Are you sure you want to delete equipment?"
+          }
         />
       )}
     </div>

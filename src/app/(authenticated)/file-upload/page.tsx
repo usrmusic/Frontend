@@ -59,12 +59,15 @@ const FileUploadPage = () => {
   });
   const { data: eventsDropdown } = useConfirmEventsDropdown();
 
-  const eventDropdownOptions = (
-    eventsDropdown?.data as EventsDropdownItem[]
-  )?.map((item) => ({
-    label: `${dayjs(item.date).format("DD/MM/YYYY")} - ${item.venues?.venue} (${item.users_events_user_idTousers?.name})`,
-    value: item.id,
-  }));
+  // Soonest event first — matches the same "date order from today" ordering
+  // used elsewhere (e.g. confirmed-events' own event picker).
+  const eventDropdownOptions = (eventsDropdown?.data as EventsDropdownItem[])
+    ?.slice()
+    .sort((a, b) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf())
+    .map((item) => ({
+      label: `${dayjs(item.date).format("DD/MM/YYYY")} - ${item.venues?.venue} (${item.users_events_user_idTousers?.name})`,
+      value: item.id,
+    }));
 
   const downloadMutation = useDownloadUpload();
   const deleteMutation = useDeleteUpload();
@@ -124,9 +127,10 @@ const FileUploadPage = () => {
       ellipsis: true,
       render: (name: string) => {
         const base = name?.split("/").pop() || name;
-        // Strip the unique-id prefix the backend adds for storage
-        // (`<timestamp><hex>_realname.ext`) so only the real filename shows.
-        return base?.replace(/^\d{10,}[0-9a-f]{0,8}_/, "") || base;
+        // Strip everything up to and including the first underscore — same
+        // rule Laravel's file list uses (`/^[^_]*_/`), so the stripping
+        // logic matches exactly, not just the visible result.
+        return base?.replace(/^[^_]*_/, "") || base;
       },
     },
     {
@@ -204,6 +208,10 @@ const FileUploadPage = () => {
                 rootClassName: "usr-confirm-modal",
                 title: "Delete file",
                 content: "Are you sure you want to delete this file?",
+                okButtonProps: {
+                  type: "primary",
+                  className: "!bg-primary !border-primary hover:!opacity-90",
+                },
                 onOk: async () => {
                   if (!upload?.id) return;
                   await deleteMutation.mutateAsync(upload.id);
@@ -340,7 +348,13 @@ const FileUploadPage = () => {
             key={uploadFileInputKey}
             name="file"
             type="file"
-            label="File"
+            label="Choose file"
+            // Native file inputs can't have their button text changed
+            // (that's controlled by the browser), but the surrounding label
+            // and the filename text next to it can be — flex/items-center
+            // keeps the "no file chosen" text vertically centered in the
+            // box instead of sitting at the top.
+            className="flex items-center file:mr-3 file:h-full file:border-0 file:bg-secondary-200 file:px-3 file:text-sm file:text-gray-700 file:cursor-pointer"
             onChange={(e) => {
               const file = e.currentTarget.files?.[0] ?? null;
               uploadFormik.setFieldValue("file", file);

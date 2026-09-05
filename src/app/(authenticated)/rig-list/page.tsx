@@ -113,23 +113,37 @@ const Page = () => {
                 {rigNotesData.packages
                   .filter((pkg: any) => pkg.rig_notes || pkg.equipment?.rig_notes)
                   .map((pkg: any, idx: number) => {
+                    // Title is always the equipment name — the notes text
+                    // (event-specific rig_notes, or equipment's own default)
+                    // is content underneath it, never a stand-in title. This
+                    // used to swap in the first line of custom notes as the
+                    // title, which lost the actual item name whenever staff
+                    // added their own rig notes.
+                    const title = pkg.equipment?.name || "Equipment";
                     const rawNotes = pkg.rig_notes || pkg.equipment?.rig_notes || "";
                     // replace <br> tags with newlines before splitting so they don't render as text
-                    const lines = rawNotes
+                    const items = rawNotes
                       .replace(/<br\s*\/?>/gi, "\n")
                       .replace(/\r\n|\n|\r/g, "\n")
                       .split("\n")
                       .map((l: string) => l.trim())
                       .filter(Boolean);
-                    const title = pkg.rig_notes ? lines[0] : (pkg.equipment?.name || "Equipment");
-                    const items = pkg.rig_notes ? lines.slice(1) : lines;
 
                     return (
                       <div key={idx} className="space-y-1.5 pb-3 last:border-0 last:pb-0">
                         {/* Section title — same style as enquiry page rig list */}
                         <div className="flex items-center gap-2">
                           <SquareCheckBig size={14} className="text-primary shrink-0" />
-                          <p className="font-semibold text-sm text-gray-900">{title}</p>
+                          {/* Equipment names/notes are stored with inline HTML
+                              (e.g. "<b>SCREEN...</b>", "&amp;") from the old
+                              Laravel data — rendering as plain text left the
+                              raw tags/entities visible instead of formatted
+                              text. Same fix already applied to rig_notes in
+                              EventPaymentDrawer. */}
+                          <p
+                            className="font-semibold text-sm text-gray-900"
+                            dangerouslySetInnerHTML={{ __html: title }}
+                          />
                         </div>
                         {/* Checkbox items */}
                         {items.length > 0 && (
@@ -141,7 +155,7 @@ const Page = () => {
                                   className="size-3.5 shrink-0"
                                   style={{ accentColor: "#719984" }}
                                 />
-                                <span>{line}</span>
+                                <span dangerouslySetInnerHTML={{ __html: line }} />
                               </li>
                             ))}
                           </ul>

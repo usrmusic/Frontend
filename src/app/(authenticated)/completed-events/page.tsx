@@ -164,13 +164,15 @@ const CompletedEventsPage = () => {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button
-              onClick={() =>
-                selectedId &&
+              onClick={() => {
+                if (!selectedId) {
+                  toast.error("Please select an event first");
+                  return;
+                }
                 router.push(
                   `/confirmed-events?search=${selectedId}&from=completed`,
-                )
-              }
-              disabled={!selectedId}
+                );
+              }}
             >
               View
             </Button>
@@ -183,14 +185,16 @@ const CompletedEventsPage = () => {
                 }
                 setShowThankYouModal(true);
               }}
-              disabled={!selectedId}
             >
               Send Email
             </Button>
             <Button
               type="primary"
               onClick={async () => {
-                if (!selectedId) return;
+                if (!selectedId) {
+                  toast.error("Please select an event first");
+                  return;
+                }
                 setButtonLoading("invoice");
                 try {
                   const data = await fetchEmailTemplate(
@@ -210,18 +214,19 @@ const CompletedEventsPage = () => {
                 }
               }}
               loading={buttonLoading === "invoice"}
-              disabled={!selectedId}
             >
               Send Invoice
             </Button>
             <Button
               type="default"
-              onClick={() =>
-                selectedId &&
-                downloadInvoiceMutation({ id: String(selectedId) })
-              }
+              onClick={() => {
+                if (!selectedId) {
+                  toast.error("Please select an event first");
+                  return;
+                }
+                downloadInvoiceMutation({ id: String(selectedId) });
+              }}
               loading={isDownloadingInvoice}
-              disabled={!selectedId}
             >
               Download Invoice
             </Button>

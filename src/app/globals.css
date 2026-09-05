@@ -494,3 +494,33 @@ button:hover {
   color: var(--color-primary);
   opacity: 0.85;
 }
+
+/* Themed react-toastify toasts. The library's default palette (bright green
+   success, orange warning, blue info) clashes with the app's sage-green
+   theme — every toast except error (which keeps the standard red, since
+   that's the universally-understood color for a failure) is restyled to the
+   brand color instead. */
+.Toastify__toast--success,
+.Toastify__toast--warning,
+.Toastify__toast--info {
+  background: var(--color-primary) !important;
+  color: #fff !important;
+  border-radius: 12px !important;
+}
+
+.Toastify__toast--success .Toastify__toast-icon svg,
+.Toastify__toast--warning .Toastify__toast-icon svg,
+.Toastify__toast--info .Toastify__toast-icon svg {
+  fill: #fff !important;
+}
+
+.Toastify__close-button {
+  color: #fff !important;
+  opacity: 0.85 !important;
+}
+
+.Toastify__progress-bar--success,
+.Toastify__progress-bar--warning,
+.Toastify__progress-bar--info {
+  background: rgba(255, 255, 255, 0.6) !important;
+}

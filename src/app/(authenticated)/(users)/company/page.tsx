@@ -232,8 +232,8 @@ const CompanyPage = () => {
           onYes={handleDelete}
           open={alertModal}
           handleCancel={() => setAlertModal(false)}
-          title="Delete User"
-          text="Are you sure you want to delete user(s)?"
+          title="Delete Company"
+          text="Are you sure you want to delete company(s)?"
         />
       )}
     </div>

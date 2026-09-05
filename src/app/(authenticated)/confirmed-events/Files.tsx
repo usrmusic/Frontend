@@ -15,10 +15,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { useState } from "react";
 
-// Strips the backend's storage-uniqueness prefix (`<timestamp><hex>_`) so the
-// user only ever sees the real filename they uploaded, not the internal key.
-const stripStoragePrefix = (name: string) =>
-  name.replace(/^\d{10,}[0-9a-f]{0,8}_/, "");
+// Strips everything up to and including the first underscore — same rule
+// Laravel's file list uses (`/^[^_]*_/`) — so the user only ever sees the
+// real filename they uploaded, not the internal storage key.
+const stripStoragePrefix = (name: string) => name.replace(/^[^_]*_/, "");
 
 export type ConfirmedEventFile = {
   id: number | string;
