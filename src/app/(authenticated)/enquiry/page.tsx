@@ -28,7 +28,6 @@ import {
   useGetEnquiry,
   useUpdateEnquiry,
   fetchEmailTemplate,
-  checkEquipmentAvailability,
 } from "@/src/api/enquiry";
 import SendBrochureModal from "../open-enquiry/SendBrochure";
 import useRole from "@/src/hooks/useRole";
@@ -67,6 +66,11 @@ interface EquipmentItem {
   // item at all — matches Laravel's equipment.quantity / is_availabilty_check.
   quantity?: number | null;
   is_availabilty_check?: boolean | null;
+  // How much of this item is already booked by OTHER open/confirmed events on
+  // the currently-selected event date, computed once server-side alongside
+  // the rest of this payload — lets the qty inputs flag overbooking instantly
+  // as the staff member types, with no per-keystroke network round trip.
+  booked_quantity?: number | null;
 }
 
 interface PackageUserEquipment {
@@ -85,6 +89,8 @@ interface ExtraItem {
   rig_notes?: string | null;
   notes?: string | null;
   is_availabilty_check?: boolean | null;
+  // Same as EquipmentItem.booked_quantity above.
+  booked_quantity?: number | null;
 }
 
 interface CustomExtra {
@@ -187,27 +193,36 @@ const NewEnquiryPageInner = () => {
   const [extrasQty, setExtrasQty] = useState<Record<string, number>>({});
   const [restoredEditSelections, setRestoredEditSelections] = useState(false);
 
-  // Advisory-only overbooking warning — parity with Laravel, which fires this
-  // on checkbox-check and quantity-change but never blocks the save either
-  // way. Only bothers calling the API when the item actually has the
-  // availability check enabled, same gating Laravel applies client-side.
-  const runOverbookCheck = (
-    eventDateIso: string,
+  // Advisory-only overbooking warning — parity with Laravel's stock math
+  // (EquipmentAvailabilityCheck/checkTheQuantity: flag when
+  // booked_elsewhere + requested > stock). Evaluated entirely from data
+  // already sitting in `packageData` (stock + booked_quantity, computed
+  // server-side once per date/DJ load) rather than a network call per
+  // keystroke, so it reacts the instant the staff member types — no delay,
+  // and one stable toastId per equipment so retyping UPDATES the same toast
+  // instead of stacking a new one on every digit.
+  const evaluateOverbook = (
     equipmentId: number | string | null | undefined,
+    name: string | null | undefined,
     quantity: number,
     isAvailabilityCheck: boolean | null | undefined,
+    stock: number | null | undefined,
+    bookedElsewhere: number | null | undefined,
   ) => {
     if (!isAvailabilityCheck || equipmentId == null) return;
-    // No event date yet is NOT a reason to skip: the backend still runs the
-    // absolute "more than we own" check without one, which is exactly what
-    // Laravel does. Bailing here meant asking for 27 of a 1-in-stock item
-    // showed no warning at all until a date was picked.
-    checkEquipmentAvailability({
-      date: eventDateIso ? dayjs(eventDateIso).format("YYYY-MM-DD") : "",
-      items: [{ equipment_id: equipmentId, quantity }],
-    }).then((messages) => {
-      messages.forEach((m) => toast.warning(m));
-    });
+    const toastId = `overbook-${equipmentId}`;
+    const totalStock = Number(stock) || 0;
+    const booked = Number(bookedElsewhere) || 0;
+    if (quantity + booked > totalStock) {
+      const message = `The equipment ${name ?? ""} is being overbooked.`;
+      if (toast.isActive(toastId)) {
+        toast.update(toastId, { render: message });
+      } else {
+        toast.warning(message, { toastId });
+      }
+    } else if (toast.isActive(toastId)) {
+      toast.dismiss(toastId);
+    }
   };
   // Flips true the moment the user picks a DJ from the dropdown themselves
   // (as opposed to packageParams.staff being set by the edit-hydration effect
@@ -318,14 +333,13 @@ const NewEnquiryPageInner = () => {
   const { data: clientDetails } = useSingleClient(!showNameInput && clientId ? clientId : null);
   const { data: supplierDropdownData } = useSupplierDropdown();
 
-  // Re-run the overbooking check across every currently-ticked row at once.
-  // Laravel does this on the date picker's onSelect (and on DJ change), not
-  // just per-row: availability is date-specific, so rows that were fine for
-  // the old date can clash on the new one. Sent as a single batched request
-  // rather than one call per row.
-  const runOverbookCheckAll = (eventDateIso: string) => {
-    const items: { equipment_id: number; quantity: number }[] = [];
-
+  // Re-evaluate every currently-ticked row's overbook status. Laravel fires
+  // this on the date picker's onSelect and on DJ change (availability is
+  // date-specific, so rows fine for the old date can clash on the new one) —
+  // here it also doubles as the general "packageData just changed" refresh,
+  // called from the effect below once the new date/DJ's booked_quantity
+  // figures have arrived.
+  const runOverbookCheckAll = () => {
     const pkgEquip = (packageData?.data?.equipments?.package_user_equipments ??
       []) as PackageUserEquipment[];
     for (const it of pkgEquip) {
@@ -333,32 +347,30 @@ const NewEnquiryPageInner = () => {
       const id = it.equipment_id ?? equipment?.id ?? it.id;
       const key = id != null ? String(id) : null;
       if (!key || !selectedPackageEquipments[key]) continue;
-      if (!equipment?.is_availabilty_check || equipment?.id == null) continue;
       const basicQty = Number(it.quantity ?? 1);
-      items.push({
-        equipment_id: Number(equipment.id),
-        quantity: Number(packageEquipmentQty[key] ?? basicQty),
-      });
+      evaluateOverbook(
+        equipment?.id,
+        equipment?.name,
+        Number(packageEquipmentQty[key] ?? basicQty),
+        equipment?.is_availabilty_check,
+        equipment?.quantity,
+        equipment?.booked_quantity,
+      );
     }
 
     const extras = (packageData?.data?.extras ?? []) as ExtraItem[];
     for (const ex of extras) {
       const key = ex.id != null ? String(ex.id) : "";
       if (!key || !selectedExtras[key]) continue;
-      if (!ex.is_availabilty_check || ex.id == null) continue;
-      items.push({
-        equipment_id: Number(ex.id),
-        quantity: Number(extrasQty[key] ?? 1),
-      });
+      evaluateOverbook(
+        ex.id,
+        ex.name,
+        Number(extrasQty[key] ?? 1),
+        ex.is_availabilty_check,
+        ex.quantity,
+        ex.booked_quantity,
+      );
     }
-
-    if (!items.length) return;
-    checkEquipmentAvailability({
-      date: eventDateIso ? dayjs(eventDateIso).format("YYYY-MM-DD") : "",
-      items,
-    }).then((messages) => {
-      messages.forEach((m) => toast.warning(m));
-    });
   };
 
   const createEnquiry = useCreateEnquiry();
@@ -706,6 +718,10 @@ const NewEnquiryPageInner = () => {
             }
             return merged;
           });
+          // DJ unchanged, so this is a plain date edit — existing selections
+          // and qty overrides carry over as-is, but packageData just arrived
+          // with fresh booked_quantity figures for the new date, so re-check.
+          runOverbookCheckAll();
           return;
         }
         setSelectedPackageEquipments(initPkg);
@@ -721,34 +737,30 @@ const NewEnquiryPageInner = () => {
 
         // Laravel re-checks availability for every Starting Package row when
         // the DJ changes (a different DJ means a different equipment list, so
-        // clashes on the event date can appear or disappear). Read straight
-        // off initPkg and the bundled defaults — the state setters above have
-        // not landed yet inside this closure.
-        {
-          const eventDateIso = formikRef.current?.values?.eventDate;
-          const items: { equipment_id: number; quantity: number }[] = [];
-          const rows = (packageData?.data?.equipments?.package_user_equipments ??
-            []) as PackageUserEquipment[];
-          for (const it of rows) {
-            const equipment = it.equipment ?? null;
-            const id = it.equipment_id ?? equipment?.id ?? it.id;
-            const key = id != null ? String(id) : null;
-            if (!key || !initPkg[key]) continue;
-            if (!equipment?.is_availabilty_check || equipment?.id == null) continue;
-            items.push({
-              equipment_id: Number(equipment.id),
-              quantity: Number(it.quantity ?? 1),
-            });
-          }
-          if (items.length) {
-            checkEquipmentAvailability({
-              date: eventDateIso ? dayjs(eventDateIso).format("YYYY-MM-DD") : "",
-              items,
-            }).then((messages) => messages.forEach((m) => toast.warning(m)));
-          }
+        // clashes on the event date can appear or disappear). `packageData`
+        // already carries booked_quantity for this date, so this is
+        // synchronous — no round trip. Read straight off initPkg and the
+        // bundled defaults — the state setters above have not landed yet
+        // inside this closure.
+        const rows = (packageData?.data?.equipments?.package_user_equipments ??
+          []) as PackageUserEquipment[];
+        for (const it of rows) {
+          const equipment = it.equipment ?? null;
+          const id = it.equipment_id ?? equipment?.id ?? it.id;
+          const key = id != null ? String(id) : null;
+          if (!key || !initPkg[key]) continue;
+          evaluateOverbook(
+            equipment?.id,
+            equipment?.name,
+            Number(it.quantity ?? 1),
+            equipment?.is_availabilty_check,
+            equipment?.quantity,
+            equipment?.booked_quantity,
+          );
         }
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [packageData, editId, restoredEditSelections]);
 
   const { equipmentList, rigNotesList, totalPrice } = useMemo(() => {
@@ -1604,8 +1616,12 @@ const NewEnquiryPageInner = () => {
                                           const iso = val ? val.toISOString() : "";
                                           const formatted = val ? val.format("DD-MM-YYYY") : "";
                                           setFieldValue("eventDate", iso);
+                                          // Overbooking isn't re-evaluated here directly — this
+                                          // just changes packageParams.event_date, which
+                                          // re-fetches packageData with fresh booked_quantity
+                                          // figures for the new date; the effect below runs the
+                                          // check once that arrives.
                                           setPackageParams((prev) => ({ ...prev, event_date: formatted }));
-                                          runOverbookCheckAll(iso);
                                         }}
                                       />
                                       {touched.eventDate && errors.eventDate && (
@@ -1758,14 +1774,14 @@ const NewEnquiryPageInner = () => {
                                             ...prev,
                                             [key]: nowChecked,
                                           }));
-                                          if (nowChecked) {
-                                            runOverbookCheck(
-                                              values.eventDate,
-                                              equipment?.id,
-                                              editedQty,
-                                              equipment?.is_availabilty_check,
-                                            );
-                                          }
+                                          evaluateOverbook(
+                                            equipment?.id,
+                                            equipment?.name,
+                                            nowChecked ? editedQty : 0,
+                                            equipment?.is_availabilty_check,
+                                            equipment?.quantity,
+                                            equipment?.booked_quantity,
+                                          );
                                         }}
                                         className="size-4 rounded accent-primary cursor-pointer"
                                       />
@@ -1809,18 +1825,18 @@ const NewEnquiryPageInner = () => {
                                             ...prev,
                                             [key]: val,
                                           }));
-                                          // Laravel only fires the availability check on a
-                                          // Starting Package row once the qty goes ABOVE the
-                                          // bundled allowance — within it the stock is already
-                                          // accounted for by the package itself.
-                                          if (val > basicQty) {
-                                            runOverbookCheck(
-                                              values.eventDate,
-                                              equipment?.id,
-                                              val,
-                                              equipment?.is_availabilty_check,
-                                            );
-                                          }
+                                          // Evaluated on every change (not just above the
+                                          // bundled allowance) so stepping back down instantly
+                                          // clears a stale warning too — cheap now that this is
+                                          // synchronous, no network call to gate.
+                                          evaluateOverbook(
+                                            equipment?.id,
+                                            equipment?.name,
+                                            val,
+                                            equipment?.is_availabilty_check,
+                                            equipment?.quantity,
+                                            equipment?.booked_quantity,
+                                          );
                                         }}
                                         className="h-8 w-14 rounded-lg border border-gray-200 bg-white px-1 text-center text-sm outline-none focus:border-primary transition-colors disabled:bg-gray-100 disabled:text-gray-400"
                                       />
@@ -1898,14 +1914,14 @@ const NewEnquiryPageInner = () => {
                                           ...prev,
                                           [key]: nowChecked,
                                         }));
-                                        if (nowChecked) {
-                                          runOverbookCheck(
-                                            values.eventDate,
-                                            extra.id,
-                                            qty,
-                                            extra.is_availabilty_check,
-                                          );
-                                        }
+                                        evaluateOverbook(
+                                          extra.id,
+                                          extra.name,
+                                          nowChecked ? qty : 0,
+                                          extra.is_availabilty_check,
+                                          extra.quantity,
+                                          extra.booked_quantity,
+                                        );
                                       }}
                                       className="size-4 rounded accent-primary cursor-pointer"
                                     />
@@ -1943,11 +1959,13 @@ const NewEnquiryPageInner = () => {
                                           ...prev,
                                           [key]: val,
                                         }));
-                                        runOverbookCheck(
-                                          values.eventDate,
+                                        evaluateOverbook(
                                           extra.id,
+                                          extra.name,
                                           val,
                                           extra.is_availabilty_check,
+                                          extra.quantity,
+                                          extra.booked_quantity,
                                         );
                                       }}
                                       className="h-8 w-14 rounded-lg border border-gray-200 bg-white px-1 text-center text-sm outline-none focus:border-primary transition-colors disabled:bg-gray-100 disabled:text-gray-400"
