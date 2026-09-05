@@ -91,7 +91,11 @@ export default function ContractFiles({ eventId }: Props) {
           title="Delete this signed contract?"
           description="The PDF and signature will be removed."
           okText="Delete"
-          okButtonProps={{ danger: true, loading: deleteContract.isPending }}
+          okButtonProps={{
+            type: "primary",
+            className: "!bg-primary !border-primary hover:!opacity-90",
+            loading: deleteContract.isPending,
+          }}
           onConfirm={() => handleDelete(row.id)}
         >
           <button

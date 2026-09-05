@@ -28,6 +28,7 @@ import {
   useGetEnquiry,
   useUpdateEnquiry,
   fetchEmailTemplate,
+  checkEquipmentAvailability,
 } from "@/src/api/enquiry";
 import SendBrochureModal from "../open-enquiry/SendBrochure";
 import useRole from "@/src/hooks/useRole";
@@ -62,6 +63,10 @@ interface EquipmentItem {
   sell_price?: number | null;
   cost_price?: number | null;
   rig_notes?: string | null;
+  // Total stock owned, and whether the overbooking check applies to this
+  // item at all — matches Laravel's equipment.quantity / is_availabilty_check.
+  quantity?: number | null;
+  is_availabilty_check?: boolean | null;
 }
 
 interface PackageUserEquipment {
@@ -79,6 +84,7 @@ interface ExtraItem {
   quantity?: number | null;
   rig_notes?: string | null;
   notes?: string | null;
+  is_availabilty_check?: boolean | null;
 }
 
 interface CustomExtra {
@@ -107,8 +113,7 @@ const validationSchema = Yup.object({
     .max(100, "Name must be at most 100 characters")
     .required("Name is required"),
   address: Yup.string()
-    .max(200, "Address must be at most 200 characters")
-    .required("Address is required"),
+    .max(200, "Address must be at most 200 characters"),
   email: Yup.string()
     .email("Invalid email address")
     .max(100, "Email must be at most 100 characters")
@@ -121,8 +126,8 @@ const validationSchema = Yup.object({
   // (matches Laravel, which never requires venue on this form either).
   venue: Yup.string().max(100, "Venue must be at most 100 characters"),
   eventDate: Yup.date().required("Event date is required"),
-  endTime: Yup.string().required("End time is required"),
-  startTime: Yup.string().required("Start time is required"),
+  endTime: Yup.string(),
+  startTime: Yup.string(),
   dj: Yup.object()
     .shape({ id: Yup.mixed(), name: Yup.string().max(100, "DJ name must be at most 100 characters") })
     .nullable(),
@@ -181,6 +186,25 @@ const NewEnquiryPageInner = () => {
   const [extrasPrice, setExtrasPrice] = useState<Record<string, number>>({});
   const [extrasQty, setExtrasQty] = useState<Record<string, number>>({});
   const [restoredEditSelections, setRestoredEditSelections] = useState(false);
+
+  // Advisory-only overbooking warning — parity with Laravel, which fires this
+  // on checkbox-check and quantity-change but never blocks the save either
+  // way. Only bothers calling the API when the item actually has the
+  // availability check enabled, same gating Laravel applies client-side.
+  const runOverbookCheck = (
+    eventDateIso: string,
+    equipmentId: number | string | null | undefined,
+    quantity: number,
+    isAvailabilityCheck: boolean | null | undefined,
+  ) => {
+    if (!isAvailabilityCheck || equipmentId == null || !eventDateIso) return;
+    checkEquipmentAvailability({
+      date: dayjs(eventDateIso).format("YYYY-MM-DD"),
+      items: [{ equipment_id: equipmentId, quantity }],
+    }).then((messages) => {
+      messages.forEach((m) => toast.warning(m));
+    });
+  };
   // Flips true the moment the user picks a DJ from the dropdown themselves
   // (as opposed to packageParams.staff being set by the edit-hydration effect
   // from the saved enquiry). See the packageData effect below for why this
@@ -1280,7 +1304,6 @@ const NewEnquiryPageInner = () => {
                                     className="bg-secondary-100"
                                     disabled={isSubmitting}
                                     error={touched.address ? (errors.address as string | undefined) : undefined}
-                                    required
                                   />
                                 )}
                               </Field>
@@ -1466,7 +1489,15 @@ const NewEnquiryPageInner = () => {
                                         allowClear
                                         disabled={isSubmitting}
                                         value={fieldProps.field.value || undefined}
-                                        onChange={(val) => setFieldValue("eventType", val ?? "")}
+                                        onChange={(val) => {
+                                          setFieldValue("eventType", val ?? "");
+                                          // Wedding Reception always defaults to a
+                                          // £1000 deposit; every other type leaves
+                                          // the box for staff to fill in themselves.
+                                          if (val === "Wedding Reception") {
+                                            setFieldValue("depositAmount", 1000);
+                                          }
+                                        }}
                                         options={EVENT_TYPES.map((type) => ({ label: type, value: type }))}
                                       />
                                     </div>
@@ -1525,7 +1556,6 @@ const NewEnquiryPageInner = () => {
                                         placeholder="e.g. 7am, 7:30pm or 07:00"
                                         disabled={isSubmitting}
                                         error={touched.startTime ? (errors.startTime as string | undefined) : undefined}
-                                        required
                                         value={fieldProps.field.value}
                                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue("startTime", e.target.value)}
                                         onBlur={(e: React.FocusEvent<HTMLInputElement>) => setFieldValue("startTime", parseTimeTo24(e.target.value))}
@@ -1544,7 +1574,6 @@ const NewEnquiryPageInner = () => {
                                         placeholder="e.g. 7am, 7:30pm or 19:30"
                                         disabled={isSubmitting}
                                         error={touched.endTime ? (errors.endTime as string | undefined) : undefined}
-                                        required
                                         value={fieldProps.field.value}
                                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldValue("endTime", e.target.value)}
                                         onBlur={(e: React.FocusEvent<HTMLInputElement>) => setFieldValue("endTime", parseTimeTo24(e.target.value))}
@@ -1637,12 +1666,21 @@ const NewEnquiryPageInner = () => {
                                       <input
                                         type="checkbox"
                                         checked={checked}
-                                        onChange={() =>
+                                        onChange={() => {
+                                          const nowChecked = !selectedPackageEquipments[key];
                                           setSelectedPackageEquipments((prev) => ({
                                             ...prev,
-                                            [key]: !prev[key],
-                                          }))
-                                        }
+                                            [key]: nowChecked,
+                                          }));
+                                          if (nowChecked) {
+                                            runOverbookCheck(
+                                              values.eventDate,
+                                              equipment?.id,
+                                              editedQty,
+                                              equipment?.is_availabilty_check,
+                                            );
+                                          }
+                                        }}
                                         className="size-4 rounded accent-primary cursor-pointer"
                                       />
                                       <span>{equipment?.name}</span>
@@ -1671,11 +1709,23 @@ const NewEnquiryPageInner = () => {
                                         value={editedQty}
                                         disabled={!checked}
                                         onChange={(e) => {
-                                          const val = e.target.value === "" ? basicQty : Number(e.target.value);
+                                          const raw = e.target.value === "" ? NaN : Number(e.target.value);
+                                          // Matches Laravel's keyup handler: reducing the
+                                          // quantity down to 0 snaps it back to the
+                                          // package's bundled default rather than staying
+                                          // at 0.
+                                          const val =
+                                            !Number.isFinite(raw) || raw <= 0 ? basicQty : raw;
                                           setPackageEquipmentQty((prev) => ({
                                             ...prev,
-                                            [key]: Number.isFinite(val) ? val : basicQty,
+                                            [key]: val,
                                           }));
+                                          runOverbookCheck(
+                                            values.eventDate,
+                                            equipment?.id,
+                                            val,
+                                            equipment?.is_availabilty_check,
+                                          );
                                         }}
                                         className="h-8 w-14 rounded-lg border border-gray-200 bg-white px-1 text-center text-sm outline-none focus:border-primary transition-colors disabled:bg-gray-100 disabled:text-gray-400"
                                       />
@@ -1747,12 +1797,21 @@ const NewEnquiryPageInner = () => {
                                     <input
                                       type="checkbox"
                                       checked={checked}
-                                      onChange={() =>
+                                      onChange={() => {
+                                        const nowChecked = !selectedExtras[key];
                                         setSelectedExtras((prev) => ({
                                           ...prev,
-                                          [key]: !prev[key],
-                                        }))
-                                      }
+                                          [key]: nowChecked,
+                                        }));
+                                        if (nowChecked) {
+                                          runOverbookCheck(
+                                            values.eventDate,
+                                            extra.id,
+                                            qty,
+                                            extra.is_availabilty_check,
+                                          );
+                                        }
+                                      }}
                                       className="size-4 rounded accent-primary cursor-pointer"
                                     />
                                     <span>{extra.name}</span>
@@ -1781,11 +1840,18 @@ const NewEnquiryPageInner = () => {
                                       value={qty}
                                       disabled={!checked}
                                       onChange={(e) => {
-                                        const val = e.target.value === "" ? 1 : Number(e.target.value);
+                                        const raw = e.target.value === "" ? 1 : Number(e.target.value);
+                                        const val = Number.isFinite(raw) ? raw : 1;
                                         setExtrasQty((prev) => ({
                                           ...prev,
-                                          [key]: Number.isFinite(val) ? val : 1,
+                                          [key]: val,
                                         }));
+                                        runOverbookCheck(
+                                          values.eventDate,
+                                          extra.id,
+                                          val,
+                                          extra.is_availabilty_check,
+                                        );
                                       }}
                                       className="h-8 w-14 rounded-lg border border-gray-200 bg-white px-1 text-center text-sm outline-none focus:border-primary transition-colors disabled:bg-gray-100 disabled:text-gray-400"
                                     />
@@ -2037,8 +2103,8 @@ const NewEnquiryPageInner = () => {
                                 ["Venue", printVenueName],
                                 ["DJ / Package", values.dj?.name],
                                 ["Event Date", values.eventDate],
-                                ["Start Time", values.startTime],
-                                ["End Time", values.endTime],
+                                ["Start Time", values.startTime || "–"],
+                                ["End Time", values.endTime || "–"],
                                 [
                                   "Deposit Amount",
                                   values.depositAmount

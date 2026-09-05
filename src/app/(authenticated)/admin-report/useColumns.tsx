@@ -64,7 +64,7 @@ const useColumns = (
       value={colFilters[field] ?? ""}
       onChange={(e) => setFilter(field, e.target.value)}
       onClick={(e) => e.stopPropagation()}
-      className="mt-1 w-full border border-gray-200 rounded-lg px-2 py-0.5 text-xs font-normal bg-white! outline-none focus:border-primary placeholder:text-gray-400"
+      className="mt-1.5 block w-full border border-primary/20 rounded-lg px-3 py-1.5 text-xs font-normal bg-white! outline-none focus:border-primary placeholder:text-gray-400"
     />
   );
 
@@ -201,7 +201,17 @@ const useColumns = (
         // A missing/invalid event_id would otherwise make every row share
         // the same draft-state key (all rows editing as one) — refuse to
         // edit rather than risk that, and read-only display instead.
-        if (Number(row.event_status_id) === 4 || !Number.isFinite(row.event_id)) {
+        if (Number(row.event_status_id) === 4) {
+          return (
+            <span
+              className="cursor-not-allowed"
+              onClick={() => toast.warning("This event has been cancelled")}
+            >
+              £{Number(v || 0).toFixed(2)}
+            </span>
+          );
+        }
+        if (!Number.isFinite(row.event_id)) {
           return `£${Number(v || 0).toFixed(2)}`;
         }
         const draft = draftExtraCost[row.event_id];
@@ -253,7 +263,7 @@ const useColumns = (
             type="text"
             disabled
             placeholder="—"
-            className="mt-1 w-full border border-gray-200 rounded-lg px-2 py-0.5 text-xs font-normal bg-white! outline-none opacity-40 cursor-not-allowed"
+            className="mt-1.5 block w-full border border-primary/20 rounded-lg px-3 py-1.5 text-xs font-normal bg-white! outline-none opacity-40 cursor-not-allowed"
           />
         </div>
       ),
@@ -270,7 +280,7 @@ const useColumns = (
             type="text"
             disabled
             placeholder="—"
-            className="mt-1 w-full border border-gray-200 rounded-lg px-2 py-0.5 text-xs font-normal bg-white! outline-none opacity-40 cursor-not-allowed"
+            className="mt-1.5 block w-full border border-primary/20 rounded-lg px-3 py-1.5 text-xs font-normal bg-white! outline-none opacity-40 cursor-not-allowed"
           />
         </div>
       ),

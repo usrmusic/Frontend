@@ -139,10 +139,11 @@ export const useUpdateConfirmEvent = () => {
 export const useCancelEvent = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id }: { id: string }) => {
+    mutationFn: async ({ id, refund_amount }: { id: string; refund_amount?: number }) => {
       try {
         const response = await AxiosInstance.post(
           `/confirm-event/cancel?id=${id}`,
+          refund_amount != null ? { refund_amount } : undefined,
         );
         return response.data;
       } catch (error: unknown) {

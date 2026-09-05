@@ -59,6 +59,25 @@ export const usePackageData = (params: PackageParams) => {
     enabled: isEnabled,
   });
 };
+// Advisory-only overbooking check — parity with Laravel's
+// EquipmentAvailabilityCheck/checkTheQuantity. Never blocks the caller; on
+// any failure it just resolves to no messages so a network hiccup can't
+// spam warnings or break the form.
+export const checkEquipmentAvailability = async (payload: {
+  date: string;
+  items: { equipment_id: number | string; quantity: number }[];
+}): Promise<string[]> => {
+  try {
+    const response = await AxiosInstance.post(
+      `/enquiry/check-equipment-availability`,
+      payload,
+    );
+    return response?.data?.messages ?? [];
+  } catch {
+    return [];
+  }
+};
+
 export const useOpenEnquiryList = (params: QueryParams) => {
   return useQuery({
     queryKey: ["enquiry-list", params],
@@ -296,7 +315,7 @@ export const useDeleteEnquiry = () => {
       } catch (error: unknown) {
         if (axios.isAxiosError(error)) {
           const msg = error.response?.data;
-          toast.error(msg?.error || "Something went wrong");
+          toast.error(msg?.message || msg?.error || "Something went wrong");
         }
         throw error;
       }

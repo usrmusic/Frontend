@@ -107,6 +107,8 @@ const ConfirmedEventsPage = () => {
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [refundAmount, setRefundAmount] = useState<string>("");
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelRefundAmount, setCancelRefundAmount] = useState<string>("");
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
   const [invoiceTemplate, setInvoiceTemplate] = useState<{
     subject: string;
@@ -288,30 +290,10 @@ const ConfirmedEventsPage = () => {
     },
   });
 
+  // Matches Laravel: the refund amount is entered directly inside the Cancel
+  // Event confirmation, not as a separate step afterward.
   const handleCancelEvent = () => {
-    Modal.confirm({
-      icon: null,
-      rootClassName: "usr-confirm-modal",
-      title: "Confirm cancellation",
-      content: "Are you sure you want to cancel this event?",
-      okText: "Yes",
-      okButtonProps: { type: "primary", className: "!bg-primary !border-primary hover:!opacity-90" },
-      cancelText: "No",
-      centered: true,
-      onOk() {
-        cancelEventMutation(
-          { id: eventId },
-          {
-            onSuccess: () => {
-              setEventId("");
-            },
-            onError: () => {
-              toast.error("Failed to cancel event");
-            },
-          },
-        );
-      },
-    });
+    setShowCancelModal(true);
   };
 
   const handleReconfirmEvent = () => {
@@ -1176,6 +1158,52 @@ const ConfirmedEventsPage = () => {
               : 0)
           }
           paidAmount={adjustedPaidAmount}
+        />
+      )}
+
+      {/* Cancel Event Modal — refund amount is entered here directly,
+          matching Laravel's single combined cancel+refund popup. */}
+      {showCancelModal && (
+        <RefundModal
+          open={showCancelModal}
+          onCancel={() => {
+            setShowCancelModal(false);
+            setCancelRefundAmount("");
+          }}
+          onRefund={(amount) => {
+            cancelEventMutation(
+              { id: eventId, refund_amount: Number(amount) || 0 },
+              {
+                onSuccess: () => {
+                  setShowCancelModal(false);
+                  setCancelRefundAmount("");
+                  setEventId("");
+                },
+                onError: () => {
+                  toast.error("Failed to cancel event");
+                },
+              },
+            );
+          }}
+          isProcessing={isCancelingEvent}
+          refundAmount={cancelRefundAmount}
+          setRefundAmount={setCancelRefundAmount}
+          eventTotal={
+            Number(selectedEventData?.data?.total_cost_for_equipment) ||
+            (Array.isArray(selectedEventData?.data?.event_packages)
+              ? (selectedEventData?.data?.event_packages || []).reduce(
+                  (s: number, p: ConfirmEventPackage) =>
+                    s + Number(p.total_price || p.sell_price || 0),
+                  0,
+                )
+              : 0)
+          }
+          paidAmount={adjustedPaidAmount}
+          title="Cancel Event"
+          description="Are you sure you want to cancel this event permanently?"
+          confirmText="Yes, Cancel"
+          requireAmount={false}
+          warningText="Cancelling this event is permanent. Any refund entered will be recorded and reflected in turnover/profit calculations."
         />
       )}
 
