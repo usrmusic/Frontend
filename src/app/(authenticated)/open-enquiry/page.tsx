@@ -3,6 +3,7 @@ import {
   useAddNote,
   useOpenEnquiryList,
   useDeleteEnquiry,
+  useReopenEnquiry,
   useEnquiryStatusCounts,
 } from "@/src/api/enquiry";
 import { useConfirmEvent } from "@/src/api/events";
@@ -236,6 +237,7 @@ const OpenEnquiryPage = () => {
   const { mutate: confirmEventMutation, isPending: confirmingEvent } =
     useConfirmEvent();
   const deleteEnquiry = useDeleteEnquiry();
+  const reopenEnquiry = useReopenEnquiry();
   const router = useRouter();
 
   // Real filters — sent to the backend as query params (status/event_type on
@@ -620,6 +622,51 @@ const OpenEnquiryPage = () => {
           >
             Delete
           </Button>
+          {enquiryView === "closed" && (
+            <Button
+              type="default"
+              className="themeDefaultButton"
+              loading={buttonLoading === "reopen"}
+              onClick={() => {
+                if (!selectedRowKeys.length) {
+                  toast.error("Please select an enquiry first");
+                  return;
+                }
+                Modal.confirm({
+                  icon: null,
+                  rootClassName: "usr-confirm-modal",
+                  title: "Reopen enquiry",
+                  content:
+                    "This will move the enquiry back to Open Enquiries.",
+                  centered: true,
+                  maskClosable: false,
+                  okText: "Reopen",
+                  okButtonProps: {
+                    type: "primary",
+                    className: "!bg-primary !border-primary hover:!opacity-90",
+                  },
+                  cancelText: "Cancel",
+                  onOk: () => {
+                    const id = String(selectedRowKeys[0]);
+                    setButtonLoading("reopen");
+                    reopenEnquiry.mutate(id, {
+                      onSuccess: () => {
+                        toast.success("Enquiry reopened");
+                        setSelectedRowKeys([]);
+                        setSelectedRowData(null);
+                        setButtonLoading(null);
+                      },
+                      onError: () => {
+                        setButtonLoading(null);
+                      },
+                    });
+                  },
+                });
+              }}
+            >
+              Reopen
+            </Button>
+          )}
           <Button
             type="default"
             className="themeDefaultButton"
