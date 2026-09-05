@@ -1,5 +1,8 @@
-import LoginPage from "./(auth)/login/page";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
-export default function Home() {
-  return <LoginPage />;
+export default async function Home() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("token")?.value;
+  redirect(token ? "/dashboard" : "/login");
 }

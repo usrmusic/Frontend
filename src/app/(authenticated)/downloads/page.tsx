@@ -170,6 +170,7 @@ const DownloadsPage = () => {
           <input
             type="file"
             accept="*/*"
+            className="flex items-center text-sm file:mr-3 file:h-9 file:rounded-lg file:border-0 file:bg-secondary-200 file:px-3 file:text-sm file:text-gray-700 file:cursor-pointer"
             onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
           />
           <div className="flex justify-end gap-2">

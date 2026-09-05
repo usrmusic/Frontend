@@ -596,6 +596,11 @@ export const useEditPackage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["packages"], refetchType: "all" });
+      // The Edit Package modal reads its equipment lines from the SINGLE-package
+      // detail query (["package","get",id]), which is a different key from the
+      // list above. Without this the modal reopens on stale cached data and
+      // shows the pre-edit quantities back.
+      queryClient.invalidateQueries({ queryKey: ["package"], refetchType: "all" });
       // See useEditUser — user-dropdown carries each DJ's package_users and is
       // never otherwise refetched (refetchOnMount/refetchOnWindowFocus off).
       queryClient.invalidateQueries({ queryKey: ["user-dropdown"], refetchType: "all" });
@@ -967,14 +972,19 @@ export const useDeleteCompany = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"], refetchType: "all" });
+      // Was invalidating "users" — a copy-paste leftover from a different
+      // delete hook. The companies list actually reads from ["companies", ...]
+      // (see useCompanies below), so a deleted row never disappeared from
+      // the table even though the delete itself succeeded and the success
+      // toast was genuine.
+      queryClient.invalidateQueries({ queryKey: ["companies"], refetchType: "all" });
     },
     onError: (error) => {
       console.error("delete failed:", error.message);
     },
   });
 };
- 
+
 // Equipment APIs
 export type Equipment = {
   id: number;
@@ -1048,6 +1058,11 @@ export const useAddEquipment = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["equipment"], refetchType: "all" });
+      // The Packages page's equipment picker reads from this SEPARATE cache
+      // key — without invalidating it too, equipment added here (e.g. via
+      // the enquiry page's "Add New Equipment" modal) stays invisible there
+      // until the cache naturally expires or a hard refresh.
+      queryClient.invalidateQueries({ queryKey: ["equipment-dropdown"], refetchType: "all" });
       // In case adding equipment created a new supplier via supplier_name, refresh supplier dropdown/cache
       queryClient.invalidateQueries({ queryKey: ["supplier-dropdown"], refetchType: "all" });
       queryClient.invalidateQueries({ queryKey: ["suppliers"], refetchType: "all" });

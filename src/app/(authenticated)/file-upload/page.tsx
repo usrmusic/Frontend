@@ -359,7 +359,15 @@ const FileUploadPage = () => {
               const file = e.currentTarget.files?.[0] ?? null;
               uploadFormik.setFieldValue("file", file);
             }}
-            onBlur={uploadFormik.handleBlur}
+            // No onBlur here on purpose — a native file input fires blur the
+            // instant the OS file picker opens (focus visibly moves away),
+            // well before the user has actually chosen anything. Wiring that
+            // straight to handleBlur marked the field "touched" and showed
+            // the red "Please choose a file" error the moment someone
+            // clicked Choose File, not after they'd actually failed to pick
+            // one. Formik still marks every field touched on a real submit
+            // attempt, so the error correctly shows if they try to submit
+            // with nothing chosen.
             error={
               uploadFormik.touched.file && uploadFormik.errors.file
                 ? uploadFormik.errors.file

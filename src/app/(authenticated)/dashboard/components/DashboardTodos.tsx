@@ -7,9 +7,12 @@ import AxiosInstance from "@/src/lib/axios";
 
 type TodoItem = {
   id: number;
-  title?: string;
-  detail?: string;
-  completed?: boolean;
+  // Real field names from the todos table/API — "title"/"detail"/"completed"
+  // never existed; every row rendered blank as "Task #123" because of this.
+  action?: string;
+  comment?: string;
+  deadline?: string;
+  complete?: boolean;
   event_id?: number | null;
 };
 
@@ -67,20 +70,20 @@ export default function DashboardTodos({ eventIds }: { eventIds: number[] }) {
                 onClick={() => { setSelected(t); setOpen(true); }}
               >
                 <div className="flex-1">
-                  <div className="font-medium">{t.title || `Task #${t.id}`}</div>
-                  <div className="text-xs text-gray-500 truncate">{t.detail || ''}</div>
+                  <div className="font-medium">{t.action || `Task #${t.id}`}</div>
+                  <div className="text-xs text-gray-500 truncate">{t.comment || ''}</div>
                 </div>
                 <div className="text-xs text-gray-400">{t.event_id ? `E:${t.event_id}` : ''}</div>
               </li>
             ))}
           </ul>
           <Modal
-            title={selected?.title || "Todo Detail"}
+            title={selected?.action || "Todo Detail"}
             open={open}
             onCancel={() => setOpen(false)}
             footer={null}
           >
-            <div className="text-sm text-gray-700 whitespace-pre-wrap">{selected?.detail || "No additional details."}</div>
+            <div className="text-sm text-gray-700 whitespace-pre-wrap">{selected?.comment || "No additional details."}</div>
             <div className="text-xs text-gray-400 mt-3">{selected?.event_id ? `Event: ${selected.event_id}` : ''}</div>
           </Modal>
         </>

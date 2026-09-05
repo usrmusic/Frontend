@@ -229,8 +229,10 @@ const Page = () => {
               onChange={(val) => setSelectedEventStatus(String(val || ""))}
               options={[
                 { label: "Confirmed and Completed Events", value: "" },
+                { label: "Open Enquiry Events", value: "open" },
                 { label: "Confirmed Events", value: "confirmed" },
                 { label: "Completed Events", value: "completed" },
+                { label: "Cancelled Events", value: "cancelled" },
               ]}
             />
           </div>

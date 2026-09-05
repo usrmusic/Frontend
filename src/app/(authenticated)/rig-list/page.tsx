@@ -120,6 +120,12 @@ const Page = () => {
                     // title, which lost the actual item name whenever staff
                     // added their own rig notes.
                     const title = pkg.equipment?.name || "Equipment";
+                    // Matches Laravel exactly (complete_events.js's rig-list
+                    // render loop): an equipment item with NO rig_notes set,
+                    // neither on this event nor on the catalog record, is
+                    // omitted from the Rig List entirely — not just its
+                    // sub-checklist. A quick-added custom item with no notes
+                    // field simply won't appear until it's given rig_notes.
                     const rawNotes = pkg.rig_notes || pkg.equipment?.rig_notes || "";
                     // replace <br> tags with newlines before splitting so they don't render as text
                     const items = rawNotes

@@ -28,7 +28,6 @@ import {
   useGetEnquiry,
   useUpdateEnquiry,
   fetchEmailTemplate,
-  checkEquipmentAvailability,
 } from "@/src/api/enquiry";
 import SendBrochureModal from "../open-enquiry/SendBrochure";
 import useRole from "@/src/hooks/useRole";
@@ -67,6 +66,11 @@ interface EquipmentItem {
   // item at all — matches Laravel's equipment.quantity / is_availabilty_check.
   quantity?: number | null;
   is_availabilty_check?: boolean | null;
+  // How much of this item is already booked by OTHER open/confirmed events on
+  // the currently-selected event date, computed once server-side alongside
+  // the rest of this payload — lets the qty inputs flag overbooking instantly
+  // as the staff member types, with no per-keystroke network round trip.
+  booked_quantity?: number | null;
 }
 
 interface PackageUserEquipment {
@@ -85,6 +89,8 @@ interface ExtraItem {
   rig_notes?: string | null;
   notes?: string | null;
   is_availabilty_check?: boolean | null;
+  // Same as EquipmentItem.booked_quantity above.
+  booked_quantity?: number | null;
 }
 
 interface CustomExtra {
@@ -163,6 +169,11 @@ const NewEnquiryPageInner = () => {
     staff: null,
     package_name: "",
   });
+  // Needed early so usePackageData below can pass event_id — moved up from
+  // where the rest of the searchParams-derived values are declared further
+  // down, since that's after this hook runs.
+  const searchParams = useSearchParams();
+  const editId = searchParams?.get("select") ?? null;
   const [selectedPackageEquipments, setSelectedPackageEquipments] =
     useState<Record<string, boolean>>({});
   // Basics (Starting Package) items are bundled into the DJ package's base
@@ -187,23 +198,36 @@ const NewEnquiryPageInner = () => {
   const [extrasQty, setExtrasQty] = useState<Record<string, number>>({});
   const [restoredEditSelections, setRestoredEditSelections] = useState(false);
 
-  // Advisory-only overbooking warning — parity with Laravel, which fires this
-  // on checkbox-check and quantity-change but never blocks the save either
-  // way. Only bothers calling the API when the item actually has the
-  // availability check enabled, same gating Laravel applies client-side.
-  const runOverbookCheck = (
-    eventDateIso: string,
+  // Advisory-only overbooking warning — parity with Laravel's stock math
+  // (EquipmentAvailabilityCheck/checkTheQuantity: flag when
+  // booked_elsewhere + requested > stock). Evaluated entirely from data
+  // already sitting in `packageData` (stock + booked_quantity, computed
+  // server-side once per date/DJ load) rather than a network call per
+  // keystroke, so it reacts the instant the staff member types — no delay,
+  // and one stable toastId per equipment so retyping UPDATES the same toast
+  // instead of stacking a new one on every digit.
+  const evaluateOverbook = (
     equipmentId: number | string | null | undefined,
+    name: string | null | undefined,
     quantity: number,
     isAvailabilityCheck: boolean | null | undefined,
+    stock: number | null | undefined,
+    bookedElsewhere: number | null | undefined,
   ) => {
-    if (!isAvailabilityCheck || equipmentId == null || !eventDateIso) return;
-    checkEquipmentAvailability({
-      date: dayjs(eventDateIso).format("YYYY-MM-DD"),
-      items: [{ equipment_id: equipmentId, quantity }],
-    }).then((messages) => {
-      messages.forEach((m) => toast.warning(m));
-    });
+    if (!isAvailabilityCheck || equipmentId == null) return;
+    const toastId = `overbook-${equipmentId}`;
+    const totalStock = Number(stock) || 0;
+    const booked = Number(bookedElsewhere) || 0;
+    if (quantity + booked > totalStock) {
+      const message = `The equipment ${name ?? ""} is being overbooked.`;
+      if (toast.isActive(toastId)) {
+        toast.update(toastId, { render: message });
+      } else {
+        toast.warning(message, { toastId });
+      }
+    } else if (toast.isActive(toastId)) {
+      toast.dismiss(toastId);
+    }
   };
   // Flips true the moment the user picks a DJ from the dropdown themselves
   // (as opposed to packageParams.staff being set by the edit-hydration effect
@@ -310,17 +334,63 @@ const NewEnquiryPageInner = () => {
   const { data: clientDropdownName } = useClientDropdown();
   const { data: venueDropdownName } = useVenueDropdown();
   const { data: djDropdownData } = useUsersDropdown();
-  const { data: packageData, isLoading: isPackageLoading } = usePackageData(packageParams);
+  // event_id excludes THIS event's own already-saved booking from the
+  // "already booked elsewhere" figure the backend computes — otherwise
+  // editing an existing enquiry double-counts its own booking against
+  // itself and can flag "overbooked" on a quantity that's already saved and
+  // was never actually a problem.
+  const { data: packageData, isLoading: isPackageLoading } = usePackageData({
+    ...packageParams,
+    event_id: editId,
+  });
   const { data: clientDetails } = useSingleClient(!showNameInput && clientId ? clientId : null);
   const { data: supplierDropdownData } = useSupplierDropdown();
+
+  // Re-evaluate every currently-ticked row's overbook status. Laravel fires
+  // this on the date picker's onSelect and on DJ change (availability is
+  // date-specific, so rows fine for the old date can clash on the new one) —
+  // here it also doubles as the general "packageData just changed" refresh,
+  // called from the effect below once the new date/DJ's booked_quantity
+  // figures have arrived.
+  const runOverbookCheckAll = () => {
+    const pkgEquip = (packageData?.data?.equipments?.package_user_equipments ??
+      []) as PackageUserEquipment[];
+    for (const it of pkgEquip) {
+      const equipment = it.equipment ?? null;
+      const id = it.equipment_id ?? equipment?.id ?? it.id;
+      const key = id != null ? String(id) : null;
+      if (!key || !selectedPackageEquipments[key]) continue;
+      const basicQty = Number(it.quantity ?? 1);
+      evaluateOverbook(
+        equipment?.id,
+        equipment?.name,
+        Number(packageEquipmentQty[key] ?? basicQty),
+        equipment?.is_availabilty_check,
+        equipment?.quantity,
+        equipment?.booked_quantity,
+      );
+    }
+
+    const extras = (packageData?.data?.extras ?? []) as ExtraItem[];
+    for (const ex of extras) {
+      const key = ex.id != null ? String(ex.id) : "";
+      if (!key || !selectedExtras[key]) continue;
+      evaluateOverbook(
+        ex.id,
+        ex.name,
+        Number(extrasQty[key] ?? 1),
+        ex.is_availabilty_check,
+        ex.quantity,
+        ex.booked_quantity,
+      );
+    }
+  };
 
   const createEnquiry = useCreateEnquiry();
   const updateEnquiry = useUpdateEnquiry();
   const addEquipmentMutation = useAddEquipment();
   const formikRef = useRef<FormikProps<EnquiryFormValues>>(null);
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const editId = searchParams?.get("select") ?? null;
   const queryClient = useQueryClient();
   const { data: enquiryItem } = useGetEnquiry(editId ?? undefined);
   const { isAdmin, userId } = useRole();
@@ -568,6 +638,13 @@ const NewEnquiryPageInner = () => {
             if ((isBasic || (!isExtra && !isBasic)) && p?.quantity != null) {
               qtyMap[key] = Number(p.quantity);
             }
+            // Same for Extras rows. This has to stand on its own rather than
+            // hang off the sell_price restore below — an extra saved with a
+            // null sell_price would otherwise silently lose its quantity and
+            // snap back to 1 on reopen.
+            if (isExtra && p?.quantity != null) {
+              extraQtyMap[key] = Number(p.quantity);
+            }
             // Restore a staff-edited unit price the same way as quantity —
             // event_package.sell_price holds whatever was saved, catalog
             // default or edited, and re-opening this enquiry must show that
@@ -575,7 +652,6 @@ const NewEnquiryPageInner = () => {
             if (p?.sell_price != null) {
               if (isExtra) {
                 extraPriceMap[key] = Number(p.sell_price);
-                if (p?.quantity != null) extraQtyMap[key] = Number(p.quantity);
               } else if (isBasic || (!isExtra && !isBasic)) {
                 basicPriceMap[key] = Number(p.sell_price);
               }
@@ -653,6 +729,10 @@ const NewEnquiryPageInner = () => {
             }
             return merged;
           });
+          // DJ unchanged, so this is a plain date edit — existing selections
+          // and qty overrides carry over as-is, but packageData just arrived
+          // with fresh booked_quantity figures for the new date, so re-check.
+          runOverbookCheckAll();
           return;
         }
         setSelectedPackageEquipments(initPkg);
@@ -665,8 +745,33 @@ const NewEnquiryPageInner = () => {
         setPackageEquipmentPrice({});
         setExtrasPrice({});
         setExtrasQty({});
+
+        // Laravel re-checks availability for every Starting Package row when
+        // the DJ changes (a different DJ means a different equipment list, so
+        // clashes on the event date can appear or disappear). `packageData`
+        // already carries booked_quantity for this date, so this is
+        // synchronous — no round trip. Read straight off initPkg and the
+        // bundled defaults — the state setters above have not landed yet
+        // inside this closure.
+        const rows = (packageData?.data?.equipments?.package_user_equipments ??
+          []) as PackageUserEquipment[];
+        for (const it of rows) {
+          const equipment = it.equipment ?? null;
+          const id = it.equipment_id ?? equipment?.id ?? it.id;
+          const key = id != null ? String(id) : null;
+          if (!key || !initPkg[key]) continue;
+          evaluateOverbook(
+            equipment?.id,
+            equipment?.name,
+            Number(it.quantity ?? 1),
+            equipment?.is_availabilty_check,
+            equipment?.quantity,
+            equipment?.booked_quantity,
+          );
+        }
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [packageData, editId, restoredEditSelections]);
 
   const { equipmentList, rigNotesList, totalPrice } = useMemo(() => {
@@ -708,7 +813,10 @@ const NewEnquiryPageInner = () => {
     for (const ex of extras) {
       const id = ex.id;
       const extKey = id != null ? String(id) : "";
-      const qty = Number(extrasQty[extKey] ?? ex.quantity ?? 1);
+      // Extras always start at 1 (Laravel renders these rows with a hardcoded
+      // value="1"). `ex.quantity` here is the equipment's total STOCK count,
+      // not a per-package default, so it must never be used as the fallback.
+      const qty = Number(extrasQty[extKey] ?? 1);
       const unit = Number(extrasPrice[extKey] ?? ex.sell_price ?? 0);
       if (id != null && selectedExtras[String(id)]) {
         total += Number(unit) * Number(qty);
@@ -921,7 +1029,7 @@ const NewEnquiryPageInner = () => {
               extra_data.push({
                 equipment_id: Number(ex.id),
                 sell_price: Number(extrasPrice[extKey] ?? ex.sell_price ?? 0),
-                quantity: Number(extrasQty[extKey] ?? ex.quantity ?? 1),
+                quantity: Number(extrasQty[extKey] ?? 1),
                 notes: (override?.notes ?? (ex as ExtraItem & { notes?: string }).notes)?.trim() || null,
               });
               rig_notes_data.push({
@@ -1430,8 +1538,13 @@ const NewEnquiryPageInner = () => {
                                         value: `${dj.id}::${p.package_name}`,
                                       }));
                                     });
+                                    // Truthy check, not just != null: values.dj defaults to
+                                    // { id: "", name: "" } on a fresh enquiry, and "" != null
+                                    // is true, so the old check built the literal string "::"
+                                    // with nothing on either side of it and showed that in
+                                    // the box before any DJ was picked.
                                     const selectedValue =
-                                      values.dj?.id != null
+                                      values.dj?.id
                                         ? `${values.dj.id}::${packageParams.package_name ?? ""}`
                                         : undefined;
                                     return (
@@ -1519,6 +1632,11 @@ const NewEnquiryPageInner = () => {
                                           const iso = val ? val.toISOString() : "";
                                           const formatted = val ? val.format("DD-MM-YYYY") : "";
                                           setFieldValue("eventDate", iso);
+                                          // Overbooking isn't re-evaluated here directly — this
+                                          // just changes packageParams.event_date, which
+                                          // re-fetches packageData with fresh booked_quantity
+                                          // figures for the new date; the effect below runs the
+                                          // check once that arrives.
                                           setPackageParams((prev) => ({ ...prev, event_date: formatted }));
                                         }}
                                       />
@@ -1672,14 +1790,14 @@ const NewEnquiryPageInner = () => {
                                             ...prev,
                                             [key]: nowChecked,
                                           }));
-                                          if (nowChecked) {
-                                            runOverbookCheck(
-                                              values.eventDate,
-                                              equipment?.id,
-                                              editedQty,
-                                              equipment?.is_availabilty_check,
-                                            );
-                                          }
+                                          evaluateOverbook(
+                                            equipment?.id,
+                                            equipment?.name,
+                                            nowChecked ? editedQty : 0,
+                                            equipment?.is_availabilty_check,
+                                            equipment?.quantity,
+                                            equipment?.booked_quantity,
+                                          );
                                         }}
                                         className="size-4 rounded accent-primary cursor-pointer"
                                       />
@@ -1705,7 +1823,7 @@ const NewEnquiryPageInner = () => {
                                     <div className="w-1/12 flex justify-center">
                                       <input
                                         type="number"
-                                        min={0}
+                                        min={1}
                                         value={editedQty}
                                         disabled={!checked}
                                         onChange={(e) => {
@@ -1713,18 +1831,27 @@ const NewEnquiryPageInner = () => {
                                           // Matches Laravel's keyup handler: reducing the
                                           // quantity down to 0 snaps it back to the
                                           // package's bundled default rather than staying
-                                          // at 0.
+                                          // at 0. Anything else floors at 1 — the spinner
+                                          // must never step below it (Laravel's min="1").
                                           const val =
-                                            !Number.isFinite(raw) || raw <= 0 ? basicQty : raw;
+                                            !Number.isFinite(raw) || raw <= 0
+                                              ? Math.max(1, basicQty)
+                                              : Math.max(1, raw);
                                           setPackageEquipmentQty((prev) => ({
                                             ...prev,
                                             [key]: val,
                                           }));
-                                          runOverbookCheck(
-                                            values.eventDate,
+                                          // Evaluated on every change (not just above the
+                                          // bundled allowance) so stepping back down instantly
+                                          // clears a stale warning too — cheap now that this is
+                                          // synchronous, no network call to gate.
+                                          evaluateOverbook(
                                             equipment?.id,
+                                            equipment?.name,
                                             val,
                                             equipment?.is_availabilty_check,
+                                            equipment?.quantity,
+                                            equipment?.booked_quantity,
                                           );
                                         }}
                                         className="h-8 w-14 rounded-lg border border-gray-200 bg-white px-1 text-center text-sm outline-none focus:border-primary transition-colors disabled:bg-gray-100 disabled:text-gray-400"
@@ -1784,7 +1911,7 @@ const NewEnquiryPageInner = () => {
                               // rows) — missing key falls back to the
                               // package's saved defaults.
                               const unitPrice = Number(extrasPrice[key] ?? extra.sell_price ?? 0);
-                              const qty = Number(extrasQty[key] ?? extra.quantity ?? 1);
+                              const qty = Number(extrasQty[key] ?? 1);
                               const price = unitPrice * qty;
                               const override = extrasOverrides[key];
                               const checked = Boolean(selectedExtras[key]);
@@ -1803,14 +1930,14 @@ const NewEnquiryPageInner = () => {
                                           ...prev,
                                           [key]: nowChecked,
                                         }));
-                                        if (nowChecked) {
-                                          runOverbookCheck(
-                                            values.eventDate,
-                                            extra.id,
-                                            qty,
-                                            extra.is_availabilty_check,
-                                          );
-                                        }
+                                        evaluateOverbook(
+                                          extra.id,
+                                          extra.name,
+                                          nowChecked ? qty : 0,
+                                          extra.is_availabilty_check,
+                                          extra.quantity,
+                                          extra.booked_quantity,
+                                        );
                                       }}
                                       className="size-4 rounded accent-primary cursor-pointer"
                                     />
@@ -1836,21 +1963,25 @@ const NewEnquiryPageInner = () => {
                                   <div className="w-1/12 flex justify-center">
                                     <input
                                       type="number"
-                                      min={0}
+                                      min={1}
                                       value={qty}
                                       disabled={!checked}
                                       onChange={(e) => {
                                         const raw = e.target.value === "" ? 1 : Number(e.target.value);
-                                        const val = Number.isFinite(raw) ? raw : 1;
+                                        // Floor at 1 — Laravel's Extras qty input is
+                                        // min="1", so stepping down stops there.
+                                        const val = Number.isFinite(raw) ? Math.max(1, raw) : 1;
                                         setExtrasQty((prev) => ({
                                           ...prev,
                                           [key]: val,
                                         }));
-                                        runOverbookCheck(
-                                          values.eventDate,
+                                        evaluateOverbook(
                                           extra.id,
+                                          extra.name,
                                           val,
                                           extra.is_availabilty_check,
+                                          extra.quantity,
+                                          extra.booked_quantity,
                                         );
                                       }}
                                       className="h-8 w-14 rounded-lg border border-gray-200 bg-white px-1 text-center text-sm outline-none focus:border-primary transition-colors disabled:bg-gray-100 disabled:text-gray-400"
@@ -1908,15 +2039,48 @@ const NewEnquiryPageInner = () => {
                                     />
                                     <span>{ex.name}</span>
                                   </div>
-                                  <div className="w-2/12 text-center">{ex.sell_price}</div>
-                                  <div className="w-1/12 text-center">{ex.quantity}</div>
+                                  <div className="w-2/12 flex justify-center">
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      step="0.01"
+                                      value={ex.sell_price}
+                                      disabled={ex.selected === false}
+                                      onChange={(e) => {
+                                        const val = e.target.value === "" ? 0 : Number(e.target.value);
+                                        setCustomExtras((prev) =>
+                                          prev.map((c) =>
+                                            c.tempId === ex.tempId
+                                              ? { ...c, sell_price: Number.isFinite(val) ? val : 0 }
+                                              : c,
+                                          ),
+                                        );
+                                      }}
+                                      className="h-8 w-16 rounded-lg border border-gray-200 bg-white px-1 text-center text-sm outline-none focus:border-primary transition-colors disabled:bg-gray-100 disabled:text-gray-400"
+                                    />
+                                  </div>
+                                  <div className="w-1/12 flex justify-center">
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      value={ex.quantity}
+                                      disabled={ex.selected === false}
+                                      onChange={(e) => {
+                                        const raw = e.target.value === "" ? 1 : Number(e.target.value);
+                                        const val = Number.isFinite(raw) ? Math.max(1, raw) : 1;
+                                        setCustomExtras((prev) =>
+                                          prev.map((c) => (c.tempId === ex.tempId ? { ...c, quantity: val } : c)),
+                                        );
+                                      }}
+                                      className="h-8 w-14 rounded-lg border border-gray-200 bg-white px-1 text-center text-sm outline-none focus:border-primary transition-colors disabled:bg-gray-100 disabled:text-gray-400"
+                                    />
+                                  </div>
                                   <div className="w-1/12 text-center">{price}</div>
-                                  {/* Same width as the predefined rows' Notes column, so the
-                                      tick sits dead-center at the exact same x-position as
-                                      theirs. The Remove button is absolutely positioned just
-                                      to its right so it doesn't shift that centering or widen
-                                      the row. */}
-                                  <div className="w-2/12 relative flex justify-center">
+                                  {/* Same width as the predefined rows' Notes column. The Remove
+                                      button sits inline right after the notes tick — previously
+                                      absolutely positioned past the edge of this column, which
+                                      pushed it outside the row/card entirely on narrower screens. */}
+                                  <div className="w-2/12 flex items-center justify-center gap-1.5">
                                     <button
                                       type="button"
                                       title="Edit notes"
@@ -1947,7 +2111,7 @@ const NewEnquiryPageInner = () => {
                                           prev.filter((c) => c.tempId !== ex.tempId),
                                         )
                                       }
-                                      className="absolute left-full top-1/2 -translate-y-1/2 ml-1.5 text-red-400 hover:text-red-600 transition-colors"
+                                      className="text-red-400 hover:text-red-600 transition-colors shrink-0"
                                     >
                                       <X size={14} />
                                     </button>
