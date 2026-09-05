@@ -197,9 +197,13 @@ const NewEnquiryPageInner = () => {
     quantity: number,
     isAvailabilityCheck: boolean | null | undefined,
   ) => {
-    if (!isAvailabilityCheck || equipmentId == null || !eventDateIso) return;
+    if (!isAvailabilityCheck || equipmentId == null) return;
+    // No event date yet is NOT a reason to skip: the backend still runs the
+    // absolute "more than we own" check without one, which is exactly what
+    // Laravel does. Bailing here meant asking for 27 of a 1-in-stock item
+    // showed no warning at all until a date was picked.
     checkEquipmentAvailability({
-      date: dayjs(eventDateIso).format("YYYY-MM-DD"),
+      date: eventDateIso ? dayjs(eventDateIso).format("YYYY-MM-DD") : "",
       items: [{ equipment_id: equipmentId, quantity }],
     }).then((messages) => {
       messages.forEach((m) => toast.warning(m));
@@ -313,6 +317,49 @@ const NewEnquiryPageInner = () => {
   const { data: packageData, isLoading: isPackageLoading } = usePackageData(packageParams);
   const { data: clientDetails } = useSingleClient(!showNameInput && clientId ? clientId : null);
   const { data: supplierDropdownData } = useSupplierDropdown();
+
+  // Re-run the overbooking check across every currently-ticked row at once.
+  // Laravel does this on the date picker's onSelect (and on DJ change), not
+  // just per-row: availability is date-specific, so rows that were fine for
+  // the old date can clash on the new one. Sent as a single batched request
+  // rather than one call per row.
+  const runOverbookCheckAll = (eventDateIso: string) => {
+    const items: { equipment_id: number; quantity: number }[] = [];
+
+    const pkgEquip = (packageData?.data?.equipments?.package_user_equipments ??
+      []) as PackageUserEquipment[];
+    for (const it of pkgEquip) {
+      const equipment = it.equipment ?? null;
+      const id = it.equipment_id ?? equipment?.id ?? it.id;
+      const key = id != null ? String(id) : null;
+      if (!key || !selectedPackageEquipments[key]) continue;
+      if (!equipment?.is_availabilty_check || equipment?.id == null) continue;
+      const basicQty = Number(it.quantity ?? 1);
+      items.push({
+        equipment_id: Number(equipment.id),
+        quantity: Number(packageEquipmentQty[key] ?? basicQty),
+      });
+    }
+
+    const extras = (packageData?.data?.extras ?? []) as ExtraItem[];
+    for (const ex of extras) {
+      const key = ex.id != null ? String(ex.id) : "";
+      if (!key || !selectedExtras[key]) continue;
+      if (!ex.is_availabilty_check || ex.id == null) continue;
+      items.push({
+        equipment_id: Number(ex.id),
+        quantity: Number(extrasQty[key] ?? 1),
+      });
+    }
+
+    if (!items.length) return;
+    checkEquipmentAvailability({
+      date: eventDateIso ? dayjs(eventDateIso).format("YYYY-MM-DD") : "",
+      items,
+    }).then((messages) => {
+      messages.forEach((m) => toast.warning(m));
+    });
+  };
 
   const createEnquiry = useCreateEnquiry();
   const updateEnquiry = useUpdateEnquiry();
@@ -568,6 +615,13 @@ const NewEnquiryPageInner = () => {
             if ((isBasic || (!isExtra && !isBasic)) && p?.quantity != null) {
               qtyMap[key] = Number(p.quantity);
             }
+            // Same for Extras rows. This has to stand on its own rather than
+            // hang off the sell_price restore below — an extra saved with a
+            // null sell_price would otherwise silently lose its quantity and
+            // snap back to 1 on reopen.
+            if (isExtra && p?.quantity != null) {
+              extraQtyMap[key] = Number(p.quantity);
+            }
             // Restore a staff-edited unit price the same way as quantity —
             // event_package.sell_price holds whatever was saved, catalog
             // default or edited, and re-opening this enquiry must show that
@@ -575,7 +629,6 @@ const NewEnquiryPageInner = () => {
             if (p?.sell_price != null) {
               if (isExtra) {
                 extraPriceMap[key] = Number(p.sell_price);
-                if (p?.quantity != null) extraQtyMap[key] = Number(p.quantity);
               } else if (isBasic || (!isExtra && !isBasic)) {
                 basicPriceMap[key] = Number(p.sell_price);
               }
@@ -665,6 +718,35 @@ const NewEnquiryPageInner = () => {
         setPackageEquipmentPrice({});
         setExtrasPrice({});
         setExtrasQty({});
+
+        // Laravel re-checks availability for every Starting Package row when
+        // the DJ changes (a different DJ means a different equipment list, so
+        // clashes on the event date can appear or disappear). Read straight
+        // off initPkg and the bundled defaults — the state setters above have
+        // not landed yet inside this closure.
+        {
+          const eventDateIso = formikRef.current?.values?.eventDate;
+          const items: { equipment_id: number; quantity: number }[] = [];
+          const rows = (packageData?.data?.equipments?.package_user_equipments ??
+            []) as PackageUserEquipment[];
+          for (const it of rows) {
+            const equipment = it.equipment ?? null;
+            const id = it.equipment_id ?? equipment?.id ?? it.id;
+            const key = id != null ? String(id) : null;
+            if (!key || !initPkg[key]) continue;
+            if (!equipment?.is_availabilty_check || equipment?.id == null) continue;
+            items.push({
+              equipment_id: Number(equipment.id),
+              quantity: Number(it.quantity ?? 1),
+            });
+          }
+          if (items.length) {
+            checkEquipmentAvailability({
+              date: eventDateIso ? dayjs(eventDateIso).format("YYYY-MM-DD") : "",
+              items,
+            }).then((messages) => messages.forEach((m) => toast.warning(m)));
+          }
+        }
       });
     }
   }, [packageData, editId, restoredEditSelections]);
@@ -708,7 +790,10 @@ const NewEnquiryPageInner = () => {
     for (const ex of extras) {
       const id = ex.id;
       const extKey = id != null ? String(id) : "";
-      const qty = Number(extrasQty[extKey] ?? ex.quantity ?? 1);
+      // Extras always start at 1 (Laravel renders these rows with a hardcoded
+      // value="1"). `ex.quantity` here is the equipment's total STOCK count,
+      // not a per-package default, so it must never be used as the fallback.
+      const qty = Number(extrasQty[extKey] ?? 1);
       const unit = Number(extrasPrice[extKey] ?? ex.sell_price ?? 0);
       if (id != null && selectedExtras[String(id)]) {
         total += Number(unit) * Number(qty);
@@ -921,7 +1006,7 @@ const NewEnquiryPageInner = () => {
               extra_data.push({
                 equipment_id: Number(ex.id),
                 sell_price: Number(extrasPrice[extKey] ?? ex.sell_price ?? 0),
-                quantity: Number(extrasQty[extKey] ?? ex.quantity ?? 1),
+                quantity: Number(extrasQty[extKey] ?? 1),
                 notes: (override?.notes ?? (ex as ExtraItem & { notes?: string }).notes)?.trim() || null,
               });
               rig_notes_data.push({
@@ -1520,6 +1605,7 @@ const NewEnquiryPageInner = () => {
                                           const formatted = val ? val.format("DD-MM-YYYY") : "";
                                           setFieldValue("eventDate", iso);
                                           setPackageParams((prev) => ({ ...prev, event_date: formatted }));
+                                          runOverbookCheckAll(iso);
                                         }}
                                       />
                                       {touched.eventDate && errors.eventDate && (
@@ -1705,7 +1791,7 @@ const NewEnquiryPageInner = () => {
                                     <div className="w-1/12 flex justify-center">
                                       <input
                                         type="number"
-                                        min={0}
+                                        min={1}
                                         value={editedQty}
                                         disabled={!checked}
                                         onChange={(e) => {
@@ -1713,19 +1799,28 @@ const NewEnquiryPageInner = () => {
                                           // Matches Laravel's keyup handler: reducing the
                                           // quantity down to 0 snaps it back to the
                                           // package's bundled default rather than staying
-                                          // at 0.
+                                          // at 0. Anything else floors at 1 — the spinner
+                                          // must never step below it (Laravel's min="1").
                                           const val =
-                                            !Number.isFinite(raw) || raw <= 0 ? basicQty : raw;
+                                            !Number.isFinite(raw) || raw <= 0
+                                              ? Math.max(1, basicQty)
+                                              : Math.max(1, raw);
                                           setPackageEquipmentQty((prev) => ({
                                             ...prev,
                                             [key]: val,
                                           }));
-                                          runOverbookCheck(
-                                            values.eventDate,
-                                            equipment?.id,
-                                            val,
-                                            equipment?.is_availabilty_check,
-                                          );
+                                          // Laravel only fires the availability check on a
+                                          // Starting Package row once the qty goes ABOVE the
+                                          // bundled allowance — within it the stock is already
+                                          // accounted for by the package itself.
+                                          if (val > basicQty) {
+                                            runOverbookCheck(
+                                              values.eventDate,
+                                              equipment?.id,
+                                              val,
+                                              equipment?.is_availabilty_check,
+                                            );
+                                          }
                                         }}
                                         className="h-8 w-14 rounded-lg border border-gray-200 bg-white px-1 text-center text-sm outline-none focus:border-primary transition-colors disabled:bg-gray-100 disabled:text-gray-400"
                                       />
@@ -1784,7 +1879,7 @@ const NewEnquiryPageInner = () => {
                               // rows) — missing key falls back to the
                               // package's saved defaults.
                               const unitPrice = Number(extrasPrice[key] ?? extra.sell_price ?? 0);
-                              const qty = Number(extrasQty[key] ?? extra.quantity ?? 1);
+                              const qty = Number(extrasQty[key] ?? 1);
                               const price = unitPrice * qty;
                               const override = extrasOverrides[key];
                               const checked = Boolean(selectedExtras[key]);
@@ -1836,12 +1931,14 @@ const NewEnquiryPageInner = () => {
                                   <div className="w-1/12 flex justify-center">
                                     <input
                                       type="number"
-                                      min={0}
+                                      min={1}
                                       value={qty}
                                       disabled={!checked}
                                       onChange={(e) => {
                                         const raw = e.target.value === "" ? 1 : Number(e.target.value);
-                                        const val = Number.isFinite(raw) ? raw : 1;
+                                        // Floor at 1 — Laravel's Extras qty input is
+                                        // min="1", so stepping down stops there.
+                                        const val = Number.isFinite(raw) ? Math.max(1, raw) : 1;
                                         setExtrasQty((prev) => ({
                                           ...prev,
                                           [key]: val,

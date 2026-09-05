@@ -596,6 +596,11 @@ export const useEditPackage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["packages"], refetchType: "all" });
+      // The Edit Package modal reads its equipment lines from the SINGLE-package
+      // detail query (["package","get",id]), which is a different key from the
+      // list above. Without this the modal reopens on stale cached data and
+      // shows the pre-edit quantities back.
+      queryClient.invalidateQueries({ queryKey: ["package"], refetchType: "all" });
       // See useEditUser — user-dropdown carries each DJ's package_users and is
       // never otherwise refetched (refetchOnMount/refetchOnWindowFocus off).
       queryClient.invalidateQueries({ queryKey: ["user-dropdown"], refetchType: "all" });
