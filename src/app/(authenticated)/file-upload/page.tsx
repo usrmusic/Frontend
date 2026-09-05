@@ -127,9 +127,10 @@ const FileUploadPage = () => {
       ellipsis: true,
       render: (name: string) => {
         const base = name?.split("/").pop() || name;
-        // Strip the unique-id prefix the backend adds for storage
-        // (`<timestamp><hex>_realname.ext`) so only the real filename shows.
-        return base?.replace(/^\d{10,}[0-9a-f]{0,8}_/, "") || base;
+        // Strip everything up to and including the first underscore — same
+        // rule Laravel's file list uses (`/^[^_]*_/`), so the stripping
+        // logic matches exactly, not just the visible result.
+        return base?.replace(/^[^_]*_/, "") || base;
       },
     },
     {
