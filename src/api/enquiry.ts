@@ -318,6 +318,29 @@ export const useDeleteEnquiry = () => {
   });
 };
 
+export const useReopenEnquiry = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number | string) => {
+      try {
+        const response = await AxiosInstance.post(`/enquiry/${id}/reopen`);
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.message || msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["enquiry-list"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["enquiry-status-counts"], refetchType: "all" });
+      invalidateAllStats(queryClient);
+    },
+  });
+};
+
 export const useEditEnquiry = () => {
   const queryClient = useQueryClient();
   return useMutation({
