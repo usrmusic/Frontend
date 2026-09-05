@@ -169,6 +169,11 @@ const NewEnquiryPageInner = () => {
     staff: null,
     package_name: "",
   });
+  // Needed early so usePackageData below can pass event_id — moved up from
+  // where the rest of the searchParams-derived values are declared further
+  // down, since that's after this hook runs.
+  const searchParams = useSearchParams();
+  const editId = searchParams?.get("select") ?? null;
   const [selectedPackageEquipments, setSelectedPackageEquipments] =
     useState<Record<string, boolean>>({});
   // Basics (Starting Package) items are bundled into the DJ package's base
@@ -329,7 +334,15 @@ const NewEnquiryPageInner = () => {
   const { data: clientDropdownName } = useClientDropdown();
   const { data: venueDropdownName } = useVenueDropdown();
   const { data: djDropdownData } = useUsersDropdown();
-  const { data: packageData, isLoading: isPackageLoading } = usePackageData(packageParams);
+  // event_id excludes THIS event's own already-saved booking from the
+  // "already booked elsewhere" figure the backend computes — otherwise
+  // editing an existing enquiry double-counts its own booking against
+  // itself and can flag "overbooked" on a quantity that's already saved and
+  // was never actually a problem.
+  const { data: packageData, isLoading: isPackageLoading } = usePackageData({
+    ...packageParams,
+    event_id: editId,
+  });
   const { data: clientDetails } = useSingleClient(!showNameInput && clientId ? clientId : null);
   const { data: supplierDropdownData } = useSupplierDropdown();
 
@@ -377,9 +390,7 @@ const NewEnquiryPageInner = () => {
   const updateEnquiry = useUpdateEnquiry();
   const addEquipmentMutation = useAddEquipment();
   const formikRef = useRef<FormikProps<EnquiryFormValues>>(null);
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const editId = searchParams?.get("select") ?? null;
   const queryClient = useQueryClient();
   const { data: enquiryItem } = useGetEnquiry(editId ?? undefined);
   const { isAdmin, userId } = useRole();
@@ -1527,8 +1538,13 @@ const NewEnquiryPageInner = () => {
                                         value: `${dj.id}::${p.package_name}`,
                                       }));
                                     });
+                                    // Truthy check, not just != null: values.dj defaults to
+                                    // { id: "", name: "" } on a fresh enquiry, and "" != null
+                                    // is true, so the old check built the literal string "::"
+                                    // with nothing on either side of it and showed that in
+                                    // the box before any DJ was picked.
                                     const selectedValue =
-                                      values.dj?.id != null
+                                      values.dj?.id
                                         ? `${values.dj.id}::${packageParams.package_name ?? ""}`
                                         : undefined;
                                     return (
@@ -2023,15 +2039,48 @@ const NewEnquiryPageInner = () => {
                                     />
                                     <span>{ex.name}</span>
                                   </div>
-                                  <div className="w-2/12 text-center">{ex.sell_price}</div>
-                                  <div className="w-1/12 text-center">{ex.quantity}</div>
+                                  <div className="w-2/12 flex justify-center">
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      step="0.01"
+                                      value={ex.sell_price}
+                                      disabled={ex.selected === false}
+                                      onChange={(e) => {
+                                        const val = e.target.value === "" ? 0 : Number(e.target.value);
+                                        setCustomExtras((prev) =>
+                                          prev.map((c) =>
+                                            c.tempId === ex.tempId
+                                              ? { ...c, sell_price: Number.isFinite(val) ? val : 0 }
+                                              : c,
+                                          ),
+                                        );
+                                      }}
+                                      className="h-8 w-16 rounded-lg border border-gray-200 bg-white px-1 text-center text-sm outline-none focus:border-primary transition-colors disabled:bg-gray-100 disabled:text-gray-400"
+                                    />
+                                  </div>
+                                  <div className="w-1/12 flex justify-center">
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      value={ex.quantity}
+                                      disabled={ex.selected === false}
+                                      onChange={(e) => {
+                                        const raw = e.target.value === "" ? 1 : Number(e.target.value);
+                                        const val = Number.isFinite(raw) ? Math.max(1, raw) : 1;
+                                        setCustomExtras((prev) =>
+                                          prev.map((c) => (c.tempId === ex.tempId ? { ...c, quantity: val } : c)),
+                                        );
+                                      }}
+                                      className="h-8 w-14 rounded-lg border border-gray-200 bg-white px-1 text-center text-sm outline-none focus:border-primary transition-colors disabled:bg-gray-100 disabled:text-gray-400"
+                                    />
+                                  </div>
                                   <div className="w-1/12 text-center">{price}</div>
-                                  {/* Same width as the predefined rows' Notes column, so the
-                                      tick sits dead-center at the exact same x-position as
-                                      theirs. The Remove button is absolutely positioned just
-                                      to its right so it doesn't shift that centering or widen
-                                      the row. */}
-                                  <div className="w-2/12 relative flex justify-center">
+                                  {/* Same width as the predefined rows' Notes column. The Remove
+                                      button sits inline right after the notes tick — previously
+                                      absolutely positioned past the edge of this column, which
+                                      pushed it outside the row/card entirely on narrower screens. */}
+                                  <div className="w-2/12 flex items-center justify-center gap-1.5">
                                     <button
                                       type="button"
                                       title="Edit notes"
@@ -2062,7 +2111,7 @@ const NewEnquiryPageInner = () => {
                                           prev.filter((c) => c.tempId !== ex.tempId),
                                         )
                                       }
-                                      className="absolute left-full top-1/2 -translate-y-1/2 ml-1.5 text-red-400 hover:text-red-600 transition-colors"
+                                      className="text-red-400 hover:text-red-600 transition-colors shrink-0"
                                     >
                                       <X size={14} />
                                     </button>

@@ -65,7 +65,8 @@ export type ConfirmEventData = {
     id?: string | number;
     name?: string;
   } | null;
-  venues: { venue: string };
+  venues: { id?: string | number; venue: string };
+  venue_id?: string | number | null;
   dj_name?: string;
   dj_package_name?: string;
   videography?: string;

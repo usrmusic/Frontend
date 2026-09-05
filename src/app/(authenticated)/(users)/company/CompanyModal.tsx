@@ -168,6 +168,7 @@ const CompanyModal = ({
                 type="file"
                 labelIcon={<FileInput size={14} />}
                 name="company_logo"
+                className="flex items-center file:mr-3 file:h-full file:border-0 file:bg-secondary-200 file:px-3 file:text-sm file:text-gray-700 file:cursor-pointer"
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   formik.setFieldValue(
                     "company_logo",
@@ -180,6 +181,7 @@ const CompanyModal = ({
                 type="file"
                 labelIcon={<FileInput size={14} />}
                 name="brochure"
+                className="flex items-center file:mr-3 file:h-full file:border-0 file:bg-secondary-200 file:px-3 file:text-sm file:text-gray-700 file:cursor-pointer"
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   formik.setFieldValue(
                     "brochure",

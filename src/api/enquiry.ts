@@ -13,6 +13,11 @@ interface PackageParams {
   event_date: string;
   staff: number | null;
   package_name: string;
+  // Optional: the event currently being edited, so the backend can exclude
+  // its own already-saved booking from the "already booked elsewhere" count.
+  // Never required — must stay optional or a fresh (not-yet-saved) enquiry's
+  // query would never enable.
+  event_id?: number | string | null;
 }
 
 import type { ConfirmEventNote } from "@/src/types/types";
@@ -45,7 +50,10 @@ export const useSingleClient = (id: number | null) => {
   });
 };
 export const usePackageData = (params: PackageParams) => {
-  const isEnabled = Object.values(params).every(
+  // event_id is deliberately excluded — it's optional (unset on a fresh,
+  // not-yet-saved enquiry) and must never gate this query off.
+  const { event_date, staff, package_name } = params;
+  const isEnabled = [event_date, staff, package_name].every(
     (value) => value !== undefined && value !== null && value !== "",
   );
   return useQuery({

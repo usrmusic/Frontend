@@ -565,9 +565,11 @@ const OpenEnquiryPage = () => {
           <Button
             type="default"
             className="themeDefaultButton"
-            disabled={!selectedRowKeys.length || Boolean(buttonLoading)}
             onClick={() => {
-              if (!selectedRowKeys.length) return;
+              if (!selectedRowKeys.length) {
+                toast.error("Please select an enquiry first");
+                return;
+              }
               router.push(
                 `/enquiry?select=${encodeURIComponent(String(selectedRowKeys[0]))}`,
               );
@@ -578,10 +580,12 @@ const OpenEnquiryPage = () => {
           <Button
             type="default"
             className="themeDefaultButton"
-            disabled={!selectedRowKeys.length || Boolean(buttonLoading)}
             loading={buttonLoading === "delete"}
             onClick={() => {
-              if (!selectedRowKeys.length) return;
+              if (!selectedRowKeys.length) {
+                toast.error("Please select an enquiry first");
+                return;
+              }
               Modal.confirm({
       icon: null,
                 rootClassName: "usr-confirm-modal",
@@ -618,11 +622,13 @@ const OpenEnquiryPage = () => {
           </Button>
           <Button
             type="default"
-            disabled={!selectedRowKeys.length || Boolean(buttonLoading)}
             className="themeDefaultButton"
             loading={buttonLoading === "emailUpdate"}
             onClick={async () => {
-              if (!selectedRowKeys.length) return;
+              if (!selectedRowKeys.length) {
+                toast.error("Please select an enquiry first");
+                return;
+              }
               setButtonLoading("emailUpdate");
               try {
                 const data = await fetchEmailTemplate(
@@ -647,9 +653,11 @@ const OpenEnquiryPage = () => {
             type="default"
             className="themeDefaultButton"
             loading={buttonLoading === "brochure"}
-            disabled={!selectedRowKeys.length || Boolean(buttonLoading)}
             onClick={async () => {
-              if (!selectedRowKeys.length) return;
+              if (!selectedRowKeys.length) {
+                toast.error("Please select an enquiry first");
+                return;
+              }
               setButtonLoading("brochure");
               try {
                 const data = await fetchEmailTemplate(
@@ -673,10 +681,12 @@ const OpenEnquiryPage = () => {
           <Button
             type="primary"
             className="themeDefaultButton"
-            disabled={!selectedRowKeys.length || Boolean(buttonLoading)}
             loading={buttonLoading === "quote"}
             onClick={async () => {
-              if (!selectedRowKeys.length) return;
+              if (!selectedRowKeys.length) {
+                toast.error("Please select an enquiry first");
+                return;
+              }
               setButtonLoading("quote");
               try {
                 const data = await fetchEmailTemplate(
@@ -1097,7 +1107,6 @@ const OpenEnquiryPage = () => {
                       className="w-full! h-10! font-semibold"
                       htmlType="submit"
                       loading={confirmingEvent}
-                      disabled={!selectedRowKeys.length}
                     >
                       Deposit Received
                     </Button>

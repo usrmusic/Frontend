@@ -13,6 +13,7 @@ import { useAssignPermissions, useRolePermissions } from "@/src/api/permissions"
 import type { Permission as ApiPermission } from "@/src/api/permissions";
 import { Spin } from "antd";
 import AccessDenied from "@/src/components/common/AccessDenied";
+import { toast } from "react-toastify";
 
 const ManageAccessPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
@@ -170,7 +171,10 @@ const ManageAccessPage = () => {
                 <Button
                   type="primary"
                   onClick={() => {
-                    if (!selectedRole) return;
+                    if (!selectedRole) {
+                      toast.error("Please select a role first");
+                      return;
+                    }
                     assignMutate({
                       roleId: Number(selectedRole),
                       permissionIds: Array.from(selectedPermissions).map((v) =>
@@ -178,9 +182,9 @@ const ManageAccessPage = () => {
                       ),
                     });
                   }}
-                  disabled={!selectedRole || assignLoading}
+                  loading={assignLoading}
                 >
-                  {assignLoading ? "Assigning..." : "Assign"}
+                  Assign
                 </Button>
               </div>
             </div>

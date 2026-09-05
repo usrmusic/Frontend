@@ -1,5 +1,5 @@
 "use client";
-import { useConfirmEventsDropdown } from "@/src/api/dropdown";
+import { useConfirmEventsDropdown, useVenueDropdown } from "@/src/api/dropdown";
 import {
   useCancelEvent,
   useReconfirmEvent,
@@ -90,6 +90,7 @@ const ConfirmedEventsPage = () => {
     useReconfirmEvent();
   const { data: eventsDropdown } = useConfirmEventsDropdown(showCancelledEvents);
   const { data: selectedEventData, isLoading } = useGetConfirmEvent(eventId);
+  const { data: venueDropdownData } = useVenueDropdown();
   const router = useRouter();
   const { mutate: sendInvoiceMutation, isPending: isSendingInvoice } =
     useSendConfirmInvoice();
@@ -195,6 +196,7 @@ const ConfirmedEventsPage = () => {
     email: data?.users_events_user_idTousers?.email || "",
     phone_number: data?.users_events_user_idTousers?.contact_number || "",
     venue: data?.venues?.venue || data?.venue || "",
+    venue_id: data?.venue_id ?? data?.venues?.id ?? "",
     djName:
       data?.users_events_dj_idTousers?.name || data?.dj_package_name || "",
     videography: data?.videography || "",
@@ -245,6 +247,7 @@ const ConfirmedEventsPage = () => {
             date: values.date ? dayjs(values.date).format("DD-MM-YYYY") : null,
             start_time: values.start_time || null,
             end_time: values.end_time || null,
+            venue_id: values.venue_id ? Number(values.venue_id) : null,
             access_time: values.accessDate || null,
             no_of_guests: values.noOfGuests ? Number(values.noOfGuests) : null,
             deposit_amount: values.depositAmount
@@ -781,14 +784,38 @@ const ConfirmedEventsPage = () => {
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    name="venue"
-                    label="Venue"
-                    placeholder="Venue"
-                    value={formik.values.venue}
-                    onChange={formik.handleChange}
-                    disabled
-                  />
+                  {/* Matches Laravel: a disabled text display of the current
+                      venue's name while viewing, swapped for a real dropdown
+                      of existing venues (pre-selected to the current one)
+                      once Modify is clicked — picking from the venues table,
+                      not free text, and no inline "add new venue" here
+                      (that only exists on the New Enquiry form). */}
+                  {isModifyMode ? (
+                    <div className="w-full">
+                      <label className="mb-1 text-xs flex items-center gap-1">Venue</label>
+                      <Select
+                        className="h-10 w-full"
+                        placeholder="Select venue"
+                        showSearch
+                        optionFilterProp="label"
+                        value={formik.values.venue_id || undefined}
+                        onChange={(val) => formik.setFieldValue("venue_id", val)}
+                        options={(venueDropdownData ?? []).map((v) => ({
+                          label: v.venue,
+                          value: v.id,
+                        }))}
+                      />
+                    </div>
+                  ) : (
+                    <Input
+                      name="venue"
+                      label="Venue"
+                      placeholder="Venue"
+                      value={formik.values.venue}
+                      onChange={formik.handleChange}
+                      disabled
+                    />
+                  )}
                   <Input
                     name="accessDate"
                     label="Access Date/Time"
