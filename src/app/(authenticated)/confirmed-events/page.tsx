@@ -542,14 +542,25 @@ const ConfirmedEventsPage = () => {
                       if (!eventId) return;
                       setButtonLoading("invoice");
                       try {
+                        // Was fetching "SEND INVOICE-OPEN" (Open Enquiry's
+                        // template) and routing through SendBrochureModal —
+                        // the same shared component the Quote button uses,
+                        // which stamps every email with contract-signing
+                        // copy ("...you can sign your contract here" +
+                        // "Download Quote (PDF)") that only makes sense
+                        // pre-confirmation. That's why a Confirmed Event's
+                        // invoice email carried quote-signing language and a
+                        // quote PDF instead of a real invoice one — this
+                        // properly-built SendInvoiceModal (below, backed by
+                        // POST /confirm-event/send-invoice, which generates
+                        // and attaches a real invoice PDF) was never actually
+                        // wired to a button.
                         const data = await fetchEmailTemplate(
                           String(eventId),
-                          "SEND INVOICE-OPEN",
+                          "SEND INVOICE-CONFIRMED",
                         );
-                        setModalTemplate(data?.email ?? null);
-                        setModalCompanies(data?.companies ?? null);
-                        setSendMode("invoice");
-                        setShowModal(true);
+                        setInvoiceTemplate(data?.email ?? null);
+                        setShowInvoiceModal(true);
                       } catch {
                         toast.error("Failed to load email template");
                       } finally {
