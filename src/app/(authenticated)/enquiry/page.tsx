@@ -1104,7 +1104,14 @@ const NewEnquiryPageInner = () => {
                 (response as { id?: unknown })?.id ??
                 (response as { data?: { id?: unknown } })?.data?.id ??
                 (response as { event?: { id?: unknown } })?.event?.id;
-              if (newId) lastEnquiryIdRef.current = String(newId);
+              if (newId) {
+                lastEnquiryIdRef.current = String(newId);
+                // Without this, the page stays in "new enquiry" mode after a
+                // successful save — the button keeps saying "Save" instead of
+                // switching to "Update", and re-submitting creates a second,
+                // duplicate enquiry instead of editing the one just made.
+                router.replace(`/enquiry?select=${newId}`);
+              }
             }
           } catch (err) {
             console.error(err);
@@ -1471,7 +1478,7 @@ const NewEnquiryPageInner = () => {
                                           required
                                         />
                                       ) : (
-                                        <div className="flex-1">
+                                        <div className="flex-1 min-w-0">
                                           <label className="mb-1 block text-xs">Venue</label>
                                           <AntSelect
                                             className="h-10 w-full"
