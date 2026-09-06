@@ -212,7 +212,9 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
                   />
                 ) : signedContractPdfUrl ? (
                   <div className="text-sm text-green-700 flex flex-col items-center gap-1">
-                    <span>✓ Signed</span>
+                    <span>
+                      ✓ Signed{signedAt ? ` on ${dayjs(signedAt).format("D MMM YYYY")}` : ""}
+                    </span>
                     <a
                       href={signedContractPdfUrl}
                       target="_blank"
