@@ -25,6 +25,19 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
   const company = data?.company_names ?? data?.company ?? null;
   const adminSignatureUrl = company?.admin_signature_url ?? null;
 
+  // Contracts migrated from the old system never got a matching `signatures`
+  // row created for them (only the contracts row + already-signed PDF were
+  // carried over), so clientSignatureUrl above is always null for those even
+  // though they genuinely are signed. Fall back to that PDF instead of just
+  // showing a blank "no image" box for anyone signed before the migration.
+  const signedContractPdfUrl = (() => {
+    if (!Array.isArray(data?.contracts)) return null;
+    for (const c of data.contracts) {
+      if (c?.status === "signed" && c?.signed_pdf_url) return String(c.signed_pdf_url);
+    }
+    return null;
+  })();
+
   // The real signed date — was hardcoded to "today" regardless of when the
   // contract was actually signed. Prefer the signed contract's own
   // signed_at, fall back to the event's contract_signed_at.
@@ -197,6 +210,18 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
                     alt="Client signature"
                     className="max-h-full max-w-full object-contain"
                   />
+                ) : signedContractPdfUrl ? (
+                  <div className="text-sm text-green-700 flex flex-col items-center gap-1">
+                    <span>✓ Signed</span>
+                    <a
+                      href={signedContractPdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 underline"
+                    >
+                      View signed PDF
+                    </a>
+                  </div>
                 ) : (
                   <div className="text-xs text-gray-500">No client signature image</div>
                 )
