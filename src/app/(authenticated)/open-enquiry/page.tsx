@@ -44,6 +44,7 @@ import { toast } from "react-toastify";
 import { fetchEmailTemplate } from "@/src/api/enquiry";
 import { useCompanyDropdown } from "@/src/api/dropdown";
 import useRole from "@/src/hooks/useRole";
+import AccessDenied from "@/src/components/common/AccessDenied";
 // using Ant Design inputs for date/amount
 
 const initialParams: {
@@ -189,7 +190,7 @@ const OpenEnquiryPage = () => {
   // Confirming a deposit is how an enquiry becomes a confirmed event —
   // Admin/Super Admin only, matching Laravel's Deposit form
   // (@hasrole('Super Admin|Admin')) and its Confirm Event button.
-  const { isAdmin } = useRole();
+  const { isAdmin, isClient } = useRole();
   const [params, setParams] = useState(initialParams);
   const [modalOpen, setModalOpen] = useState(false);
   // Side panel is inline and shown by default; the 3-dot button toggles it.
@@ -541,6 +542,10 @@ const OpenEnquiryPage = () => {
     return d as number | string;
   })(selected?.deposit_amount);
   const notesCount = selected?.event_notes?.length ?? 0;
+
+  if (isClient) {
+    return <AccessDenied message="Open enquiries aren't available for client accounts." />;
+  }
 
   return (
     <div className="mt-8 space-y-5">
