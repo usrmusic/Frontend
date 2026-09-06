@@ -2,6 +2,8 @@
 import { Input, Table, Spin } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useRouter } from "next/navigation";
+import useRole from "@/src/hooks/useRole";
+import { toast } from "react-toastify";
 
 export interface UpcomingEventRow {
   id: number;
@@ -31,6 +33,7 @@ export default function EventOverview({
   searchValue = "",
 }: EventOverviewProps) {
   const router = useRouter();
+  const { isClient } = useRole();
 
   const handleEventRowClick = (record: UpcomingEventRow) => {
     try {
@@ -57,6 +60,14 @@ export default function EventOverview({
         const statusNum = Number((record as any).event_status_id || 0);
         if (statusNum === 2) target = '/confirmed-events';
         else if (statusNum === 3 || statusNum === 4) target = '/completed-events';
+      }
+      // Client accounts can't view Open Enquiry or Completed Events at all
+      // (those pages are staff/admin-only) — only Confirmed Events allows a
+      // client in. Routing them anywhere else previously landed on a page
+      // that just fired a stack of 403s instead of showing anything.
+      if (isClient && target !== '/confirmed-events') {
+        toast.error("This event isn't available to view yet.");
+        return;
       }
       router.push(`${target}?search=${encodeURIComponent(searchTerm)}&name=${encodeURIComponent(label)}`);
     } catch (e) {
