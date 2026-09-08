@@ -98,6 +98,7 @@ export type ConfirmEventData = {
   no_of_guests?: string | number;
   deposit_amount?: string | number;
   created_by?: string;
+  created_by_name?: string | null;
   playlist_request?: string;
   dont?: string;
   hen_tune_and_destination?: string;

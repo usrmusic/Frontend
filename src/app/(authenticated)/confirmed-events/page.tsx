@@ -215,7 +215,7 @@ const ConfirmedEventsPage = () => {
     eventDateContact: data?.event_date_contact || "",
     noOfGuests: data?.no_of_guests || "",
     depositAmount: data?.deposit_amount || "",
-    createdBy: data?.created_by || "",
+    createdBy: data?.created_by_name || data?.created_by || "",
     briefItinerary: data?.brief_itinerary || "",
     donts: data?.dont || "",
     henTuneAndDestination: data?.hen_songs || "",
