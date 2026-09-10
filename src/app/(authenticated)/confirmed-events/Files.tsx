@@ -168,8 +168,14 @@ const Files = ({ dataSource, isModifyMode = false, eventId }: FilesProps) => {
     {
       title: "Event",
       key: "event",
-      render: (row: ConfirmedEventFile) =>
-        row.event_id ? row.event_id : row.general ? "General" : "—",
+      render: (row: ConfirmedEventFile) => {
+        // Was rendering the raw event_id ("1353") — meaningless to a
+        // reader. Every non-general row here belongs to the single event
+        // this page is already showing, so name it as such instead of a
+        // bare number.
+        if (row.general) return "General";
+        return row.event_id ? "This Event" : "—";
+      },
     },
     {
       title: "Actions",

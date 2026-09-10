@@ -294,8 +294,11 @@ const CompanyModal = ({
               label="Facebook"
               labelIcon={<FaFacebook size={14} />}
               name="facebook"
-              type="url"
-              placeholder="https://facebook.com/yourcompany"
+              // Not type="url" — same reasoning as the backend validation
+              // (company.validation.js): real input is bare domains like
+              // "www.facebook.com/..." with no http(s):// scheme, which the
+              // browser's native URL validation rejects outright.
+              placeholder="www.facebook.com/yourcompany"
               value={formik.values.facebook}
               onChange={formik.handleChange}
             />

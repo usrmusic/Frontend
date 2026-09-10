@@ -75,7 +75,7 @@ const useColumns = (
       width: 130,
       title: (
         <div>
-          <p>Company</p>
+          <p className="pl-1">Company</p>
           {textInput("company_name")}
         </div>
       ),
@@ -86,7 +86,7 @@ const useColumns = (
       width: 130,
       title: (
         <div>
-          <p>Client</p>
+          <p className="pl-1">Client</p>
           {textInput("search", "Search client…")}
         </div>
       ),
@@ -97,7 +97,7 @@ const useColumns = (
       width: 100,
       title: (
         <div>
-          <p>Event Date</p>
+          <p className="pl-1">Event Date</p>
           {textInput("event_date", "DD/MM/YYYY")}
         </div>
       ),
@@ -109,7 +109,7 @@ const useColumns = (
       width: 130,
       title: (
         <div>
-          <p>Event Status</p>
+          <p className="pl-1">Event Status</p>
           <Select
             size="small"
             value={colFilters["event_status"] || undefined}
@@ -145,7 +145,7 @@ const useColumns = (
       width: 90,
       title: (
         <div>
-          <p>DJ</p>
+          <p className="pl-1">DJ</p>
           {textInput("dj_name")}
         </div>
       ),
@@ -156,7 +156,7 @@ const useColumns = (
       width: 110,
       title: (
         <div>
-          <p>Venue</p>
+          <p className="pl-1">Venue</p>
           {textInput("venue_name")}
         </div>
       ),
@@ -167,7 +167,7 @@ const useColumns = (
       width: 95,
       title: (
         <div>
-          <p>Total Price</p>
+          <p className="pl-1">Total Price</p>
           {textInput("total_price", "£ amount")}
         </div>
       ),
@@ -179,7 +179,7 @@ const useColumns = (
       width: 85,
       title: (
         <div>
-          <p>Cost</p>
+          <p className="pl-1">Cost</p>
           {textInput("cost", "£ amount")}
         </div>
       ),
@@ -191,7 +191,7 @@ const useColumns = (
       width: 110,
       title: (
         <div>
-          <p>Extra Cost</p>
+          <p className="pl-1">Extra Cost</p>
           {textInput("extra_cost", "£ amount")}
         </div>
       ),
@@ -246,7 +246,7 @@ const useColumns = (
       width: 85,
       title: (
         <div>
-          <p>Profit</p>
+          <p className="pl-1">Profit</p>
           {textInput("profit", "£ amount")}
         </div>
       ),
@@ -258,7 +258,7 @@ const useColumns = (
       width: 95,
       title: (
         <div>
-          <p>Payment Received</p>
+          <p className="pl-1">Payment Received</p>
           <input
             type="text"
             disabled
@@ -275,7 +275,7 @@ const useColumns = (
       width: 105,
       title: (
         <div>
-          <p>Payment Outstanding</p>
+          <p className="pl-1">Payment Outstanding</p>
           <input
             type="text"
             disabled

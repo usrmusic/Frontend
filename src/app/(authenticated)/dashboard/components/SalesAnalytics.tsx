@@ -14,6 +14,7 @@ const ApexChart: ComponentType<Record<string, unknown>> =
 
 interface SalesAnalyticsProps {
   djCounts?: Record<string, number>;
+  djColors?: Record<string, string>;
   confirmedEventsCount?: number;
   totalEvents?: number;
   isLoading?: boolean;
@@ -22,6 +23,7 @@ interface SalesAnalyticsProps {
 
 export default function SalesAnalytics({
   djCounts = {},
+  djColors = {},
   confirmedEventsCount = 0,
   totalEvents = 0,
   isLoading = false,
@@ -75,7 +77,14 @@ export default function SalesAnalytics({
     [djEntries]
   );
 
-  const topDjs = djEntries.slice(0, 3);
+  const topDjs = djEntries.slice(0, 4);
+  // Each DJ's own colour (users.color — the same field the dashboard
+  // calendar widget uses for its chips), so a slice/dot here matches that
+  // DJ's colour everywhere else in the app. Falls back to this generated
+  // palette only for a DJ with no colour set (or the "unassigned" bucket).
+  const FALLBACK_COLORS = ["#F87171", "#60A5FA", "#10B981", "#FBBF24"];
+  const colorFor = (name: string, i: number) =>
+    djColors[name] || FALLBACK_COLORS[i] || "#D1D5DB";
 
   // confirmedEventsCount here is "Remaining" — confirmed events still ahead
   // on the calendar (date >= today), not events already completed. Percent
@@ -88,23 +97,29 @@ export default function SalesAnalytics({
 
   return (
     <Card variant="white" className="shadow-sm p-4 flex flex-col h-full">
-      <div className="mb-2 gap-1 flex flex-col">
-        <div className="flex items-baseline justify-between gap-2">
-          <h4 className="text-base font-semibold text-gray-900">
-            Sales Analytics
-          </h4>
-          <div className="flex items-baseline gap-1 shrink-0">
-            <span className="text-2xl font-bold text-gray-900">
+      <div className="pb-3 mb-2 border-b border-gray-100">
+        {/* Title + subtitle grouped in their own column so "0/2" centers
+            against that whole two-line block, not just the title's single
+            line — items-center on this row now centers the number against
+            the title+subtitle stack's full height. */}
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <h4 className="text-base font-semibold text-gray-900">
+              Sales Analytics
+            </h4>
+            <p className="text-sm text-gray-500">
+              {completedPercent}% Events Completed
+            </p>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <span className="text-2xl font-bold text-gray-900 leading-none">
               {isLoading ? "..." : confirmedEventsCount}
             </span>
-            <span className="text-sm text-gray-400">
+            <span className="text-sm text-gray-400 leading-none">
               /{isLoading ? "..." : totalEvents}
             </span>
           </div>
         </div>
-        <p className="text-sm text-gray-500">
-          {completedPercent}% Events Completed
-        </p>
       </div>
 
       <div className="flex flex-1 items-center gap-1.5 mt-2 min-w-0">
@@ -127,17 +142,11 @@ export default function SalesAnalytics({
                 const pct = totalDjCount
                   ? Math.round((d.count / totalDjCount) * 100)
                   : 0;
-                const colors = [
-                  "bg-red-400",
-                  "bg-blue-400",
-                  "bg-emerald-500",
-                ];
                 return (
                   <li key={d.name} className="flex items-center gap-1.5 min-w-0">
                     <span
-                      className={`h-2 w-2 rounded-full shrink-0 ${
-                        colors[i] || "bg-gray-300"
-                      } block`}
+                      className="h-2 w-2 rounded-full shrink-0 block"
+                      style={{ backgroundColor: colorFor(d.name, i) }}
                     />
                     {/* Original stacked layout (name above, stat below) —
                         just pinned to one line each. `truncate` (not bare
@@ -179,7 +188,7 @@ export default function SalesAnalytics({
           className="relative shrink-0 flex items-center justify-center aspect-square h-full max-h-40 min-h-16 max-w-[38%]"
         >
           {(() => {
-            const top = djEntries.slice(0, 3);
+            const top = topDjs;
             const topSum = top.reduce((s, d) => s + d.count, 0);
             const other = Math.max(0, totalDjCount - topSum);
             const labels = top
@@ -188,6 +197,8 @@ export default function SalesAnalytics({
             const series = top
               .map((d) => d.count)
               .concat(other > 0 ? [other] : []);
+            // Donut keeps its own fixed green palette (reverted per
+            // request) — only the legend dots use each DJ's real colour.
             const colors = ["#7A9683", "#98B79A", "#BFE0C7", "#E6EFE7"];
             const hasData = series.some((v) => v > 0);
 

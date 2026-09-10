@@ -88,7 +88,13 @@ const ConfirmedEventsPage = () => {
     useCancelEvent();
   const { mutate: reconfirmEventMutation, isPending: isReconfirmingEvent } =
     useReconfirmEvent();
-  const { data: eventsDropdown } = useConfirmEventsDropdown(showCancelledEvents);
+  const searchParams = useSearchParams();
+  // This page is reused to VIEW a Completed event (?from=completed, linked
+  // from the Completed Events list) — the dropdown was always
+  // Confirmed-only, so a completed event's id never matched an option and
+  // the Select showed the bare numeric id instead of a name/venue/date.
+  const isCompletedView = (searchParams?.get("from") ?? "") === "completed";
+  const { data: eventsDropdown } = useConfirmEventsDropdown(showCancelledEvents, isCompletedView);
   const { data: selectedEventData, isLoading } = useGetConfirmEvent(eventId);
   const { data: venueDropdownData } = useVenueDropdown();
   const router = useRouter();
@@ -336,7 +342,6 @@ const ConfirmedEventsPage = () => {
     );
   };
 
-  const searchParams = useSearchParams();
   const searchParamsKey = searchParams?.toString() ?? "";
   // Fire once per incoming URL (not per eventId change) — otherwise picking
   // a different event from the dropdown below re-triggers this effect (its
@@ -1240,6 +1245,7 @@ const ConfirmedEventsPage = () => {
           title="Cancel Event"
           description="Are you sure you want to cancel this event permanently?"
           confirmText="Yes, Cancel"
+          cancelText="No"
           requireAmount={false}
           warningText="Cancelling this event is permanent. Any refund entered will be recorded and reflected in turnover/profit calculations."
         />

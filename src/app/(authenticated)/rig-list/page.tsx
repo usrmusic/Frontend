@@ -119,7 +119,13 @@ const Page = () => {
                     // used to swap in the first line of custom notes as the
                     // title, which lost the actual item name whenever staff
                     // added their own rig notes.
-                    const title = pkg.equipment?.name || "Equipment";
+                    const equipmentName = pkg.equipment?.name || "Equipment";
+                    // Same "10x Equipment Name" prefix the Outlook calendar
+                    // sync already uses for this exact case (see
+                    // buildEventCalendarContent in microsoftGraph.js) — a
+                    // sold quantity > 1 wasn't shown here at all before.
+                    const qty = Number(pkg.quantity) || 1;
+                    const title = qty > 1 ? `${qty} X ${equipmentName}` : equipmentName;
                     // Matches Laravel exactly (complete_events.js's rig-list
                     // render loop): an equipment item with NO rig_notes set,
                     // neither on this event nor on the catalog record, is
@@ -128,12 +134,23 @@ const Page = () => {
                     // field simply won't appear until it's given rig_notes.
                     const rawNotes = pkg.rig_notes || pkg.equipment?.rig_notes || "";
                     // replace <br> tags with newlines before splitting so they don't render as text
+                    // Some equipment rows have rig_notes seeded to literally
+                    // just repeat the item's own name (e.g. "Wireless
+                    // Microphone" -> rig_notes "Wireless Microphone"), which
+                    // rendered as the exact same text twice: once as the
+                    // title, once as the only checklist line under it.
+                    // Dropping a line that's just the name isn't losing real
+                    // instructions — there weren't any beyond the name.
+                    const normalize = (s: string) =>
+                      s.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").trim().toLowerCase();
+                    const normalizedName = normalize(equipmentName);
                     const items = rawNotes
                       .replace(/<br\s*\/?>/gi, "\n")
                       .replace(/\r\n|\n|\r/g, "\n")
                       .split("\n")
                       .map((l: string) => l.trim())
-                      .filter(Boolean);
+                      .filter(Boolean)
+                      .filter((l: string) => normalize(l) !== normalizedName);
 
                     return (
                       <div key={idx} className="space-y-1.5 pb-3 last:border-0 last:pb-0">

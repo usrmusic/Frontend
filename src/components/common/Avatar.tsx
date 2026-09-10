@@ -33,6 +33,13 @@ export default function Avatar({
         alt={alt}
         width={size}
         height={size}
+        // Tailwind's preflight sets `img { height: auto }` globally, which
+        // overrides next/image's own height and let the box stretch to the
+        // source photo's natural aspect ratio (a tall portrait photo
+        // rendered as an oval/rectangle, not a circle). Explicit inline
+        // dimensions win regardless of that rule; object-cover crops
+        // non-square source photos instead of squashing them.
+        style={{ width: size, height: size, objectFit: "cover" }}
         className={`rounded-full ${className}`}
         onError={() => setError(true)}
       />
