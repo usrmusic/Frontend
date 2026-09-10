@@ -48,6 +48,21 @@ export const useUsersDropdown = () => {
     },
   });
 };
+// Enquiry form's "Select DJ" — only accounts with an actual configured
+// package, not every staff/admin account (see /user/dj-dropdown on the
+// backend). Separate from useUsersDropdown above, which the Packages page's
+// "Add Package" modal needs unfiltered (must be able to pick a DJ who has
+// no package yet, since assigning their first one is the point of that
+// screen).
+export const useDjDropdown = () => {
+  return useQuery({
+    queryKey: ["dj-dropdown"],
+    queryFn: async (): Promise<UserDropdown[]> => {
+      const response = await AxiosInstance.get("/user/dj-dropdown");
+      return response.data;
+    },
+  });
+};
 export const useCompanyDropdown = () => {
   return useQuery({
     queryKey: ["company-dropdown"],
