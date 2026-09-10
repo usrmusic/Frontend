@@ -110,6 +110,7 @@ const DashboardPage = () => {
                       )
                     )
                   }
+                  djColors={dashboard?.salesAnalytics?.djColors ?? {}}
                   confirmedEventsCount={dashboard?.confirmedEventsCount ?? 0}
                   totalEvents={dashboard?.totalEvents ?? 0}
                   isLoading={dashboardLoading}
@@ -170,7 +171,7 @@ const DashboardPage = () => {
             variant="white"
             className={`dashboard-calendar col-span-12 ${eventActivityVisible ? "lg:col-span-5 2xl:col-span-4" : "lg:col-span-8 2xl:col-span-7"} shadow-sm p-0 rounded-2xl bg-[#F6F5F0]`}
           >
-            <CalendarWithSidebar events={dashboard?.calendarEvents} isLoading={dashboardLoading} />
+            <CalendarWithSidebar events={dashboard?.calendarEvents} isLoading={dashboardLoading} year={year} />
           </Card>
 
           {/* Event Activity — hidden for Client only; Staff/Admin see it

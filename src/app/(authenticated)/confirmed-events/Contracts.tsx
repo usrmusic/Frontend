@@ -204,12 +204,22 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
               ) : (
                 // show existing client signature image if present
                 clientSignatureUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={clientSignatureUrl}
-                    alt="Client signature"
-                    className="max-h-full max-w-full object-contain"
-                  />
+                  <div className="flex flex-col items-center gap-1">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={clientSignatureUrl}
+                      alt="Client signature"
+                      className="max-h-full max-w-full object-contain"
+                    />
+                    {/* Was only shown in the no-image fallback below — the
+                        common case (a real signature image) had no signed
+                        date next to it at all. */}
+                    {signedAt && (
+                      <span className="text-xs text-gray-500">
+                        Signed on {dayjs(signedAt).format("D MMM YYYY")}
+                      </span>
+                    )}
+                  </div>
                 ) : signedContractPdfUrl ? (
                   <div className="text-sm text-green-700 flex flex-col items-center gap-1">
                     <span>

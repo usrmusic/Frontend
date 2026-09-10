@@ -41,7 +41,15 @@ function formatTime(time?: string): string {
 }
 
 function getEventDisplayName(ev: CalendarEvent): string {
-  return ev.name_of_couple || ev.users_events_user_idTousers?.name || `Event #${ev.id}`;
+  // Falls back to venue/date instead of a bare id — an id ("Event #1353")
+  // means nothing to a reader; a venue or date is at least identifiable
+  // even for the rare event with no client name attached at all.
+  return (
+    ev.name_of_couple ||
+    ev.users_events_user_idTousers?.name ||
+    ev.venues?.venue ||
+    (ev.date ? dayjs(ev.date).format("DD/MM/YYYY") : `Event #${ev.id}`)
+  );
 }
 
 function getInitials(name: string): string {
@@ -67,14 +75,19 @@ const WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(dayjs().startOf("month"));
   const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs>(dayjs());
-  const [year, setYear] = useState(new Date().getFullYear());
+  // Derived from currentMonth rather than tracked separately — it used to be
+  // its own state, kept in sync manually wherever currentMonth changed. The
+  // month-nav arrows only ever called setCurrentMonth (not setYear), so
+  // clicking through months into the next year moved the visible grid into
+  // (say) September 2027 while the API query stayed on year=2026, silently
+  // fetching zero events for a grid that had real events in it.
+  const year = currentMonth.year();
 
   useEffect(() => {
     function onYearChange(e: Event) {
       const ev = e as CustomEvent<{ year: number }>;
       const y = ev?.detail?.year;
       if (y) {
-        setYear(y);
         setCurrentMonth((m) => m.year(y));
       }
     }
@@ -95,7 +108,6 @@ export default function CalendarPage() {
     dateParamAppliedRef.current = dateParam;
     setCurrentMonth(parsed.startOf("month"));
     setSelectedDate(parsed);
-    setYear(parsed.year());
   }, [searchParams]);
 
   const { data: rawData } = useCalendar({ year });

@@ -1502,6 +1502,12 @@ const NewEnquiryPageInner = () => {
                                       <Button
                                         type="primary"
                                         className="h-10! w-auto! text-xs!"
+                                        // AntD's own middle-size CSS (injected via cssinjs) sets a
+                                        // 32px height that the h-10! Tailwind class doesn't reliably
+                                        // win against depending on style-tag injection order — this
+                                        // button ended up visibly shorter than the 40px Input/Select
+                                        // beside it. An inline style always wins, so force it here.
+                                        style={{ height: 40 }}
                                         icon={<PlusIcon size={14} />}
                                         onClick={() => {
                                           setShowVenueInput((v) => !v);
@@ -1813,7 +1819,10 @@ const NewEnquiryPageInner = () => {
                                     <div className="w-2/12 flex justify-center">
                                       <input
                                         type="number"
-                                        min={0}
+                                        // Negative values are intentional here — staff use
+                                        // them to apply a discount (e.g. -100 for £100 off),
+                                        // same as the old CRM. A min={0} constraint blocked
+                                        // that entirely.
                                         step="0.01"
                                         value={unitPrice}
                                         disabled={!checked}
@@ -1953,7 +1962,8 @@ const NewEnquiryPageInner = () => {
                                   <div className="w-2/12 flex justify-center">
                                     <input
                                       type="number"
-                                      min={0}
+                                      // Negative values are intentional — same discount use
+                                      // case as the package Unit Price field above.
                                       step="0.01"
                                       value={unitPrice}
                                       disabled={!checked}

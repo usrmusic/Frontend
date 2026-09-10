@@ -14,6 +14,7 @@ type TodoItem = {
   deadline?: string;
   complete?: boolean;
   event_id?: number | null;
+  event_label?: string | null;
 };
 
 export default function DashboardTodos({ eventIds }: { eventIds: number[] }) {
@@ -73,7 +74,7 @@ export default function DashboardTodos({ eventIds }: { eventIds: number[] }) {
                   <div className="font-medium">{t.action || `Task #${t.id}`}</div>
                   <div className="text-xs text-gray-500 truncate">{t.comment || ''}</div>
                 </div>
-                <div className="text-xs text-gray-400">{t.event_id ? `E:${t.event_id}` : ''}</div>
+                <div className="text-xs text-gray-400 truncate max-w-[140px]">{t.event_label || ''}</div>
               </li>
             ))}
           </ul>
@@ -84,7 +85,7 @@ export default function DashboardTodos({ eventIds }: { eventIds: number[] }) {
             footer={null}
           >
             <div className="text-sm text-gray-700 whitespace-pre-wrap">{selected?.comment || "No additional details."}</div>
-            <div className="text-xs text-gray-400 mt-3">{selected?.event_id ? `Event: ${selected.event_id}` : ''}</div>
+            <div className="text-xs text-gray-400 mt-3">{selected?.event_label ? `Event: ${selected.event_label}` : ''}</div>
           </Modal>
         </>
       )}

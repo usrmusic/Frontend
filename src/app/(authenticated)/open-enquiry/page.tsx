@@ -220,7 +220,7 @@ const OpenEnquiryPage = () => {
   // page rather than the whole list. `usr_name` is the flat, already
   // Joi-whitelisted column backing the Name column's display value.
   const [sortState, setSortState] = useState<{
-    field: "usr_name" | "date";
+    field: "usr_name" | "date" | "created_at";
     order: "asc" | "desc";
   } | null>(null);
 
@@ -389,6 +389,22 @@ const OpenEnquiryPage = () => {
       sorter: true,
       sortOrder:
         sortState?.field === "date"
+          ? sortState.order === "asc"
+            ? "ascend"
+            : "descend"
+          : undefined,
+      render: (value: string) =>
+        value ? dayjs(value).format("DD/MM/YYYY") : "-",
+    },
+    {
+      title: "Date Created",
+      dataIndex: "created_at",
+      key: "created_at",
+      width: 130,
+      ellipsis: true,
+      sorter: true,
+      sortOrder:
+        sortState?.field === "created_at"
           ? sortState.order === "asc"
             ? "ascend"
             : "descend"
@@ -745,7 +761,22 @@ const OpenEnquiryPage = () => {
                   String(selectedRowKeys[0]),
                   "SEND QUOTE-OPEN",
                 );
-                setModalTemplate(data?.email ?? null);
+                // Substitute the deposit placeholder here too — the compose
+                // box was showing the literal "{--amount--}" token verbatim
+                // (and sending it that way) because this quick-action button
+                // never ran the substitution the Enquiry form's own Send
+                // Quote flow does. Defaults to 0, matching Laravel.
+                const rawEmail = data?.email as { body?: string } | null | undefined;
+                const email = rawEmail
+                  ? {
+                      ...rawEmail,
+                      body: String(rawEmail.body ?? "").replace(
+                        "{--amount--}",
+                        `£${selectedDeposit ?? 0}`,
+                      ),
+                    }
+                  : rawEmail;
+                setModalTemplate(email ?? null);
                 setModalCompanies(data?.companies ?? null);
                 setClickedBtn("quote");
                 setModalOpen(true);
@@ -966,7 +997,9 @@ const OpenEnquiryPage = () => {
                       ? "usr_name"
                       : s.columnKey === "date"
                         ? "date"
-                        : null;
+                        : s.columnKey === "created_at"
+                          ? "created_at"
+                          : null;
                   if (!field) return;
                   setSortState({
                     field,

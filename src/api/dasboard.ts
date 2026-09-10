@@ -11,6 +11,7 @@ type Monthly = {
 type SalesAnalytics = {
   statusCounts: Record<string, number>;
   djCounts: Record<string, number | string>;
+  djColors: Record<string, string>;
 };
 
 type PendingPayment = {
