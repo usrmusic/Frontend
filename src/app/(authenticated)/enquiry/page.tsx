@@ -16,7 +16,7 @@ import type { FieldProps } from "formik";
 import * as Yup from "yup";
 import {
   useClientDropdown,
-  useUsersDropdown,
+  useDjDropdown,
   useVenueDropdown,
   useSupplierDropdown,
 } from "@/src/api/dropdown";
@@ -333,7 +333,7 @@ const NewEnquiryPageInner = () => {
 
   const { data: clientDropdownName } = useClientDropdown();
   const { data: venueDropdownName } = useVenueDropdown();
-  const { data: djDropdownData } = useUsersDropdown();
+  const { data: djDropdownData } = useDjDropdown();
   // event_id excludes THIS event's own already-saved booking from the
   // "already booked elsewhere" figure the backend computes — otherwise
   // editing an existing enquiry double-counts its own booking against
