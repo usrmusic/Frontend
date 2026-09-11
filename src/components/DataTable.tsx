@@ -9,6 +9,15 @@ function DataTable<RecordType extends object = any>({ wrapperClassName, ...props
   return (
     <div className={wrapperClassName ?? "overflow-hidden rounded-xl"}>
       <Table<RecordType>
+        // AntD's own toggle function (nextSortDirection) has no wraparound —
+        // it just indexes one past the current entry in `sortDirections`, so
+        // ["ascend","descend"] alone still produces undefined (i.e. "no
+        // sort") after descend, once a column's sortOrder is controlled
+        // externally (as every page here does via sortState). Repeating
+        // "ascend" as a third entry closes the loop: descend's "next index"
+        // resolves to that final "ascend" instead of running off the array,
+        // so every click toggles asc/desc forever with no unsorted step.
+        sortDirections={["ascend", "descend", "ascend"]}
         {...props}
         // The sort-column/header grey tint is disabled at the theme level
         // (ThemeConfig.tsx's Table tokens) rather than fought here with
