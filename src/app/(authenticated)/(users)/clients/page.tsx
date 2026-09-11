@@ -3,6 +3,7 @@ import {
   useClients,
   useDeleteClient,
   useResetUserPassword,
+  useEditClient,
 } from "@/src/api/usersApi";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
@@ -12,7 +13,7 @@ import { useDebounce } from "@/src/hooks/useDebounce";
 import { notification, TableColumnsType, TableProps } from "antd";
 import { useState, Suspense } from "react";
 import ClientModal from "./ClientModal";
-import { KeyRound, Pencil } from "lucide-react";
+import { KeyRound, Pencil, RotateCcw } from "lucide-react";
 import { TableRowSelection, SorterResult } from "antd/es/table/interface";
 import AlertModal from "@/src/components/common/AlertModal";
 import { CSVLink } from "react-csv";
@@ -33,6 +34,7 @@ const ClientsPageContent = () => {
   const [params, setParams] = useState(initialParams);
   const [search, setSearch] = useState("");
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [showDeactivated, setShowDeactivated] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [alertModal, setAlertModal] = useState(false);
@@ -40,14 +42,36 @@ const ClientsPageContent = () => {
   const [resetTarget, setResetTarget] = useState<
     { id: number | string; email: string } | null
   >(null);
+  const [reactivateTarget, setReactivateTarget] = useState<
+    { id: number | string; name: string } | null
+  >(null);
 
   const debouncedSearch = useDebounce(search, 1000);
   const { data: apiData, isLoading } = useClients({
     ...params,
     search: debouncedSearch,
+    status: showDeactivated ? "inactive" : undefined,
   });
   const deleteClient = useDeleteClient();
   const resetPassword = useResetUserPassword();
+  const editClient = useEditClient();
+
+  const handleConfirmReactivate = () => {
+    if (!reactivateTarget) return;
+    editClient.mutate(
+      { id: reactivateTarget.id, status: "active" },
+      {
+        onSuccess: () => {
+          notification.success({
+            message: "Client reactivated",
+            description: `${reactivateTarget.name} is active again.`,
+            placement: "topRight",
+          });
+          setReactivateTarget(null);
+        },
+      },
+    );
+  };
 
   const handleConfirmReset = () => {
     if (!resetTarget) return;
@@ -124,27 +148,22 @@ const ClientsPageContent = () => {
       dataIndex: "password_text",
       key: "password_text",
     },
-    // {
-    //   title: "Status",
-    //   dataIndex: "status",
-    //   key: "status",
-    //   render: (value: string) => (
-    //     <span
-    //       className={`whitespace-nowrap ${
-    //         value?.toLowerCase() === "active"
-    //           ? "px-2 py-1 rounded-full text-green-700 bg-green-100"
-    //           : "px-2 py-1 rounded-full text-gray-600 bg-yellow-100"
-    //       }`}
-    //     >
-    //       {value ?? "No Status"}
-    //     </span>
-    //   ),
-    // },
-    // {
-    //   title: "Event Date",
-    //   dataIndex: "eventDate",
-    //   key: "eventDate",
-    // },
+    {
+      title: "Status",
+      dataIndex: "deleted_at",
+      key: "status",
+      render: (value: string | null) => (
+        <span
+          className={`whitespace-nowrap px-2 py-1 rounded-full text-xs ${
+            value
+              ? "text-red-700 bg-red-100"
+              : "text-green-700 bg-green-100"
+          }`}
+        >
+          {value ? "Deactivated" : "Active"}
+        </span>
+      ),
+    },
     {
       title: "Contact Number",
       dataIndex: "contact_number",
@@ -160,28 +179,38 @@ const ClientsPageContent = () => {
     {
       title: "Action",
       fixed: "right",
-      render: (data) => (
-        <div className="flex items-center gap-2">
-          <button
-            title="Edit"
-            onClick={() => {
-              setModalOpen(true);
-              setClientData(data);
-            }}
-          >
-            <Pencil size={14} />
-          </button>
-          <button
-            title="Reset password & email"
-            onClick={() => {
-              const r = data as { id: number | string; email: string };
-              setResetTarget({ id: r.id, email: r.email });
-            }}
-          >
-            <KeyRound size={14} />
-          </button>
-        </div>
-      ),
+      render: (data) => {
+        const row = data as { id: number | string; name: string; email: string; deleted_at: string | null };
+        if (row.deleted_at) {
+          return (
+            <button
+              title="Reactivate"
+              onClick={() => setReactivateTarget({ id: row.id, name: row.name })}
+            >
+              <RotateCcw size={14} />
+            </button>
+          );
+        }
+        return (
+          <div className="flex items-center gap-2">
+            <button
+              title="Edit"
+              onClick={() => {
+                setModalOpen(true);
+                setClientData(data);
+              }}
+            >
+              <Pencil size={14} />
+            </button>
+            <button
+              title="Reset password & email"
+              onClick={() => setResetTarget({ id: row.id, email: row.email })}
+            >
+              <KeyRound size={14} />
+            </button>
+          </div>
+        );
+      },
     },
   ];
 
@@ -226,6 +255,14 @@ const ClientsPageContent = () => {
               onClick={() => setAlertModal(true)}
             >
               Remove
+            </Button>
+            <Button
+              onClick={() => {
+                setShowDeactivated((v) => !v);
+                setParams((p) => ({ ...p, page: 1 }));
+              }}
+            >
+              {showDeactivated ? "Show Active" : "Show Deactivated"}
             </Button>
             <CSVLink
               data={csvData ?? []}
@@ -278,6 +315,16 @@ const ClientsPageContent = () => {
           handleCancel={() => setResetTarget(null)}
           title="Reset password"
           text={`This will generate a new password for ${resetTarget.email} and email it to them. Continue?`}
+        />
+      )}
+      {reactivateTarget && (
+        <AlertModal
+          loading={editClient.isPending}
+          onYes={handleConfirmReactivate}
+          open={!!reactivateTarget}
+          handleCancel={() => setReactivateTarget(null)}
+          title="Reactivate client"
+          text={`This will reactivate ${reactivateTarget.name} and restore their access. Continue?`}
         />
       )}
     </div>
