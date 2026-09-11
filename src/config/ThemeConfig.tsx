@@ -38,6 +38,18 @@ const ThemeConfig = ({ children }: { children: ReactNode }) => {
             controlHeight: 40,
             borderRadius: 12,
           },
+          // Table paints the active-sort column with its own grey tint,
+          // independently of row-selected/zebra-stripe backgrounds — those
+          // three sources of `background` on the same <td> were fighting via
+          // CSS specificity, and forcing one to win with `!important` (the
+          // old approach) always broke one of the other two instead. Telling
+          // AntD not to paint the sort tint at all removes the conflict at
+          // its source rather than patching it per case.
+          Table: {
+            headerSortActiveBg: "transparent",
+            headerSortHoverBg: "transparent",
+            bodySortBg: "transparent",
+          },
         },
       }}
     >
