@@ -39,6 +39,7 @@ type Client = {
   contact_number: string;
   address: string;
   status?: string;
+  deleted_at?: string | null;
   eventDate?: string;
 };
 
@@ -140,11 +141,12 @@ export type ManageAccessResponse = {
 };
 
 type ClientPayload = {
-  role_id: string;
-  name: string;
-  email: string;
-  event_date: string;
-  contact_number: string;
+  role_id?: string;
+  name?: string;
+  email?: string;
+  event_date?: string;
+  contact_number?: string;
+  status?: string;
 };
 
 type VenuePayload = {
@@ -927,6 +929,30 @@ export const useDeleteUser = () => {
     },
     onError: (error) => {
       console.error("delete failed:", error.message);
+    },
+  });
+};
+export const useRestoreUsers = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: { ids: Key[] }) => {
+      try {
+        const response = await AxiosInstance.post("/user/restore", payload);
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"], refetchType: "all" });
+    },
+    onError: (error) => {
+      console.error("restore failed:", error.message);
     },
   });
 };

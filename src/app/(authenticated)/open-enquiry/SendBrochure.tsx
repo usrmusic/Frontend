@@ -66,11 +66,6 @@ const SendBrochureModal = ({
             Number((companiesList[0] && companiesList[0].id) || 0),
         } as any;
 
-        // Prefix subject with returned email_name when available
-        if (template?.email_name) {
-          payload.subject = `${template.email_name} - ${payload.subject}`;
-        }
-
         // Use single send (quote) API for all send modes as requested
         await sendQuoteMutation(payload);
         toast.success("Email Sent Successfully");

@@ -2,6 +2,7 @@
 import {
   useDeleteUser,
   useResetUserPassword,
+  useRestoreUsers,
   useUsers,
 } from "@/src/api/usersApi";
 import Button from "@/src/components/Button";
@@ -12,7 +13,7 @@ import { useDebounce } from "@/src/hooks/useDebounce";
 import { notification, TableColumnsType, TableProps } from "antd";
 import { useState } from "react";
 import UserModal from "./UserModal";
-import { KeyRound, Pencil } from "lucide-react";
+import { KeyRound, Pencil, RotateCcw } from "lucide-react";
 import { TableRowSelection, SorterResult } from "antd/es/table/interface";
 import AlertModal from "@/src/components/common/AlertModal";
 import { CSVLink } from "react-csv";
@@ -39,15 +40,38 @@ const UsersPage = () => {
   const [resetTarget, setResetTarget] = useState<
     { id: number | string; email: string } | null
   >(null);
+  const [showDeactivated, setShowDeactivated] = useState(false);
+  const [restoreTarget, setRestoreTarget] = useState<
+    { id: number | string; name: string } | null
+  >(null);
   const debouncedSearch = useDebounce(search, 1000);
 
   const { data: usersData, isLoading } = useUsers({
     ...params,
     page: debouncedSearch ? 1 : params.page,
     search: debouncedSearch,
+    status: showDeactivated ? "inactive" : undefined,
   });
   const deleteUser = useDeleteUser();
   const resetPassword = useResetUserPassword();
+  const restoreUsers = useRestoreUsers();
+
+  const handleConfirmRestore = () => {
+    if (!restoreTarget) return;
+    restoreUsers.mutate(
+      { ids: [restoreTarget.id] },
+      {
+        onSuccess: () => {
+          notification.success({
+            message: "User restored",
+            description: `${restoreTarget.name} is active again.`,
+            placement: "topRight",
+          });
+          setRestoreTarget(null);
+        },
+      },
+    );
+  };
 
   const handleConfirmReset = () => {
     if (!resetTarget) return;
@@ -144,6 +168,20 @@ const UsersPage = () => {
       },
     },
     {
+      title: "Status",
+      dataIndex: "deleted_at",
+      key: "status",
+      render: (value: string | null) => (
+        <span
+          className={`whitespace-nowrap px-2 py-1 rounded-full text-xs ${
+            value ? "text-red-700 bg-red-100" : "text-green-700 bg-green-100"
+          }`}
+        >
+          {value ? "Deactivated" : "Active"}
+        </span>
+      ),
+    },
+    {
       title: "Colour",
       key: "color",
       render: (_v, record) => {
@@ -163,30 +201,38 @@ const UsersPage = () => {
     {
       title: "Action",
       fixed: "right",
-      render: (data) => (
-        <div className="flex items-center gap-2">
-          <button
-            title="Edit"
-            onClick={() => {
-              setModalOpen(true);
-              setUserDataItem(data);
-            }}
-          >
-            <Pencil size={14} />
-          </button>
-          <button
-            title="Reset password & email"
-            onClick={() => {
-              setResetTarget({
-                id: (data as { id: number | string }).id,
-                email: (data as { email: string }).email,
-              });
-            }}
-          >
-            <KeyRound size={14} />
-          </button>
-        </div>
-      ),
+      render: (data) => {
+        const row = data as { id: number | string; name: string; email: string; deleted_at: string | null };
+        if (row.deleted_at) {
+          return (
+            <button
+              title="Reactivate"
+              onClick={() => setRestoreTarget({ id: row.id, name: row.name })}
+            >
+              <RotateCcw size={14} />
+            </button>
+          );
+        }
+        return (
+          <div className="flex items-center gap-2">
+            <button
+              title="Edit"
+              onClick={() => {
+                setModalOpen(true);
+                setUserDataItem(data);
+              }}
+            >
+              <Pencil size={14} />
+            </button>
+            <button
+              title="Reset password & email"
+              onClick={() => setResetTarget({ id: row.id, email: row.email })}
+            >
+              <KeyRound size={14} />
+            </button>
+          </div>
+        );
+      },
     },
   ];
   const csvHeaders = [
@@ -227,6 +273,14 @@ const UsersPage = () => {
               onClick={() => setAlertModal(true)}
             >
               Remove
+            </Button>
+            <Button
+              onClick={() => {
+                setShowDeactivated((v) => !v);
+                setParams((p) => ({ ...p, page: 1 }));
+              }}
+            >
+              {showDeactivated ? "Show Active" : "Show Deactivated"}
             </Button>
             <CSVLink
               data={csvData ?? []}
@@ -279,6 +333,16 @@ const UsersPage = () => {
           handleCancel={() => setResetTarget(null)}
           title="Reset password"
           text={`This will generate a new password for ${resetTarget.email} and email it to them. Continue?`}
+        />
+      )}
+      {restoreTarget && (
+        <AlertModal
+          loading={restoreUsers.isPending}
+          onYes={handleConfirmRestore}
+          open={!!restoreTarget}
+          handleCancel={() => setRestoreTarget(null)}
+          title="Reactivate user"
+          text={`This will reactivate ${restoreTarget.name} and restore their access. Continue?`}
         />
       )}
     </div>
