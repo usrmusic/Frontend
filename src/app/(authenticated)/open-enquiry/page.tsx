@@ -1018,8 +1018,20 @@ const OpenEnquiryPage = () => {
                     setParams({ ...params, page, limit: pageSize }),
                 }}
                 rowSelection={rowSelection}
-                rowClassName={(_, index) =>
-                  index % 2 === 1 ? "[&>td]:bg-[#F7F7F5]" : ""
+                // AntD's own sort-column background rule (td.ant-table-column-sort)
+                // is more specific than this zebra override, so it always won
+                // regardless of what color we gave it — the sorted column looked
+                // "different" specifically on zebra-striped rows because of that,
+                // not because of the sort styling itself. `!` forces this to win.
+                // But `!important` also beats AntD's row-selected highlight when
+                // a zebra row gets selected — so the zebra class is withheld
+                // entirely once a row is selected, letting the (also-`!important`-
+                // free) selected style show through unmodified, same as any
+                // other selected row.
+                rowClassName={(record, index) =>
+                  index % 2 === 1 && !selectedRowKeys.includes(String(record.id))
+                    ? "[&>td]:!bg-[#F7F7F5]"
+                    : ""
                 }
                 onRow={(record) => ({
                   onClick: () => {

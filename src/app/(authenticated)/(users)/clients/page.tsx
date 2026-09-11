@@ -116,15 +116,18 @@ const ClientsPageContent = () => {
 
   const handleDelete = () => {
     deleteClient.mutate(
-      { ids: selectedRowKeys, force: false },
+      { ids: selectedRowKeys, force: showDeactivated },
       {
-        onSuccess: () => {
+        onSuccess: (data: { count?: number }) => {
           setAlertModal(false);
           notification.success({
             message: "Success",
-            description: "Client(s) deleted successfully.",
+            description: showDeactivated
+              ? `${data?.count ?? selectedRowKeys.length} client(s) permanently deleted.`
+              : `${data?.count ?? selectedRowKeys.length} client(s) deactivated successfully.`,
             placement: "topRight",
           });
+          setSelectedRowKeys([]);
         },
       },
     );
@@ -303,8 +306,12 @@ const ClientsPageContent = () => {
           onYes={handleDelete}
           open={alertModal}
           handleCancel={() => setAlertModal(false)}
-          title="Delete Client"
-          text="Are you sure you want to delete client(s)?"
+          title={showDeactivated ? "Delete Client Permanently" : "Delete Client"}
+          text={
+            showDeactivated
+              ? "This will permanently delete the selected client(s). This cannot be undone."
+              : "Are you sure you want to delete client(s)?"
+          }
         />
       )}
       {resetTarget && (

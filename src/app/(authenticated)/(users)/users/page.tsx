@@ -116,15 +116,29 @@ const UsersPage = () => {
 
   const handleDelete = () => {
     deleteUser.mutate(
-      { ids: selectedRowKeys, force: false },
+      { ids: selectedRowKeys, force: showDeactivated },
       {
-        onSuccess: () => {
+        onSuccess: (data: { count?: number; blocked?: { id: number | string; reason?: string }[] }) => {
           setAlertModal(false);
-          notification.success({
-            message: "Success",
-            description: "Package(s) deleted successfully.",
-            placement: "topRight",
-          });
+          const count = data?.count ?? 0;
+          const blocked = data?.blocked ?? [];
+          if (count > 0) {
+            notification.success({
+              message: "Success",
+              description: showDeactivated
+                ? `${count} user(s) permanently deleted.`
+                : `${count} user(s) deactivated successfully.`,
+              placement: "topRight",
+            });
+          }
+          if (blocked.length > 0) {
+            notification.warning({
+              message: "Some users were not deleted",
+              description: `${blocked.length} user(s) have an associated event or DJ package and were skipped.`,
+              placement: "topRight",
+            });
+          }
+          setSelectedRowKeys([]);
         },
       },
     );
@@ -321,8 +335,12 @@ const UsersPage = () => {
           onYes={handleDelete}
           open={alertModal}
           handleCancel={() => setAlertModal(false)}
-          title="Delete User"
-          text="Are you sure you want to delete user(s)?"
+          title={showDeactivated ? "Delete User Permanently" : "Delete User"}
+          text={
+            showDeactivated
+              ? "This will permanently delete the selected user(s). This cannot be undone."
+              : "Are you sure you want to delete user(s)?"
+          }
         />
       )}
       {resetTarget && (
