@@ -42,9 +42,35 @@ export const DEFAULT_VISIBLE_COLUMNS = [
   "extra_cost",
 ];
 
+// Maps each sortable column key to the `sort_by` value the Admin Report API
+// expects (see `sortMap` in reports.controller.js). They are not always the
+// same string — the DJ column is keyed "dj" here but sorts on "dj_name", and
+// Event Status sorts on the underlying id. Columns absent from this map render
+// without an arrow, since showing one the API can't honour looks broken.
+export const SORTABLE_COLUMNS = new Map<string, string>([
+  ["company_name", "company_name"],
+  ["client_name", "client_name"],
+  ["event_date", "event_date"],
+  ["event_status", "event_status_id"],
+  ["dj", "dj_name"],
+  ["venue_name", "venue_name"],
+  ["total_price", "total_price"],
+  ["total_cost", "total_cost"],
+  ["extra_cost", "extra_cost"],
+  ["profit", "profit"],
+  ["payment_received", "payment_received"],
+  ["payment_remaining", "payment_remaining"],
+]);
+
+export type AdminReportSort = {
+  field: string;
+  order: "ascend" | "descend";
+} | null;
+
 const useColumns = (
   colFilters: Record<string, string>,
   setColFilters: React.Dispatch<React.SetStateAction<Record<string, string>>>,
+  sortState?: AdminReportSort,
 ) => {
   const setFilter = (key: string, value: string) => {
     setColFilters((prev) => ({ ...prev, [key]: value }));
@@ -288,7 +314,23 @@ const useColumns = (
     },
   ];
 
-  return { columns };
+  // Attach sorters in one pass rather than repeating `sorter`/`sortOrder` on
+  // every column definition above. Only keys the backend's sortMap actually
+  // understands get an arrow — showing one on a column the API can't order by
+  // would look like a broken control. Sorting is server-side (the table is
+  // paginated), so `sorter: true` just reports the click; `sortOrder` keeps
+  // the arrow in sync with the state the page actually queried with.
+  const sortedColumns: TableColumnsType<AdminReportRow> = columns.map((col) => {
+    const key = String(col.key);
+    if (!SORTABLE_COLUMNS.has(key)) return col;
+    return {
+      ...col,
+      sorter: true,
+      sortOrder: sortState?.field === key ? sortState.order : null,
+    };
+  });
+
+  return { columns: sortedColumns };
 };
 
 export default useColumns;
