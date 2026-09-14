@@ -9,7 +9,12 @@ import { RefreshCw, Eye, EyeOff, Columns3 } from "lucide-react";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import Image from "next/image";
 import Link from "next/link";
-import useColumns, { COLUMN_LABELS, DEFAULT_VISIBLE_COLUMNS } from "./useColumns";
+import useColumns, {
+  COLUMN_LABELS,
+  DEFAULT_VISIBLE_COLUMNS,
+  SORTABLE_COLUMNS,
+  type AdminReportSort,
+} from "./useColumns";
 import { useAdminReport } from "@/src/api/reports";
 import SkeletonInput from "antd/es/skeleton/Input";
 import dayjs from "dayjs";
@@ -42,6 +47,8 @@ export type Filters = {
   cost?: string;
   extra_cost?: string;
   profit?: string;
+  sort_by?: string;
+  sort_dir?: "asc" | "desc";
 };
 
 const Page = () => {
@@ -53,16 +60,26 @@ const Page = () => {
   const [colFilters, setColFilters] = useState<Record<string, string>>({});
   const debouncedColFilters = useDebounce(colFilters, 600);
   const [visibleColumns, setVisibleColumns] = useState<string[]>(DEFAULT_VISIBLE_COLUMNS);
+  const [sortState, setSortState] = useState<AdminReportSort>(null);
 
   // Merge base filters with debounced column filters at query time — no cascading setState
   const activeFilters: Filters = {
     ...filters,
     ...Object.fromEntries(Object.entries(debouncedColFilters).filter(([, v]) => !!v)),
+    // Column key -> the `sort_by` the API understands (they differ for DJ and
+    // Event Status); omitted entirely when nothing is sorted, so the backend
+    // keeps its own default ordering.
+    ...(sortState
+      ? {
+          sort_by: SORTABLE_COLUMNS.get(sortState.field) ?? sortState.field,
+          sort_dir: (sortState.order === "ascend" ? "asc" : "desc") as "asc" | "desc",
+        }
+      : {}),
   };
 
   const { data: reportData, isLoading } = useAdminReport(activeFilters);
 
-  const { columns: allColumns } = useColumns(colFilters, setColFilters);
+  const { columns: allColumns } = useColumns(colFilters, setColFilters, sortState);
   const columns = allColumns.filter((c) => visibleColumns.includes(String(c.key)));
 
   const statsData = reportData?.stats;
@@ -306,6 +323,18 @@ const Page = () => {
             onChange: (page, pageSize) => {
               setFilters((prev) => ({ ...prev, page, perPage: pageSize }));
             },
+          }}
+          onChange={(_pagination, _tableFilters, sorter) => {
+            const s = Array.isArray(sorter) ? sorter[0] : sorter;
+            const key = s?.columnKey != null ? String(s.columnKey) : null;
+            // Sorting is server-side, so reset to page 1 — staying on page 5 of
+            // the old ordering would show an unrelated slice of the new one.
+            if (!s?.order || !key) {
+              setSortState(null);
+            } else {
+              setSortState({ field: key, order: s.order });
+            }
+            setFilters((prev) => ({ ...prev, page: 1 }));
           }}
           loading={isLoading}
           rowKey={(data) => data.event_id}

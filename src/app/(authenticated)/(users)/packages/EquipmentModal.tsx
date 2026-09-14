@@ -130,8 +130,12 @@ const EquipmentModal = ({ modalOpen, handleCancel, initialValues }: EquipmentPro
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <Input label="Cost Price" type="number" name="cost_price" value={formik.values.cost_price} onChange={formik.handleChange} required />
-                <Input label="Sell Price" type="number" name="sell_price" value={formik.values.sell_price} onChange={formik.handleChange} required />
+                {/* Deliberately NOT `required`: both may be left blank and are
+                    submitted as 0 by onSubmit above. (Laravel marks both
+                    required, but the client asked for them to be optional —
+                    this is an intentional divergence, not an oversight.) */}
+                <Input label="Cost Price" type="number" name="cost_price" value={formik.values.cost_price} onChange={formik.handleChange} />
+                <Input label="Sell Price" type="number" name="sell_price" value={formik.values.sell_price} onChange={formik.handleChange} />
               </div>
 
               {formik.values.is_availabilty_check && (

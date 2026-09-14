@@ -118,13 +118,11 @@ function CalendarWithSidebar({
   const [selected, setSelected] = useState<Date>(() => startOfToday());
   const [sidebarIdx, setSidebarIdx] = useState(0);
 
-  // Jump the visible month onto the header's selected year the moment it
-  // changes, so month-nav never has to drift there on its own. `events` is
-  // fetched scoped to exactly one year (the Dashboard's global year picker),
-  // so navigating this widget past that year's boundary showed a real but
-  // misleading empty grid — the same class of bug the main Calendar page had
-  // (a locally-navigated month silently outrunning the year the data was
-  // actually fetched for). Snapping the month here keeps it impossible.
+  // Jump the visible month onto the header's selected year when it changes,
+  // purely as a convenience so the picker still steers the calendar. It is no
+  // longer a correctness constraint: `calendarEvents` is fetched unbounded by
+  // year (matching Laravel's calendar), so navigating to any month shows real
+  // data rather than a misleadingly empty grid.
   useEffect(() => {
     if (year == null) return;
     setMonth((prev) => (prev.getFullYear() === year ? prev : new Date(year, prev.getMonth(), 1)));
@@ -215,19 +213,12 @@ function CalendarWithSidebar({
     navigateToCalendar(getDateKey(date));
   };
 
-  // Clamped to the header's selected year — events were only ever fetched
-  // for that one year, so letting month-nav cross Jan/Dec would show a real
-  // but misleading empty grid instead of just stopping at the boundary.
-  const atYearStart = year != null && month.getFullYear() <= year && month.getMonth() === 0;
-  const atYearEnd = year != null && month.getFullYear() >= year && month.getMonth() === 11;
-  const handlePrev = () => {
-    if (atYearStart) return;
-    setMonth((prev) => subMonths(prev, 1));
-  };
-  const handleNext = () => {
-    if (atYearEnd) return;
-    setMonth((prev) => addMonths(prev, 1));
-  };
+  // Unclamped: month-nav may cross year boundaries freely, because
+  // `calendarEvents` is no longer fetched one year at a time. Most bookings
+  // sit a year or two out, so stopping at Dec of the selected year hid the
+  // majority of real events behind a boundary the user couldn't cross.
+  const handlePrev = () => setMonth((prev) => subMonths(prev, 1));
+  const handleNext = () => setMonth((prev) => addMonths(prev, 1));
   const monthTitle = month.toLocaleString("default", {
     month: "long",
     year: "numeric",
@@ -343,8 +334,7 @@ function CalendarWithSidebar({
           <button
             aria-label="Previous month"
             onClick={handlePrev}
-            disabled={atYearStart}
-            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-md transition-all hover:bg-[#e5e5e5] disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-md transition-all hover:bg-[#e5e5e5]"
             style={{ border: "none" }}
           >
             <svg width="18" height="18" fill="none" viewBox="0 0 24 24">
@@ -367,8 +357,7 @@ function CalendarWithSidebar({
           <button
             aria-label="Next month"
             onClick={handleNext}
-            disabled={atYearEnd}
-            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-md transition-all hover:bg-[#e5e5e5] disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-md transition-all hover:bg-[#e5e5e5]"
             style={{ border: "none" }}
           >
             <svg width="18" height="18" fill="none" viewBox="0 0 24 24">
