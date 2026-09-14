@@ -160,7 +160,6 @@ const DashboardPage = () => {
             }
             isLoading={dashboardLoading}
             scope={dashboard?.scope}
-            upcomingIds={(upcomingData || []).map((e) => Number(e.id)).filter(Boolean)}
           />
 
           {/* Calendar — expands into Event Activity's space only when that
