@@ -873,14 +873,10 @@ const NewEnquiryPageInner = () => {
       toast.error("Equipment name is required");
       return;
     }
-    if (!String(addEquipForm.cost_price).trim()) {
-      toast.error("Cost price is required");
-      return;
-    }
-    if (!String(addEquipForm.sell_price).trim()) {
-      toast.error("Sell price is required");
-      return;
-    }
+    // Cost/sell price are intentionally NOT validated as required — both may
+    // be left blank and fall through to 0 via the `|| 0` conversions below.
+    // (Laravel marks both required; the client asked for them to be optional,
+    // so this matches the Equipment modal rather than Laravel.)
     // Legacy parity: owning the equipment requires a quantity; hiring it in
     // requires a supplier (either picked from the list or typed in as new).
     if (ownsEquipment && !String(addEquipForm.quantity).trim()) {

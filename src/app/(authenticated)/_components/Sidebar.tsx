@@ -98,14 +98,27 @@ const Sidebar = () => {
     setTooltip((prev) => ({ ...prev, visible: false }));
   };
 
-  // Permission checking functions
+  // Permission checking functions.
+  // `manage_all` / `super_admin` short-circuit everything, mirroring Laravel's
+  // Gate::before (AuthServiceProvider), which returns true for Super Admin on
+  // every ability. The backend's checkPermission already honours this bypass,
+  // so without it here the sidebar could hide a page the API would happily
+  // serve — e.g. a Super Admin whose role lost an individual permission via
+  // Manage Access would stop seeing the nav item while still having access.
+  const hasBypass = (): boolean =>
+    !!authUser?.permissions?.some((p) =>
+      ["manage_all", "manage all", "super_admin", "super admin"].includes(p),
+    );
+
   const can = (permission: string): boolean => {
     if (!authUser?.permissions) return false;
+    if (hasBypass()) return true;
     return authUser.permissions.includes(permission);
   };
 
   const canAny = (permissions: string[]): boolean => {
     if (!authUser?.permissions) return false;
+    if (hasBypass()) return true;
     return permissions.some((p) => authUser.permissions?.includes(p));
   };
 
