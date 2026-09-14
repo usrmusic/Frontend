@@ -133,8 +133,11 @@ const Page = () => {
                     // sync already uses for this exact case (see
                     // buildEventCalendarContent in microsoftGraph.js) — a
                     // sold quantity > 1 wasn't shown here at all before.
+                    // Quantity is always shown, including "1 X". Laravel omits
+                    // the prefix at 1, but a bare name left the crew guessing
+                    // whether one was booked or the count was simply missing.
                     const qty = Number(pkg.quantity) || 1;
-                    const title = qty > 1 ? `${qty} X ${equipmentName}` : equipmentName;
+                    const title = `${qty}x ${equipmentName}`;
                     // Matches Laravel exactly (complete_events.js's rig-list
                     // render loop): an equipment item with NO rig_notes set,
                     // neither on this event nor on the catalog record, is
@@ -212,7 +215,7 @@ const Page = () => {
                     and squeezed the notes area. `inline-block` width + `mr-auto`
                     keep it only as wide as its content, freeing vertical space
                     for the notes box below. */}
-                <div className="inline-block mr-auto max-w-full rounded-xl bg-secondary-200/50 border border-secondary-200 px-4 py-3 space-y-2 text-sm">
+                <div className="mr-auto w-full max-w-[320px] min-w-[280px] rounded-xl bg-secondary-200/50 border border-secondary-200 px-4 py-3 space-y-2 text-sm">
                   {event.venues?.venue && (
                     <div>
                       <p className="text-xs text-gray-400 mb-0.5">Venue</p>

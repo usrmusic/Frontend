@@ -775,8 +775,11 @@ const NewEnquiryPageInner = () => {
   }, [packageData, editId, restoredEditSelections]);
 
   const { equipmentList, rigNotesList, totalPrice } = useMemo(() => {
-    const eqList: Array<{ name: string; notes?: string | null }> = [];
-    const rnList: Array<{ name: string; rig_notes: string }> = [];
+    // `qty` is carried through so both panels can show "2 X Name" — the rig
+    // list and the confirmed-event drawer label items the same way, and a
+    // count is only useful if it is always present (including 1).
+    const eqList: Array<{ name: string; notes?: string | null; qty: number }> = [];
+    const rnList: Array<{ name: string; rig_notes: string; qty: number; notes?: string | null }> = [];
     let total = 0;
 
     const basePrice = packageData?.data?.equipments?.sell_price ?? 0;
@@ -799,12 +802,14 @@ const NewEnquiryPageInner = () => {
         const billedQty = Math.max(0, editedQty - basicQty);
         total += unit * billedQty;
         const override = extrasOverrides[key];
-        eqList.push({ name: equipment?.name ?? "", notes: null });
+        // Basics rows have no notes field, matching Laravel — see the
+        // equipment_data payload comment below for the source reference.
+        eqList.push({ name: equipment?.name ?? "", notes: null, qty: editedQty });
         // Fall back to the equipment's own saved rig_notes, same as the Extras
         // loop below does for `ex.rig_notes` — a preselected Basics item's rig
         // note was never reaching here because only the override was checked.
         const rigNotes = override?.rig_notes ?? equipment?.rig_notes ?? "";
-        if (rigNotes) rnList.push({ name: equipment?.name ?? "", rig_notes: rigNotes });
+        if (rigNotes) rnList.push({ name: equipment?.name ?? "", rig_notes: rigNotes, qty: editedQty, notes: null });
       }
     }
 
@@ -822,9 +827,9 @@ const NewEnquiryPageInner = () => {
         total += Number(unit) * Number(qty);
         const override = extrasOverrides[String(id)];
         const notes = override?.notes ?? (ex as ExtraItem & { notes?: string }).notes ?? null;
-        eqList.push({ name: ex.name ?? "", notes: notes || null });
+        eqList.push({ name: ex.name ?? "", notes: notes || null, qty });
         const rigNotes = override?.rig_notes ?? ex.rig_notes ?? "";
-        if (rigNotes) rnList.push({ name: ex.name ?? "", rig_notes: rigNotes });
+        if (rigNotes) rnList.push({ name: ex.name ?? "", rig_notes: rigNotes, qty, notes: notes || null });
       }
     }
 
@@ -832,8 +837,8 @@ const NewEnquiryPageInner = () => {
     for (const ex of customExtras) {
       if (ex.selected === false) continue;
       total += Number(ex.sell_price) * Number(ex.quantity);
-      eqList.push({ name: ex.name, notes: ex.notes || null });
-      if (ex.rig_notes) rnList.push({ name: ex.name, rig_notes: ex.rig_notes });
+      eqList.push({ name: ex.name, notes: ex.notes || null, qty: Number(ex.quantity) || 1 });
+      if (ex.rig_notes) rnList.push({ name: ex.name, rig_notes: ex.rig_notes, qty: Number(ex.quantity) || 1, notes: ex.notes || null });
     }
 
     return { equipmentList: eqList, rigNotesList: rnList, totalPrice: total };
@@ -997,6 +1002,10 @@ const NewEnquiryPageInner = () => {
               // still reflects the full line value (unit × edited qty),
               // same semantics as Laravel's event_package.total_price.
               const billedQty = Math.max(0, qty - basicQty);
+              // No `notes` field here, matching Laravel exactly:
+              // NewEnquiryController's equipmentData (Basics) loop never sets
+              // event_package.notes, only rig_notes — notes is Extras-only in
+              // both the create and update paths.
               equipment_data.push({
                 equipment_id: Number(id),
                 sell_price: unit,
@@ -1189,7 +1198,7 @@ const NewEnquiryPageInner = () => {
                         <div key={i} className="flex items-start gap-2">
                           <SquareCheckBig size={14} className="text-primary flex-shrink-0 mt-0.5" />
                           <div>
-                            <p className="font-medium text-sm text-gray-900">{r.name}</p>
+                            <p className="font-medium text-sm text-gray-900">{r.qty}x {r.name}</p>
                             {r.notes && (
                               <p
                                 className="text-xs text-gray-500 italic mt-0.5 whitespace-pre-line"
@@ -1237,9 +1246,18 @@ const NewEnquiryPageInner = () => {
                           <div key={idx} className="space-y-0.5">
                             <div className="flex items-center gap-2">
                               <SquareCheckBig size={14} className="text-primary shrink-0" />
-                              <p className="font-semibold text-gray-900 leading-tight">{r.name}</p>
+                              <p className="font-semibold text-gray-900 leading-tight">{r.qty}x {r.name}</p>
                             </div>
                             <p className="pl-6 text-[11px] text-gray-500 leading-snug whitespace-pre-line" dangerouslySetInnerHTML={{ __html: r.rig_notes ?? "" }} />
+                            {/* Additional notes shown here too, not just in the
+                                summary panel above — a deliberate change so the
+                                rig list carries everything the crew needs. */}
+                            {r.notes && (
+                              <p
+                                className="pl-6 text-[11px] italic text-gray-500 leading-snug whitespace-pre-line"
+                                dangerouslySetInnerHTML={{ __html: `Notes: ${r.notes}` }}
+                              />
+                            )}
                           </div>
                         ))
                       ) : (
@@ -1870,6 +1888,10 @@ const NewEnquiryPageInner = () => {
                                       />
                                     </div>
                                     <div className="w-1/12 text-center">{billedPrice}</div>
+                                    {/* No notes control here, matching Laravel exactly:
+                                        NewEnquiryController's equipmentData (Basics) loop
+                                        never sets event_package.notes, only rig_notes —
+                                        that field is Extras-only in both create and update. */}
                                     <div className="w-2/12 text-center">{billedPrice}</div>
                                   </div>
                                 );
@@ -2340,7 +2362,7 @@ const NewEnquiryPageInner = () => {
                         <ul className="mb-5 text-xs">
                           {equipmentList.map((r, i) => (
                             <li key={i} className="border-b border-gray-300 py-1.5">
-                              <span className="font-medium">{r.name}</span>
+                              <span className="font-medium">{r.qty}x {r.name}</span>
                               {r.notes && (
                                 <>
                                   {" — "}
@@ -2364,11 +2386,17 @@ const NewEnquiryPageInner = () => {
                         <ul className="text-xs">
                           {rigNotesList.map((r, i) => (
                             <li key={i} className="border-b border-gray-300 py-1.5">
-                              <p className="font-medium">{r.name}</p>
+                              <p className="font-medium">{r.qty}x {r.name}</p>
                               <p
                                 className="whitespace-pre-line"
                                 dangerouslySetInnerHTML={{ __html: r.rig_notes ?? "" }}
                               />
+                              {r.notes && (
+                                <p
+                                  className="whitespace-pre-line italic"
+                                  dangerouslySetInnerHTML={{ __html: `Notes: ${r.notes}` }}
+                                />
+                              )}
                             </li>
                           ))}
                         </ul>
