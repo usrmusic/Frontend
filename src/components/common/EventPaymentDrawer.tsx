@@ -54,6 +54,31 @@ export default function EventPaymentDrawer({ eventId, open, onClose, canAddPayme
   const [rigOpen, setRigOpen] = useState(false);
   const [printRig, setPrintRig] = useState(false);
 
+  // "3 X Moving Head" / "Moving Head" — Laravel prefixes the booked quantity
+  // only when it is greater than one.
+  const packageLabel = (p: ConfirmEventPackage) => {
+    const name = p.equipment?.name || p.package_name || p.name || "Item";
+    const qty = Number(p.quantity) || 1;
+    return qty > 1 ? `${qty} X ${name}` : name;
+  };
+
+  // Mirrors Laravel's rig-notes rules (confirmed_events.js): only package
+  // types 1 and 2 appear; an event-specific rig_note is printed as-is because
+  // it already carries its own heading, while the equipment's default rig note
+  // is printed under the equipment name. Items with neither are skipped
+  // entirely rather than rendered as a bare title with nothing under it.
+  const rigListItems = ((selectedEventData?.data?.event_packages ?? []) as ConfirmEventPackage[])
+    .filter((p) => {
+      const t = Number(p.package_type_id);
+      return t === 1 || t === 2;
+    })
+    .map((pkg) => {
+      if (pkg.rig_notes) return { pkg, showTitle: false, notesHtml: pkg.rig_notes };
+      if (pkg.equipment?.rig_notes) return { pkg, showTitle: true, notesHtml: pkg.equipment.rig_notes };
+      return null;
+    })
+    .filter((x): x is { pkg: ConfirmEventPackage; showTitle: boolean; notesHtml: string } => x !== null);
+
   // window.print() reads the DOM synchronously, so it has to fire from an
   // effect that runs after `printRig` has actually applied — same mechanism
   // as the New Enquiry page's rig print.
@@ -170,7 +195,22 @@ export default function EventPaymentDrawer({ eventId, open, onClose, canAddPayme
                         {(selectedEventData?.data?.event_packages).map((p: ConfirmEventPackage) => (
                           <div key={p.id} className="flex items-start gap-2">
                             <SquareCheckBig size={14} className="text-primary flex-shrink-0 mt-0.5" />
-                            <p className="font-medium text-sm text-gray-900">{p.equipment?.name || p.package_name || p.name || "Item"}</p>
+                            <div className="min-w-0">
+                              {/* "N X Name" — Laravel prefixes the booked
+                                  quantity whenever it is more than one; this
+                                  listed the bare name, so there was no way to
+                                  see how many of an item were actually booked. */}
+                              <p className="font-medium text-sm text-gray-900">{packageLabel(p)}</p>
+                              {/* Additional notes on the booked item. Laravel
+                                  renders these as "Notes: ..." under the row;
+                                  they were dropped here entirely. */}
+                              {p.notes && (
+                                <p
+                                  className="text-[11px] text-gray-500 leading-snug whitespace-pre-line"
+                                  dangerouslySetInnerHTML={{ __html: `Notes: ${p.notes}` }}
+                                />
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -199,19 +239,26 @@ export default function EventPaymentDrawer({ eventId, open, onClose, canAddPayme
                   </div>
                   {rigOpen && (
                     <div className="mt-2 text-xs text-gray-700 space-y-3">
-                      {(selectedEventData?.data?.event_packages)?.length ? (
-                        (selectedEventData?.data?.event_packages).map((p: ConfirmEventPackage) => (
-                          <div key={p.id} className="space-y-0.5">
-                            <div className="flex items-center gap-2">
-                              <SquareCheckBig size={14} className="text-primary shrink-0" />
-                              <p className="font-semibold text-gray-900 leading-tight">{p.equipment?.name || p.package_name || p.name || "Item"}</p>
-                            </div>
-                            {p.rig_notes && (
-                              <p
-                                className="pl-6 text-[11px] text-gray-500 leading-snug whitespace-pre-line"
-                                dangerouslySetInnerHTML={{ __html: p.rig_notes }}
-                              />
+                      {rigListItems.length ? (
+                        rigListItems.map(({ pkg, showTitle, notesHtml }) => (
+                          <div key={pkg.id} className="space-y-0.5">
+                            {/* Laravel only prints a title when the note text
+                                does NOT already contain one: an event-specific
+                                rig_note is written with its own heading inside,
+                                so adding the equipment name above it produced
+                                the duplicated title the client reported. The
+                                equipment's default rig note has no heading, so
+                                that case still gets one. */}
+                            {showTitle && (
+                              <div className="flex items-center gap-2">
+                                <SquareCheckBig size={14} className="text-primary shrink-0" />
+                                <p className="font-semibold text-gray-900 leading-tight">{packageLabel(pkg)}</p>
+                              </div>
                             )}
+                            <p
+                              className={`${showTitle ? "pl-6" : ""} text-[11px] text-gray-500 leading-snug whitespace-pre-line`}
+                              dangerouslySetInnerHTML={{ __html: notesHtml }}
+                            />
                           </div>
                         ))
                       ) : (
@@ -368,7 +415,7 @@ export default function EventPaymentDrawer({ eventId, open, onClose, canAddPayme
               <ul className="mb-5 text-xs">
                 {selectedEventData.data.event_packages.map((p: ConfirmEventPackage) => (
                   <li key={p.id} className="border-b border-gray-300 py-1.5">
-                    <span className="font-medium">{p.equipment?.name || p.package_name || p.name || "Item"}</span>
+                    <span className="font-medium">{packageLabel(p)}</span>
                     {p.notes && (
                       <>
                         {" — "}
@@ -383,16 +430,17 @@ export default function EventPaymentDrawer({ eventId, open, onClose, canAddPayme
             )}
 
             <h2 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[#719984]">Rig Notes</h2>
-            {(selectedEventData?.data?.event_packages)?.some((p: ConfirmEventPackage) => p.rig_notes) ? (
+            {/* Same title/notes rules as the on-screen rig list above, so the
+                printout doesn't repeat the equipment name where the note text
+                already carries its own heading. */}
+            {rigListItems.length ? (
               <ul className="text-xs">
-                {selectedEventData.data.event_packages
-                  .filter((p: ConfirmEventPackage) => p.rig_notes)
-                  .map((p: ConfirmEventPackage) => (
-                    <li key={p.id} className="border-b border-gray-300 py-1.5">
-                      <p className="font-medium">{p.equipment?.name || p.package_name || p.name || "Item"}</p>
-                      <p className="whitespace-pre-line" dangerouslySetInnerHTML={{ __html: p.rig_notes ?? "" }} />
-                    </li>
-                  ))}
+                {rigListItems.map(({ pkg, showTitle, notesHtml }) => (
+                  <li key={pkg.id} className="border-b border-gray-300 py-1.5">
+                    {showTitle && <p className="font-medium">{packageLabel(pkg)}</p>}
+                    <p className="whitespace-pre-line" dangerouslySetInnerHTML={{ __html: notesHtml }} />
+                  </li>
+                ))}
               </ul>
             ) : (
               <p className="text-xs italic">No rig notes</p>

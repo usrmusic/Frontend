@@ -133,7 +133,10 @@ export type ConfirmEventPayment = {
 export type ConfirmEventPackage = {
   id: string | number;
   event_id?: string | number | null;
-  equipment?: { id?: string | number; name?: string } | null;
+  // `rig_notes` here is the equipment's own default rig note, used as the
+  // fallback when this event_package has no event-specific rig_notes of its
+  // own (see the rig-list rendering in EventPaymentDrawer).
+  equipment?: { id?: string | number; name?: string; rig_notes?: string | null } | null;
   package_name?: string;
   name?: string;
   sell_price?: string | number | null;

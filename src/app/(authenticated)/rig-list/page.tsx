@@ -34,6 +34,15 @@ const Page = () => {
     value: String(item.id),
   }));
 
+  // Preselect the first (soonest) event so the page opens with a real rig list
+  // instead of an empty shell that looks broken until you touch the dropdown.
+  // Only fires while nothing is selected, so it never fights a user's choice.
+  useEffect(() => {
+    if (eventId) return;
+    const first = eventsDropdown?.data?.[0];
+    if (first) setEventId(String(first.id));
+  }, [eventsDropdown, eventId]);
+
   const handleSave = () => {
     saveRigNotesMutation(
       { id: eventId, note },
