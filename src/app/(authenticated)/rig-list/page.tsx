@@ -205,10 +205,16 @@ const Page = () => {
         <Card variant="white" className="rounded-2xl shadow-sm overflow-hidden p-0 flex flex-col">
             {/* Event info block — shown at top when event is loaded */}
             {event && (
-              <div className="px-5 pt-5 shrink-0">
-                <div className="rounded-xl bg-secondary-200/50 border border-secondary-200 px-4 py-3 grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+              <div className="px-5 pt-5 shrink-0 flex">
+                {/* Compact single-column "bubble" pinned to the top-left rather
+                    than a full-width two-column grid: the details are short
+                    labels, so stretching them across the card left large gaps
+                    and squeezed the notes area. `inline-block` width + `mr-auto`
+                    keep it only as wide as its content, freeing vertical space
+                    for the notes box below. */}
+                <div className="inline-block mr-auto max-w-full rounded-xl bg-secondary-200/50 border border-secondary-200 px-4 py-3 space-y-2 text-sm">
                   {event.venues?.venue && (
-                    <div className="col-span-2">
+                    <div>
                       <p className="text-xs text-gray-400 mb-0.5">Venue</p>
                       <p className="font-medium text-gray-900 text-sm">{event.venues.venue}</p>
                     </div>
@@ -250,7 +256,10 @@ const Page = () => {
               name="notes"
               id="notes"
               placeholder="Add Notes"
-              className="flex-1 w-full resize-none px-5 py-4 outline-none text-sm text-gray-700 placeholder:text-gray-400 min-h-[200px]"
+              // Taller floor than before (200px): the details block no longer
+              // spans the full width, so the reclaimed space goes to notes,
+              // which is what this panel is actually for.
+              className="flex-1 w-full resize-none px-5 py-4 outline-none text-sm text-gray-700 placeholder:text-gray-400 min-h-[320px]"
               style={{ backgroundColor: "#fff" }}
               value={note}
               onChange={(e) => setNote(e.target.value)}
