@@ -841,7 +841,28 @@ const NewEnquiryPageInner = () => {
       if (ex.rig_notes) rnList.push({ name: ex.name, rig_notes: ex.rig_notes, qty: Number(ex.quantity) || 1, notes: ex.notes || null });
     }
 
-    return { equipmentList: eqList, rigNotesList: rnList, totalPrice: total };
+    // Stored rig_notes very often open with the item's own name (sometimes as
+    // the entire value), which produced "1x Professional DJ/Host" as the
+    // title immediately followed by "Professional DJ/Host" as the first note
+    // line — the exact duplication already fixed on the standalone Rig List
+    // page and the Confirmed Events drawer, applied here too so all three
+    // agree.
+    const stripTag = (s: string) =>
+      s.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").trim().toLowerCase();
+    const dedupedRnList = rnList.map((r) => {
+      const normalizedName = stripTag(r.name);
+      const cleaned = (r.rig_notes ?? "")
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/\r\n|\r/g, "\n")
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .filter((l) => stripTag(l) !== normalizedName)
+        .join("\n");
+      return { ...r, rig_notes: cleaned };
+    });
+
+    return { equipmentList: eqList, rigNotesList: dedupedRnList, totalPrice: total };
   }, [
     packageData,
     selectedPackageEquipments,

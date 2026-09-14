@@ -49,7 +49,6 @@ interface OpenEnquiriesListProps {
   count?: number;
   isLoading?: boolean;
   scope?: "admin" | "team" | "personal";
-  upcomingIds?: number[];
 }
 
 export default function OpenEnquiriesList({
@@ -57,7 +56,6 @@ export default function OpenEnquiriesList({
   count,
   isLoading,
   scope = 'team',
-  upcomingIds = [],
 }: OpenEnquiriesListProps) {
   const router = useRouter();
 
@@ -74,16 +72,16 @@ export default function OpenEnquiriesList({
     }
   };
 
-  // If team scope, exclude events that appear in upcomingIds
-  const filteredEnquiries = (enquiries || []).filter((e) => {
-    if (scope === 'team' && Array.isArray(upcomingIds) && upcomingIds.length) {
-      const id = typeof e.id === 'number' ? e.id : Number(e.id);
-      if (id && upcomingIds.includes(id)) return false;
-    }
-    return true;
-  });
+  // Previously subtracted any enquiry id that also appeared in the Event
+  // Overview widget's "upcoming events" list. That list intentionally spans
+  // every status (Laravel-parity permission-based filter in
+  // dashboard.controller.js), so an open enquiry with a future event date —
+  // the common case — was always present in both, and always got zeroed out
+  // here as a result. The two widgets serve different purposes and were never
+  // meant to be deduplicated against each other.
+  const filteredEnquiries = enquiries || [];
 
-  const visibleCount = filteredEnquiries.length;
+  const visibleCount = count ?? filteredEnquiries.length;
 
   return (
     <Card
