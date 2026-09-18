@@ -105,6 +105,7 @@ const useColumns = (
           {textInput("company_name")}
         </div>
       ),
+      render: (v) => <div className="pl-1">{v}</div>,
     },
     {
       key: "client_name",
@@ -116,6 +117,7 @@ const useColumns = (
           {textInput("search", "Search client…")}
         </div>
       ),
+      render: (v) => <div className="pl-1">{v}</div>,
     },
     {
       key: "event_date",
@@ -127,7 +129,7 @@ const useColumns = (
           {textInput("event_date", "DD/MM/YYYY")}
         </div>
       ),
-      render: (date) => <>{date ? dayjs(date).format("DD/MM/YYYY") : "—"}</>,
+      render: (date) => <div className="pl-1">{date ? dayjs(date).format("DD/MM/YYYY") : "—"}</div>,
     },
     {
       key: "event_status",
@@ -159,9 +161,11 @@ const useColumns = (
         };
         const classes = map[value] || "bg-gray-100 text-gray-700";
         return (
-          <span className={`${classes} px-3 py-1 rounded-full text-xs font-semibold inline-block`}>
-            {value}
-          </span>
+          <div className="pl-1">
+            <span className={`${classes} px-3 py-1 rounded-full text-xs font-semibold inline-block`}>
+              {value}
+            </span>
+          </div>
         );
       },
     },
@@ -175,6 +179,7 @@ const useColumns = (
           {textInput("dj_name")}
         </div>
       ),
+      render: (v) => <div className="pl-1">{v}</div>,
     },
     {
       key: "venue_name",
@@ -186,6 +191,7 @@ const useColumns = (
           {textInput("venue_name")}
         </div>
       ),
+      render: (v) => <div className="pl-1">{v}</div>,
     },
     {
       key: "total_price",
@@ -197,7 +203,7 @@ const useColumns = (
           {textInput("total_price", "£ amount")}
         </div>
       ),
-      render: (v: number) => `£${Number(v || 0).toFixed(2)}`,
+      render: (v: number) => <div className="pl-1">£{Number(v || 0).toFixed(2)}</div>,
     },
     {
       key: "total_cost",
@@ -209,7 +215,7 @@ const useColumns = (
           {textInput("cost", "£ amount")}
         </div>
       ),
-      render: (v: number) => `£${Number(v || 0).toFixed(2)}`,
+      render: (v: number) => <div className="pl-1">£{Number(v || 0).toFixed(2)}</div>,
     },
     {
       key: "extra_cost",
@@ -229,16 +235,16 @@ const useColumns = (
         // edit rather than risk that, and read-only display instead.
         if (Number(row.event_status_id) === 4) {
           return (
-            <span
-              className="cursor-not-allowed"
+            <div
+              className="pl-1 cursor-not-allowed"
               onClick={() => toast.warning("This event has been cancelled")}
             >
               £{Number(v || 0).toFixed(2)}
-            </span>
+            </div>
           );
         }
         if (!Number.isFinite(row.event_id)) {
-          return `£${Number(v || 0).toFixed(2)}`;
+          return <div className="pl-1">£{Number(v || 0).toFixed(2)}</div>;
         }
         const draft = draftExtraCost[row.event_id];
         return (
@@ -276,7 +282,7 @@ const useColumns = (
           {textInput("profit", "£ amount")}
         </div>
       ),
-      render: (v: number) => `£${Number(v || 0).toFixed(2)}`,
+      render: (v: number) => <div className="pl-1">£{Number(v || 0).toFixed(2)}</div>,
     },
     {
       key: "payment_received",
@@ -293,7 +299,7 @@ const useColumns = (
           />
         </div>
       ),
-      render: (v: number) => `£${Number(v || 0).toFixed(2)}`,
+      render: (v: number) => <div className="pl-1">£{Number(v || 0).toFixed(2)}</div>,
     },
     {
       key: "payment_remaining",
@@ -310,7 +316,7 @@ const useColumns = (
           />
         </div>
       ),
-      render: (v: number) => `£${Number(v || 0).toFixed(2)}`,
+      render: (v: number) => <div className="pl-1">£{Number(v || 0).toFixed(2)}</div>,
     },
   ];
 

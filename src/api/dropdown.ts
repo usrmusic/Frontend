@@ -72,11 +72,13 @@ export const useCompanyDropdown = () => {
     },
   });
 };
-export const useRigListEventsDropdown = () => {
+export const useRigListEventsDropdown = (showAll: boolean = false) => {
   return useQuery({
-    queryKey: ["events-dropdown"],
+    queryKey: ["events-dropdown", showAll],
     queryFn: async () => {
-      const response = await AxiosInstance.get("/rig-list/drop-down");
+      const response = await AxiosInstance.get("/rig-list/drop-down", {
+        params: showAll ? { show_all: true } : undefined,
+      });
       return response.data;
     },
   });

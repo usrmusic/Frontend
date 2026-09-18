@@ -857,9 +857,11 @@ export const useDeleteSupplier = () => {
   return useMutation({
     mutationFn: async (payload: { ids: Key[]; force: boolean }) => {
       try {
+        // Backend supplier delete-many expects ids in the URL params (route: POST /supplier/delete-many/:ids)
+        const ids = Array.isArray(payload.ids) ? payload.ids.map(String).join(",") : String(payload.ids);
         const response = await AxiosInstance.post(
-          "/supplier/delete-many",
-          payload,
+          `/supplier/delete-many/${ids}`,
+          { force: !!payload.force },
         );
         return response.data;
       } catch (error: unknown) {
@@ -871,7 +873,8 @@ export const useDeleteSupplier = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["venues"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["suppliers"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["supplier-dropdown"], refetchType: "all" });
     },
     onError: (error) => {
       console.error("delete failed:", error.message);

@@ -58,7 +58,7 @@ const initialParams: {
   sortOrder?: "asc" | "desc";
 } = {
   page: 1,
-  limit: 10,
+  limit: 100,
   search: "",
 };
 
@@ -211,7 +211,7 @@ const OpenEnquiryPage = () => {
   const [clickedBtn, setClickedBtn] = useState<
     "brochure" | "quote" | "invoice"
   >("invoice");
-  const [activeTab, setActiveTab] = useState<"details" | "notes">("details");
+  const [activeTab, setActiveTab] = useState<"details" | "notes">("notes");
   // Open Enquiry / Closed (Cancelled) list toggle — see getStatusCounts in
   // enquiry.controller.js for why "Closed" means Cancelled specifically.
   const [enquiryView, setEnquiryView] = useState<"open" | "closed">("open");
@@ -1040,6 +1040,7 @@ const OpenEnquiryPage = () => {
                       if (!id) return;
                       setSelectedRowKeys([String(id)]);
                       setSelectedRowData([record]);
+                      setActiveTab("notes");
                     } catch {}
                   },
                   onDoubleClick: () => {
@@ -1152,6 +1153,7 @@ const OpenEnquiryPage = () => {
                         onChange={(value) =>
                           formik.setFieldValue("company_name", value)
                         }
+                        popupMatchSelectWidth={280}
                       />
                       <DatePicker
                         placeholder="Date"

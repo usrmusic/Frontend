@@ -415,6 +415,23 @@ const NewEnquiryPageInner = () => {
     return base;
   }, [djDropdownData, enquiryItem, isAdmin, userId]);
 
+  // Same problem, same fix, for the client Name select: Staff/DJ accounts get
+  // a client dropdown scoped to only clients they've dealt with
+  // (client.controller.js:listclientdropdown — created_by or dj_id match), so
+  // a client who just submitted a brand-new enquiry themselves has no entry
+  // in that scoped list yet. clientId is correctly populated, but the Select
+  // has no option to resolve a label from and falls back to showing the raw
+  // id. Splice in a synthetic entry from the enquiry's own client relation
+  // (now included by GET /enquiry/:id) so there's always a match.
+  const clientOptionsData = useMemo(() => {
+    const base = clientDropdownName ?? [];
+    const editedClient = enquiryItem?.users_events_user_idTousers;
+    if (editedClient?.id != null && !base.some((c) => c.id === editedClient.id)) {
+      return [...base, editedClient];
+    }
+    return base;
+  }, [clientDropdownName, enquiryItem]);
+
   // Keep lastEnquiryIdRef in sync with editId
   useEffect(() => {
     if (editId) lastEnquiryIdRef.current = editId;
@@ -1085,7 +1102,7 @@ const NewEnquiryPageInner = () => {
           const clientName = showNameInput
             ? values.name
             : clientDetails?.name ||
-              clientDropdownName?.find((c) => String(c.id) === String(clientId))?.name ||
+              clientOptionsData?.find((c) => String(c.id) === String(clientId))?.name ||
               values.name;
 
           const payload = {
@@ -1202,7 +1219,7 @@ const NewEnquiryPageInner = () => {
           // sheet has to map an id back to its label — otherwise a selected
           // client prints as a bare row id.
           const printClientName =
-            clientDropdownName?.find((c) => String(c.id) === String(values.name))?.name ??
+            clientOptionsData?.find((c) => String(c.id) === String(values.name))?.name ??
             values.name;
           const printVenueName =
             venueDropdownName?.find((v) => String(v.id) === String(values.venue))?.venue ??
@@ -1219,7 +1236,7 @@ const NewEnquiryPageInner = () => {
                         <div key={i} className="flex items-start gap-2">
                           <SquareCheckBig size={14} className="text-primary flex-shrink-0 mt-0.5" />
                           <div>
-                            <p className="font-medium text-sm text-gray-900">{r.qty}x {r.name}</p>
+                            <p className="font-medium text-sm text-gray-900">{r.qty > 1 ? `${r.qty}x ` : ""}{r.name}</p>
                             {r.notes && (
                               <p
                                 className="text-xs text-gray-500 italic mt-0.5 whitespace-pre-line"
@@ -1267,7 +1284,7 @@ const NewEnquiryPageInner = () => {
                           <div key={idx} className="space-y-0.5">
                             <div className="flex items-center gap-2">
                               <SquareCheckBig size={14} className="text-primary shrink-0" />
-                              <p className="font-semibold text-gray-900 leading-tight">{r.qty}x {r.name}</p>
+                              <p className="font-semibold text-gray-900 leading-tight">{r.qty > 1 ? `${r.qty}x ` : ""}{r.name}</p>
                             </div>
                             <p className="pl-6 text-[11px] text-gray-500 leading-snug whitespace-pre-line" dangerouslySetInnerHTML={{ __html: r.rig_notes ?? "" }} />
                             {/* Additional notes shown here too, not just in the
@@ -1413,7 +1430,7 @@ const NewEnquiryPageInner = () => {
                                         setClientId(selectedId ? Number(selectedId) : null);
                                         setFieldValue("name", String(selectedId));
                                       }}
-                                      options={clientDropdownName?.map((opt) => ({
+                                      options={clientOptionsData?.map((opt) => ({
                                         label: opt.name,
                                         value: String(opt.id),
                                       }))}
@@ -2383,7 +2400,7 @@ const NewEnquiryPageInner = () => {
                         <ul className="mb-5 text-xs">
                           {equipmentList.map((r, i) => (
                             <li key={i} className="border-b border-gray-300 py-1.5">
-                              <span className="font-medium">{r.qty}x {r.name}</span>
+                              <span className="font-medium">{r.qty > 1 ? `${r.qty}x ` : ""}{r.name}</span>
                               {r.notes && (
                                 <>
                                   {" — "}
@@ -2407,7 +2424,7 @@ const NewEnquiryPageInner = () => {
                         <ul className="text-xs">
                           {rigNotesList.map((r, i) => (
                             <li key={i} className="border-b border-gray-300 py-1.5">
-                              <p className="font-medium">{r.qty}x {r.name}</p>
+                              <p className="font-medium">{r.qty > 1 ? `${r.qty}x ` : ""}{r.name}</p>
                               <p
                                 className="whitespace-pre-line"
                                 dangerouslySetInnerHTML={{ __html: r.rig_notes ?? "" }}

@@ -485,14 +485,6 @@ const ConfirmedEventsPage = () => {
                     Re-confirm Event
                   </Button>
                 )}
-                {!isClient && !isSelectedEventCancelled && (
-                  <Button
-                    onClick={handleCancelEvent}
-                    loading={isCancelingEvent}
-                  >
-                    Cancel Event
-                  </Button>
-                )}
                 {!isClient && (
                   <Button
                     onClick={async () => {
@@ -577,11 +569,12 @@ const ConfirmedEventsPage = () => {
                     Send Invoice
                   </Button>
                 )}
-                {/* Additional top-level confirmed send invoice + refund buttons —
-                    Admin only (see useRole import above) */}
-                {isAdmin && (
-                  <Button onClick={() => setShowRefundModal(true)}>
-                    Refund
+                {!isClient && !isSelectedEventCancelled && (
+                  <Button
+                    onClick={handleCancelEvent}
+                    loading={isCancelingEvent}
+                  >
+                    Cancel Event
                   </Button>
                 )}
                 {/* Drawer trigger — everyone, including Client (Laravel's
