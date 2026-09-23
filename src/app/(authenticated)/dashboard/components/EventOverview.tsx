@@ -130,6 +130,10 @@ export default function EventOverview({
             <div className="max-h-[220px] xl:max-h-[260px] overflow-auto no-scrollbar">
               <Table<UpcomingEventRow>
                 size="small"
+                // Not routed through components/DataTable, so it needs its own
+                // horizontal scroll — without it the date/venue/DJ columns
+                // squeeze to a few characters each on a phone.
+                scroll={{ x: "max-content" }}
                 pagination={false}
                 dataSource={events}
                 rowKey={(r) => r.id}

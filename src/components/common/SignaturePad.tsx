@@ -169,6 +169,20 @@ const SignaturePad = forwardRef<SignaturePadHandle, Props>(function SignaturePad
         border: "1px solid #d4d4d4",
         borderRadius: 6,
         cursor: disabled ? "not-allowed" : "crosshair",
+        // A <canvas> takes its CSS size from its width/height ATTRIBUTES unless
+        // told otherwise, so callers passing width={600} (public signing page)
+        // or width={360} (Contracts.tsx) were painting a box wider than a
+        // phone and overflowing the page. These two lines decouple the CSS box
+        // from the bitmap: the bitmap stays at the requested resolution — which
+        // is what toDataURL() exports, so signature quality is unchanged — while
+        // the element shrinks to fit its container.
+        //
+        // Safe precisely because getPoint() already converts client coords via
+        // `canvas.width / rect.width`, so a CSS-scaled canvas maps strokes
+        // correctly. Without that scaling factor this change would put the ink
+        // somewhere other than the fingertip.
+        maxWidth: "100%",
+        height: "auto",
         ...style,
       }}
       onPointerDown={handlePointerDown}

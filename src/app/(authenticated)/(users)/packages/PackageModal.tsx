@@ -179,7 +179,7 @@ const PackageModal = ({ modalOpen, handleCancel, initialValues }: PackageProps) 
           />
 
           {/* Cost / Sell price */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Cost Price"
               type="number"

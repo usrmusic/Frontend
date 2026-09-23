@@ -136,7 +136,7 @@ const Page = () => {
 
   return (
     <div className="mt-4 space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <Link href="/dashboard" className="">
             <BackButton />
@@ -269,10 +269,39 @@ const Page = () => {
               setDateTo(Array.isArray(dateString) ? dateString[0] || "" : dateString)
             }
           />
-          <div className="flex gap-2 shrink-0">
-            <Button className="h-10!" onClick={applyFilters}>Apply Filters</Button>
+          {/* `shrink-0` with no wrap of its own meant this 3-button group
+              (Apply Filters, Reset Filters, Columns — ~406px combined) had to
+              render at full width no matter how little room was left once
+              the outer `flex-wrap` pushed it onto its own line. On a phone
+              that's narrower than the group itself, so it overflowed the
+              card and the ancestor's `overflow-hidden` sliced "Columns" down
+              to "Col…" instead of showing it. `flex-wrap` (no `shrink-0`)
+              lets it break onto a second internal row instead of overflowing
+              when it doesn't fit.
+
+              `flex-1` (added to match Suppliers Report's identical filter
+              bar): every sibling in this row — Search, Select, both
+              DatePickers — is `flex-1` and stretches to divide up the full
+              row width between them. This group was the one exception, sized
+              only to its own content, so on a row by itself it sat flush
+              left at its natural ~406px with a slab of plain green space
+              filling the rest of the line — the same "not properly designed"
+              gap Suppliers Report had, just not yet fixed here. `min-w`
+              keeps the three buttons from being squeezed uncomfortably
+              narrow before `flex-wrap` (above) lets them break onto a second
+              internal line if the row is ever narrower than that. */}
+          {/* The 3 buttons ALSO need `flex-1` individually, not just their
+              wrapper — the wrapper has no background of its own (it's a bare
+              layout div sitting on the green card), so stretching only IT
+              left the extra space invisible: same green as the page behind
+              it, indistinguishable from not stretching at all. Suppliers
+              Report's Apply/Reset pair already had `flex-1` on each button
+              from earlier work, which is why that fix was visible there and
+              this one wasn't. */}
+          <div className="flex-1 flex flex-wrap gap-2 min-w-[400px]">
+            <Button className="flex-1 h-10!" onClick={applyFilters}>Apply Filters</Button>
             <Button
-              className="h-10!"
+              className="flex-1 h-10!"
               icon={<RefreshCw size={14} />}
               onClick={resetFilters}
             >
@@ -306,7 +335,7 @@ const Page = () => {
                 </div>
               )}
             >
-              <Button className="h-10!" icon={<Columns3 size={14} />}>
+              <Button className="flex-1 h-10!" icon={<Columns3 size={14} />}>
                 Columns
               </Button>
             </Dropdown>

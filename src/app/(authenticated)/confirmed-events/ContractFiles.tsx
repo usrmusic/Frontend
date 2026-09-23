@@ -119,6 +119,9 @@ export default function ContractFiles({ eventId }: Props) {
       </div>
       <Table<ContractRow>
         size="small"
+        // See EventOverview: bypasses components/DataTable, so it declares its
+        // own horizontal scroll.
+        scroll={{ x: "max-content" }}
         columns={columns}
         dataSource={data || []}
         loading={isLoading}

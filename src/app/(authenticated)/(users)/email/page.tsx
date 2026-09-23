@@ -74,8 +74,17 @@ const EmailPage = () => {
     <div className="space-y-4 mt-4">
       {/* Filters Card */}
       <Card variant="green">
-        <div className="flex items-center justify-between">
-          <div className="flex w-[300px] items-center gap-2 rounded-lg bg-white px-4 h-10">
+        {/* Search always gets its own complete row and the action buttons
+            always get the row below — never sharing one row, at any width. This
+            replaces `sm:flex-row`, which put search and buttons side by side
+            from `sm` up: with a search box capped at `sm:w-[300px]` and a
+            2-4 button group beside it, that row could exceed available width
+            at in-between sizes (a 768px iPad, for example), forcing an uneven
+            wrap of whichever few buttons didn't fit rather than a clean two-row
+            layout. Unconditional `flex-col` removes the possibility entirely —
+            each row is exactly one group, full width, every time. */}
+        <div className="flex flex-col gap-3">
+          <div className="flex w-full items-center gap-2 rounded-lg bg-white px-4 h-10">
             <MagnifyingGlass w={18} h={18} />
             <input
               type="text"
@@ -85,13 +94,17 @@ const EmailPage = () => {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <div className="flex gap-2">
+          {/* A single button on its own row otherwise sat at natural size
+              flush left with a large gap of empty green trailing it — same
+              lone-item fix applied everywhere else this session. */}
+          <div className="flex flex-wrap gap-2 w-full">
             <CSVLink
               data={csvData ?? []}
               filename="emails.csv"
               headers={csvHeaders}
+              className="w-full"
             >
-              <Button>Export Data</Button>
+              <Button className="w-full">Export Data</Button>
             </CSVLink>
           </div>
         </div>

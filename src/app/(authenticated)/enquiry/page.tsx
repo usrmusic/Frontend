@@ -162,7 +162,30 @@ const NewEnquiryPageInner = () => {
   const [showVenueInput, setShowVenueInput] = useState(false);
   // Summary sidebar defaults to open once a DJ is picked (item 8); the 3-dot
   // button lets the user hide/show it without losing the selection.
+  //
+  // This state governs the DESKTOP inline panel only. Below `xl` the summary is
+  // an off-canvas drawer instead, and that needs its own state for one reason:
+  // this one defaults to `true`, which is right for a docked side panel but
+  // would mean a phone opens the page with a full-screen overlay already
+  // covering the form. A drawer must always start shut.
   const [showSummaryDrawer, setShowSummaryDrawer] = useState(true);
+  const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
+
+  // Lock the page behind the drawer so a scroll gesture over the backdrop moves
+  // the drawer's own content, not the form underneath. Mirrors Sidebar.tsx.
+  useEffect(() => {
+    if (!mobileSummaryOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileSummaryOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [mobileSummaryOpen]);
   const [clientId, setClientId] = useState<null | number>(null);
   const [packageParams, setPackageParams] = useState<PackageParams>({
     event_date: "",
@@ -414,6 +437,23 @@ const NewEnquiryPageInner = () => {
     }
     return base;
   }, [djDropdownData, enquiryItem, isAdmin, userId]);
+
+  // Same problem, same fix, for the client Name select: Staff/DJ accounts get
+  // a client dropdown scoped to only clients they've dealt with
+  // (client.controller.js:listclientdropdown — created_by or dj_id match), so
+  // a client who just submitted a brand-new enquiry themselves has no entry
+  // in that scoped list yet. clientId is correctly populated, but the Select
+  // has no option to resolve a label from and falls back to showing the raw
+  // id. Splice in a synthetic entry from the enquiry's own client relation
+  // (now included by GET /enquiry/:id) so there's always a match.
+  const clientOptionsData = useMemo(() => {
+    const base = clientDropdownName ?? [];
+    const editedClient = enquiryItem?.users_events_user_idTousers;
+    if (editedClient?.id != null && !base.some((c) => c.id === editedClient.id)) {
+      return [...base, editedClient];
+    }
+    return base;
+  }, [clientDropdownName, enquiryItem]);
 
   // Keep lastEnquiryIdRef in sync with editId
   useEffect(() => {
@@ -1085,7 +1125,7 @@ const NewEnquiryPageInner = () => {
           const clientName = showNameInput
             ? values.name
             : clientDetails?.name ||
-              clientDropdownName?.find((c) => String(c.id) === String(clientId))?.name ||
+              clientOptionsData?.find((c) => String(c.id) === String(clientId))?.name ||
               values.name;
 
           const payload = {
@@ -1202,7 +1242,7 @@ const NewEnquiryPageInner = () => {
           // sheet has to map an id back to its label — otherwise a selected
           // client prints as a bare row id.
           const printClientName =
-            clientDropdownName?.find((c) => String(c.id) === String(values.name))?.name ??
+            clientOptionsData?.find((c) => String(c.id) === String(values.name))?.name ??
             values.name;
           const printVenueName =
             venueDropdownName?.find((v) => String(v.id) === String(values.venue))?.venue ??
@@ -1219,7 +1259,7 @@ const NewEnquiryPageInner = () => {
                         <div key={i} className="flex items-start gap-2">
                           <SquareCheckBig size={14} className="text-primary flex-shrink-0 mt-0.5" />
                           <div>
-                            <p className="font-medium text-sm text-gray-900">{r.qty}x {r.name}</p>
+                            <p className="font-medium text-sm text-gray-900">{r.qty > 1 ? `${r.qty}x ` : ""}{r.name}</p>
                             {r.notes && (
                               <p
                                 className="text-xs text-gray-500 italic mt-0.5 whitespace-pre-line"
@@ -1267,7 +1307,7 @@ const NewEnquiryPageInner = () => {
                           <div key={idx} className="space-y-0.5">
                             <div className="flex items-center gap-2">
                               <SquareCheckBig size={14} className="text-primary shrink-0" />
-                              <p className="font-semibold text-gray-900 leading-tight">{r.qty}x {r.name}</p>
+                              <p className="font-semibold text-gray-900 leading-tight">{r.qty > 1 ? `${r.qty}x ` : ""}{r.name}</p>
                             </div>
                             <p className="pl-6 text-[11px] text-gray-500 leading-snug whitespace-pre-line" dangerouslySetInnerHTML={{ __html: r.rig_notes ?? "" }} />
                             {/* Additional notes shown here too, not just in the
@@ -1294,15 +1334,30 @@ const NewEnquiryPageInner = () => {
           return (
             <Form>
               <div className="mt-8 space-y-6">
-                {/* Header row */}
-                <div className="flex flex-col gap-3 justify-between lg:flex-row lg:items-center">
+                {/* Header row. Was gated on `lg` (1024px), which is the
+                    sidebar's rail/drawer pivot — a sensible threshold for that,
+                    but unrelated to how wide THIS row actually is. Title + four
+                    buttons only needs ~600px, so anywhere from ~700px up (a
+                    971px iPad Mini portrait included) it was stacking into two
+                    lines with the button row visibly not using half the
+                    available width — correct-but-cramped only below `md`
+                    (768px), comfortably one row above it. */}
+                <div className="flex flex-col gap-3 justify-between md:flex-row md:items-center">
                   <div className="flex items-center gap-3">
                     <Link href="/dashboard">
                       <BackButton />
                     </Link>
                     <h2 className="themeH1">{editId ? "Edit Enquiry" : "New Enquiry"}</h2>
                   </div>
-                  <div className="flex flex-wrap gap-2 lg:justify-end">
+                  {/* `flex-wrap` alone left an orphaned ⋮ button stranded on its
+                      own second line at phone widths — Save/Print/Send Quote
+                      fill row one and there's no room left, so the fourth
+                      button wraps completely alone rather than the row
+                      breaking evenly. A 2-column grid below `sm` places all
+                      four buttons as two even rows (Save+Print, Send
+                      Quote+⋮) instead; from `sm` up it's the original
+                      single-row wrap. */}
+                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap md:justify-end">
                     <Button
                       type="default"
                       icon={<Save size={14} />}
@@ -1333,12 +1388,21 @@ const NewEnquiryPageInner = () => {
                     >
                       Send Quote
                     </Button>
-                    {/* Toggles the inline summary sidebar (only has anything to
-                        show once a DJ is picked). */}
+                    {/* Opens the summary (only has anything to show once a DJ
+                        is picked). At `xl` it toggles the docked side panel;
+                        below that the same button opens the off-canvas drawer.
+                        The viewport test lives in the handler rather than in
+                        two separate buttons so there is one control with one
+                        aria-label, and it is safe in a click handler because
+                        that only ever runs on the client. */}
                     <Button
                       type="default"
                       htmlType="button"
-                      onClick={() => setShowSummaryDrawer((v) => !v)}
+                      onClick={() => {
+                        const isDesktop = window.matchMedia("(min-width: 1280px)").matches;
+                        if (isDesktop) setShowSummaryDrawer((v) => !v);
+                        else setMobileSummaryOpen((v) => !v);
+                      }}
                       aria-label={showSummaryDrawer ? "Hide summary" : "Show summary"}
                     >
                       <MoreVertical size={14} />
@@ -1368,7 +1432,7 @@ const NewEnquiryPageInner = () => {
                       <div
                         className="transition-all duration-300 ease-in-out overflow-hidden"
                         style={{
-                          maxHeight: cardsOpen.enquiryDetails ? 2000 : 0,
+                          maxHeight: cardsOpen.enquiryDetails ? 6000 : 0,
                           opacity: cardsOpen.enquiryDetails ? 1 : 0,
                         }}
                         aria-hidden={!cardsOpen.enquiryDetails}
@@ -1378,12 +1442,42 @@ const NewEnquiryPageInner = () => {
                             row ≈ 480px too), so the three cards read as equal height.
                             This div's own py-5 padding counts toward the 480 budget,
                             unlike theirs which sits outside the capped list — hence the
-                            slightly different number for the same visual result. */}
-                        <div className="max-h-[480px] overflow-y-auto no-scrollbar space-y-6 px-6 py-5">
+                            slightly different number for the same visual result.
+
+                            The cap is `lg:`-only. That "three equal-height cards" goal
+                            only means anything on a wide screen where they sit as peers;
+                            below `lg` the fields stack single-column and the same cap
+                            turns into a 480px scroll window nested inside an already-
+                            scrolling page. That nesting is the root cause of the dropdown
+                            bug: an open Select is positioned against this scroller, so
+                            scrolling it moves the field while the popup — whose
+                            containing block resolves to an ancestor OUTSIDE this div, so
+                            `overflow-y-auto` never clips it — floats free over the page
+                            header. No inner scroller on mobile, no escape: the card just
+                            grows to its natural height and the page scrolls normally. */}
+                        <div className="lg:max-h-[480px] lg:overflow-y-auto no-scrollbar space-y-6 px-6 py-5">
                           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            {/* Left sub-column */}
-                            <div className="space-y-4 pr-4 border-r border-[#CCCCCC]">
-                              <div className="flex gap-3 items-end">
+                            {/* Left sub-column. `pr-4 border-r` is the divider
+                                between this and the right sub-column — but it
+                                had no `md:` prefix, so once the grid above drops
+                                to one column (below `md`) there's no right
+                                column beside it any more and the vertical line +
+                                16px of dead padding were left stranded, cutting
+                                across the middle of the stacked Name/Address/
+                                Email fields. Scoped to `md:` so it only appears
+                                once there's actually a second column to divide
+                                from. */}
+                            <div className="space-y-4 md:pr-4 md:border-r md:border-[#CCCCCC]">
+                              {/* Always one row, at every width — the select
+                                  (`flex-1 min-w-0`) is what shrinks to make
+                                  room, and the button is `shrink-0` at its own
+                                  natural content width (icon + "Add new") so
+                                  it never gets squeezed. That's narrower than
+                                  the old fixed `w-[150px]`, which is exactly
+                                  what gives the select the room it needs to
+                                  stay on the same row on a phone instead of
+                                  being forced down to an unreadable width. */}
+                              <div className="flex gap-2 items-end">
                                 {showNameInput ? (
                                   <Field name="name">
                                     {(fieldProps: FieldProps) => (
@@ -1398,10 +1492,25 @@ const NewEnquiryPageInner = () => {
                                     )}
                                   </Field>
                                 ) : (
-                                  <div className="flex-1">
+                                  <div className="flex-1 min-w-0">
                                     <label className="mb-1 block text-xs">Name</label>
                                     <AntSelect
                                       className="h-10 w-full"
+                                      // Every dropdown/date-picker in this card scrolls inside its
+                                      // own `max-h-[480px] overflow-y-auto` region (see that div,
+                                      // above), not the window. AntD's default `getPopupContainer`
+                                      // portals the popup straight to <body>, positioned once at
+                                      // open time — it never re-anchors to a LOCAL scroll
+                                      // container the way it does to window scroll/resize, so
+                                      // scrolling this card's own content left the field behind
+                                      // while the popup stayed exactly where it first opened
+                                      // (reading as "stuck floating near the top of the screen").
+                                      // Rendering it inside its own immediate parent instead makes
+                                      // it a normal in-flow child of the SAME scrolling container,
+                                      // so it moves and clips with the field the way it would
+                                      // if this were a bare unscrolled page. Applied to all 5
+                                      // Select/DatePicker fields in this card, not just this one.
+                                      getPopupContainer={(trigger) => trigger.parentElement}
                                       placeholder="Select Name"
                                       showSearch
                                       allowClear
@@ -1413,7 +1522,7 @@ const NewEnquiryPageInner = () => {
                                         setClientId(selectedId ? Number(selectedId) : null);
                                         setFieldValue("name", String(selectedId));
                                       }}
-                                      options={clientDropdownName?.map((opt) => ({
+                                      options={clientOptionsData?.map((opt) => ({
                                         label: opt.name,
                                         value: String(opt.id),
                                       }))}
@@ -1422,7 +1531,17 @@ const NewEnquiryPageInner = () => {
                                 )}
                                 <Button
                                   type="primary"
-                                  className="w-[150px]! h-10! text-xs!"
+                                  // `shrink-0`: the row is always `flex` now
+                                  // (never `flex-col`), so the old `self-start`
+                                  // (a column-direction fix, meaningless once
+                                  // the parent is a row) is gone. No explicit
+                                  // width — the button sizes to its own
+                                  // content (icon + "Add new") at every width,
+                                  // and `shrink-0` stops it from being
+                                  // squeezed narrower than that; the select
+                                  // beside it (`flex-1 min-w-0`) is what
+                                  // absorbs the crunch on a narrow phone.
+                                  className="shrink-0 h-10! text-xs!"
                                   icon={<PlusIcon size={14} />}
                                   onClick={() => {
                                     setShowNameInput((v) => !v);
@@ -1517,6 +1636,7 @@ const NewEnquiryPageInner = () => {
                                           <label className="mb-1 block text-xs">Venue</label>
                                           <AntSelect
                                             className="h-10 w-full"
+                                            getPopupContainer={(trigger) => trigger.parentElement}
                                             placeholder="Select a venue"
                                             showSearch
                                             allowClear
@@ -1568,7 +1688,7 @@ const NewEnquiryPageInner = () => {
 
                             {/* Right sub-column */}
                             <div className="flex h-full flex-col gap-4">
-                              <div className="grid grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <Field name="dj">
                                   {(fieldProps: FieldProps) => {
                                     // One option per (DJ, package) combo — a DJ with several
@@ -1600,6 +1720,7 @@ const NewEnquiryPageInner = () => {
                                       <label className="mb-1 block text-xs">Select DJ</label>
                                       <AntSelect
                                         className="h-10 w-full"
+                                        getPopupContainer={(trigger) => trigger.parentElement}
                                         placeholder="Choose DJ"
                                         showSearch
                                         allowClear
@@ -1646,6 +1767,7 @@ const NewEnquiryPageInner = () => {
                                       <label className="mb-1 block text-xs">Event Type</label>
                                       <AntSelect
                                         className="h-10 w-full"
+                                        getPopupContainer={(trigger) => trigger.parentElement}
                                         placeholder="Select event type"
                                         allowClear
                                         disabled={isSubmitting}
@@ -1665,13 +1787,21 @@ const NewEnquiryPageInner = () => {
                                   )}
                                 </Field>
                               </div>
-                              <div className="grid grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <Field name="eventDate">
                                   {() => (
                                     <div className="space-y-1">
                                       <label className="mb-1 block text-xs">Event Date <span className="text-red-500">*</span></label>
                                       <DatePicker
                                         className="h-10 w-full"
+                                        // DatePicker's type is stricter than Select's here —
+                                        // it wants HTMLElement, not HTMLElement | null — even
+                                        // though parentElement is always present in practice
+                                        // for a mounted trigger. Non-null assertion, not a
+                                        // fallback: a genuinely missing parent would mean the
+                                        // trigger itself isn't in the DOM, which this callback
+                                        // can't be invoked for.
+                                        getPopupContainer={(trigger) => trigger.parentElement!}
                                         placeholder="DD/MM/YYYY"
                                         format="DD/MM/YYYY"
                                         disabled={isPackageLoading || isSubmitting}
@@ -1710,7 +1840,7 @@ const NewEnquiryPageInner = () => {
                                   )}
                                 </Field>
                               </div>
-                              <div className="grid grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <Field name="startTime">
                                   {(fieldProps: FieldProps) => (
                                     <div className="space-y-1">
@@ -1785,7 +1915,7 @@ const NewEnquiryPageInner = () => {
                       <div
                         className="transition-all duration-300 ease-in-out overflow-hidden"
                         style={{
-                          maxHeight: cardsOpen.startingPackage ? 2000 : 0,
+                          maxHeight: cardsOpen.startingPackage ? 6000 : 0,
                           paddingTop: cardsOpen.startingPackage ? 20 : 0,
                           paddingBottom: cardsOpen.startingPackage ? 20 : 0,
                           opacity: cardsOpen.startingPackage ? 1 : 0,
@@ -1794,6 +1924,26 @@ const NewEnquiryPageInner = () => {
                       >
                         <Spin spinning={isPackageLoading}>
                         <div className="px-6 text-sm text-gray-700">
+                          {/* Every column here is a `w-N/12` fraction of its row,
+                              which is exactly what made this unreadable on a
+                              phone: at a 375px screen the whole row (minus the
+                              card's own `px-6`) is ~280px, so 12ths of that put
+                              the item name at ~140px — wrapping three lines
+                              deep — and left the four number/notes columns at
+                              10-45px each, barely wider than their own input
+                              boxes.
+
+                              `min-w-[680px]` inside an `overflow-x-auto` wrapper
+                              is the same fix as every other wide table in this
+                              app (see components/DataTable.tsx): the fractional
+                              widths now resolve against a fixed 680px instead of
+                              the viewport, so the columns keep their original,
+                              legible proportions and a phone scrolls sideways to
+                              see the rest — same table, same design, nothing
+                              redrawn. Header and rows share one scroller so they
+                              can't drift out of alignment with each other. */}
+                          <div className="overflow-x-auto no-scrollbar">
+                          <div className="min-w-[680px]">
                           <div className="mb-2 flex items-center text-xs text-gray-500">
                             <span className="w-6/12">Basics</span>
                             <span className="w-2/12 text-center">Unit Price</span>
@@ -1803,7 +1953,12 @@ const NewEnquiryPageInner = () => {
                           </div>
                           {/* Same scroll cap as Enquiry Details and Extras, so the
                               three cards read as equal height. */}
-                          <div className="max-h-[420px] overflow-y-auto no-scrollbar space-y-2">
+                          {/* Same `lg:`-only cap as Enquiry Details above — a
+                              480/420px scroll window nested inside an already-
+                              scrolling page is a mobile-only problem, and the
+                              "equal-height cards" goal it serves only applies on a
+                              wide screen. */}
+                          <div className="lg:max-h-[420px] lg:overflow-y-auto no-scrollbar space-y-2">
                             {packageData?.data?.equipments?.package_user_equipments?.map(
                               (item: PackageUserEquipment, idx: number) => {
                                 const equipment = item.equipment ?? null;
@@ -1919,6 +2074,8 @@ const NewEnquiryPageInner = () => {
                               },
                             )}
                           </div>
+                          </div>
+                          </div>
                         </div>
                         </Spin>
                       </div>
@@ -1940,7 +2097,7 @@ const NewEnquiryPageInner = () => {
                       <div
                         className="transition-all duration-300 ease-in-out overflow-hidden no-scrollbar"
                         style={{
-                          maxHeight: cardsOpen.extras ? 2000 : 0,
+                          maxHeight: cardsOpen.extras ? 6000 : 0,
                           paddingTop: cardsOpen.extras ? 20 : 0,
                           paddingBottom: cardsOpen.extras ? 20 : 0,
                           opacity: cardsOpen.extras ? 1 : 0,
@@ -1949,6 +2106,10 @@ const NewEnquiryPageInner = () => {
                       >
                         <Spin spinning={isPackageLoading}>
                         <div className="px-6 text-sm text-gray-700">
+                          {/* Same fix as the Basics card above — see the comment
+                              there for why 680px. */}
+                          <div className="overflow-x-auto no-scrollbar">
+                          <div className="min-w-[680px]">
                           <div className="mb-2 flex items-center text-xs text-gray-500">
                             <span className="w-6/12">Extras</span>
                             <span className="w-2/12 text-center">Unit Price</span>
@@ -1956,7 +2117,12 @@ const NewEnquiryPageInner = () => {
                             <span className="w-1/12 text-center">Price</span>
                             <span className="w-2/12 text-center">Notes</span>
                           </div>
-                          <div className="space-y-2 max-h-[420px] overflow-y-auto no-scrollbar">
+                          {/* Same `lg:`-only cap as Enquiry Details above — a
+                              480/420px scroll window nested inside an already-
+                              scrolling page is a mobile-only problem, and the
+                              "equal-height cards" goal it serves only applies on a
+                              wide screen. */}
+                          <div className="space-y-2 lg:max-h-[420px] lg:overflow-y-auto no-scrollbar">
                             {/* Package extras */}
                             {packageData?.data?.extras?.map((extra: ExtraItem) => {
                               const id = extra.id;
@@ -2176,6 +2342,8 @@ const NewEnquiryPageInner = () => {
                               );
                             })}
                           </div>
+                          </div>
+                          </div>
                         </div>
                         </Spin>
                       </div>
@@ -2240,8 +2408,12 @@ const NewEnquiryPageInner = () => {
                     space. Adding `self-start` here would shrink it to the
                     panel's own height and the pin would have nothing to slide
                     against. */}
+                {/* `hidden xl:block` — this docked panel is now desktop-only.
+                    Below `xl` it used to stack full-width underneath the form,
+                    where it was just another long block to scroll past; the
+                    off-canvas drawer below replaces it there. */}
                 {values.dj?.id && showSummaryDrawer && (
-                  <aside className="xl:w-[29%] xl:shrink-0">
+                  <aside className="hidden xl:block xl:w-[29%] xl:shrink-0">
                     <div className="xl:sticky xl:-top-6 xl:h-[calc(100vh-64px)] flex flex-col bg-white rounded-2xl shadow-sm overflow-hidden">
                       {/* Same fixed height as the Enquiry Details header so the
                           two line up exactly, as on the Open Enquiry page. */}
@@ -2278,6 +2450,82 @@ const NewEnquiryPageInner = () => {
                       </div>
                     </div>
                   </aside>
+                )}
+
+                {/* ── Summary drawer (below `xl`) ──────────────────────────────
+                    Same content as the docked panel above, presented as an
+                    off-canvas drawer so it overlays the form instead of being
+                    stacked below it. Matches the app's other two drawers
+                    (Sidebar, EventPaymentDrawer): dimmed + blurred backdrop,
+                    rounded on the inner edge, shadow-2xl, 300ms slide, closes on
+                    backdrop tap / X / Escape, body scroll locked while open.
+
+                    `xl:hidden` on the whole thing rather than unmounting it on
+                    state, so resizing a desktop window down never leaves an
+                    orphaned overlay on screen.
+
+                    Portalled to <body> — the same escape hatch the print sheets
+                    below already use — for two reasons. Its natural home is a
+                    child of the `flex ... gap-6` row, where even an empty
+                    zero-height wrapper still counts as a flex item and the gap
+                    would add 24px of dead space under the form on every phone.
+                    And `position: fixed` resolves against the nearest ancestor
+                    with a transform/filter/containment rather than the viewport,
+                    so sitting on <body> keeps the overlay immune to anything the
+                    form's wrappers might grow later.
+
+                    NOTE the transition property: `transition-[translate]`, not
+                    `transition-[transform]`. Tailwind v4 compiles `translate-x-*`
+                    to the standalone `translate` CSS property, so a list naming
+                    `transform` matches nothing and the drawer snaps instead of
+                    sliding. */}
+                {values.dj?.id && typeof document !== "undefined" && createPortal(
+                  <div className="xl:hidden" aria-hidden={!mobileSummaryOpen}>
+                    <div
+                      onClick={() => setMobileSummaryOpen(false)}
+                      aria-hidden
+                      className={`fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] transition-opacity duration-300 ${
+                        mobileSummaryOpen ? "opacity-100" : "pointer-events-none opacity-0"
+                      }`}
+                    />
+                    <aside
+                      role="dialog"
+                      aria-label="Enquiry summary"
+                      className={`fixed right-0 inset-y-0 z-50 w-[min(92vw,420px)] bg-white shadow-2xl rounded-l-3xl overflow-hidden flex flex-col transition-[translate] duration-300 ease-in-out ${
+                        mobileSummaryOpen ? "translate-x-0" : "translate-x-full"
+                      }`}
+                    >
+                      <div className="px-5 h-[60px] shrink-0 flex items-center justify-between border-b border-gray-200 bg-gradient-to-r from-white to-slate-50">
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide leading-tight">At a Glance</p>
+                          <h3 className="themeH1 text-base truncate leading-tight">{values.dj?.name || "Summary"}</h3>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setPrintMode("rig")}
+                            className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                            aria-label="Print rig list"
+                            title="Print rig list and notes"
+                          >
+                            <Printer size={17} className="text-gray-600" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setMobileSummaryOpen(false)}
+                            className="p-2 -mr-2 hover:bg-gray-200 rounded-lg transition-colors"
+                            aria-label="Close summary"
+                          >
+                            <X size={18} className="text-gray-600" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
+                        {renderSummaryContent()}
+                      </div>
+                    </aside>
+                  </div>,
+                  document.body,
                 )}
 
                 {/* Print sheets. Rendered on <body>, hidden on screen, revealed
@@ -2383,7 +2631,7 @@ const NewEnquiryPageInner = () => {
                         <ul className="mb-5 text-xs">
                           {equipmentList.map((r, i) => (
                             <li key={i} className="border-b border-gray-300 py-1.5">
-                              <span className="font-medium">{r.qty}x {r.name}</span>
+                              <span className="font-medium">{r.qty > 1 ? `${r.qty}x ` : ""}{r.name}</span>
                               {r.notes && (
                                 <>
                                   {" — "}
@@ -2407,7 +2655,7 @@ const NewEnquiryPageInner = () => {
                         <ul className="text-xs">
                           {rigNotesList.map((r, i) => (
                             <li key={i} className="border-b border-gray-300 py-1.5">
-                              <p className="font-medium">{r.qty}x {r.name}</p>
+                              <p className="font-medium">{r.qty > 1 ? `${r.qty}x ` : ""}{r.name}</p>
                               <p
                                 className="whitespace-pre-line"
                                 dangerouslySetInnerHTML={{ __html: r.rig_notes ?? "" }}

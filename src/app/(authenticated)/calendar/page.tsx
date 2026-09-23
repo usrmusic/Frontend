@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, type CSSProperties } from "react";
 import dayjs from "dayjs";
-import { ChevronLeft, ChevronRight, MapPin, Plus } from "lucide-react";
+import { CalendarX2, ChevronLeft, ChevronRight, MapPin, Plus } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCalendar } from "@/src/api/calendar";
@@ -154,7 +154,21 @@ export default function CalendarPage() {
   );
 
   const rows = calendarCells.length / 7;
-  const rowClass = rows <= 5 ? "grid-rows-5" : "grid-rows-6";
+  // Two track-sizing modes, not one. Below `lg` the grid has no ancestor with
+  // a defined height to stretch into (the fixed `calc(100vh-240px)` on the
+  // wrapper is `lg:`-only — see below), so `1fr` rows had nothing real to
+  // divide and the browser's fallback stretch produced tall, unevenly
+  // "generous" rows with a lot of dead space around each date number. Fixed
+  // 44px explicit tracks (`repeat(N,44px)`) sidestep that: the grid's own
+  // height becomes simply rows × 44px, no ambient flex stretch involved.
+  // 44px also happens to be the accessibility floor for a tap target, so it
+  // isn't an arbitrary number. From `lg` the tracks switch back to equal
+  // `1fr` rows (`grid-rows-N`), which is what actually divides the desktop
+  // wrapper's real fixed height evenly.
+  const rowClass =
+    rows <= 5
+      ? "grid-rows-[repeat(5,44px)] lg:grid-rows-5"
+      : "grid-rows-[repeat(6,44px)] lg:grid-rows-6";
 
   return (
     <div className="space-y-4 mt-4">
@@ -171,9 +185,15 @@ export default function CalendarPage() {
 
       {/* ── Calendar wrapper — fixed viewport height, scrollable inside ── */}
       {/* 240px = outer p-6(48) + inner p-8(64) + header(~60) + mt-4(16) + title(32) + space-y-4(16) + spare(4) */}
+      {/* Below `lg` the month grid and the selected-day panel stack, and the
+          fixed `calc(100vh - 240px)` height is dropped: pinning both panels
+          inside one phone-height viewport left the day panel a few dozen
+          pixels tall. Stacked, each takes its natural height and the page
+          scrolls normally. The fixed height is restored from `lg`, where the
+          side-by-side layout needs it to keep both panels scrolling
+          internally. */}
       <div
-        className="flex gap-4 overflow-y-auto no-scrollbar"
-        style={{ height: "calc(100vh - 240px)", minHeight: 540 }}
+        className="flex flex-col lg:flex-row gap-4 lg:overflow-y-auto no-scrollbar lg:h-[calc(100vh-240px)] lg:min-h-[540px]"
       >
 
         {/* ────────────────────────────────────────────
@@ -235,20 +255,37 @@ export default function CalendarPage() {
           </div>
 
           {/* Calendar grid — `gap-px` + a light grid background is what
-              renders the hairlines; cells contribute no border of their own. */}
-          <div className={`grid grid-cols-7 ${rowClass} flex-1 min-h-0 gap-px bg-gray-100`}>
+              renders the hairlines; cells contribute no border of their own.
+              Row track sizing (fixed 44px below `lg`, `1fr` from `lg`) is set
+              on `rowClass` above — see the comment there. `lg:flex-1
+              lg:min-h-0` is what makes those `1fr` desktop tracks actually
+              divide real space: it's what stretches this grid to fill the
+              wrapper's fixed `calc(100vh-240px)` height. Below `lg` this grid
+              needs neither — its own fixed-px rows already size it exactly
+              right without borrowing height from anything above it. */}
+          <div className={`grid grid-cols-7 ${rowClass} lg:flex-1 lg:min-h-0 gap-px bg-gray-100`}>
             {calendarCells.map(({ date, isCurrentMonth }, idx) => {
               const dateKey = date.format("YYYY-MM-DD");
               const dayEvents = eventsByDate[dateKey] || [];
               const isSelected = selectedDate.isSame(date, "day");
               const isToday = date.isSame(dayjs(), "day");
+              // Mobile-only marker set: one dot per DISTINCT DJ colour that
+              // day (deduped, capped at 3), same rule the dashboard's mini
+              // calendar already uses — see CalendarWithSidebar.tsx.
+              const dotColors = Array.from(
+                new Set(
+                  dayEvents.map(
+                    (ev) => ev.users_events_dj_idTousers?.color || DJ_FALLBACK_COLOR,
+                  ),
+                ),
+              ).slice(0, 3);
 
               return (
                 <div
                   key={idx}
                   onClick={() => setSelectedDate(date)}
                   className={[
-                    "pt-[7.854px] px-[7.854px] pb-[0.604px]",
+                    "pt-1 px-1 pb-0.5 sm:pt-[7.854px] sm:px-[7.854px] sm:pb-[0.604px]",
                     "cursor-pointer flex flex-col gap-[3.625px] transition-colors overflow-hidden",
                     isCurrentMonth ? "bg-white hover:bg-gray-50" : "bg-gray-50/60",
                   ].join(" ")}
@@ -280,18 +317,52 @@ export default function CalendarPage() {
                     )}
                   </div>
 
+                  {/* Below `sm`, a ~50px cell can't fit a chip's name/time at
+                      any readable size — the first attempt at this tried to
+                      squeeze the SAME chip element down with `h-1.5 w-full`,
+                      which didn't produce a "small dot" (as the code comment
+                      claimed) but a thin, full-width, unexplained colour bar
+                      stretching edge to edge under the date. It read as
+                      stray, meaningless colour stripes rather than a
+                      deliberate "day has events" signal — two visual
+                      languages tried to live in one element via responsive
+                      classes and neither came out looking intentional.
+
+                      Split into two separate elements instead — an actual
+                      dot row for mobile (small, centered, capped at 3,
+                      deduped by DJ colour — literally the same computation
+                      and visual language the dashboard's mini calendar
+                      already uses successfully, see CalendarWithSidebar.tsx)
+                      and the original filled chip list for `sm` and up,
+                      completely unchanged. Tapping the day still surfaces the
+                      full event list in the panel below, so nothing here is
+                      lost — the dot only has to say "busy", not "by whom, at
+                      what time". */}
+                  {dotColors.length > 0 && (
+                    <div className="flex sm:hidden items-center justify-center gap-1 h-2 shrink-0">
+                      {dotColors.map((color, i) => (
+                        <span
+                          key={i}
+                          className="size-1.5 rounded-full shrink-0"
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                  )}
+
                   {/* Event chips — dense, filled colour blocks per event,
                       matching the reference calendar: the DJ's colour fills
-                      the whole chip rather than a small dot, and the title
-                      wraps onto a second line instead of truncating with an
-                      ellipsis (a short block filling most of the cell's
-                      width reads better wrapped than clipped). This list
-                      scrolls internally (min-h-0 + overflow-y-auto, scrollbar
-                      hidden to keep the tiny cell visually clean) rather than
-                      the cell clipping whichever chip runs out of room — a
-                      busy day on a 6-row month can need more height than a
-                      fixed row can spare. */}
-                  <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide flex flex-col gap-[3.625px]">
+                      the whole chip, and the title wraps onto a second line
+                      instead of truncating with an ellipsis (a short block
+                      filling most of the cell's width reads better wrapped
+                      than clipped). This list scrolls internally (min-h-0 +
+                      overflow-y-auto, scrollbar hidden to keep the cell
+                      visually clean) rather than the cell clipping whichever
+                      chip runs out of room — a busy day on a 6-row month can
+                      need more height than a fixed row can spare. Desktop
+                      only ( `hidden sm:flex` ) — the dot row above is its
+                      mobile replacement. */}
+                  <div className="hidden sm:flex flex-1 min-h-0 overflow-y-auto scrollbar-hide flex-col gap-[3.625px]">
                     {dayEvents.map((ev) => {
                       const name = getEventDisplayName(ev);
                       const time =
@@ -302,6 +373,7 @@ export default function CalendarPage() {
                       return (
                         <div
                           key={ev.id}
+                          title={name}
                           className="rounded-[4px] shrink-0 px-1.5 py-1 min-w-0"
                           style={djChipStyle(ev.users_events_dj_idTousers?.color)}
                         >
@@ -326,7 +398,7 @@ export default function CalendarPage() {
         {/* ────────────────────────────────────────────
             RIGHT — Selected-date event panel
         ──────────────────────────────────────────── */}
-        <div className="w-[335px] shrink-0 bg-white rounded-lg border border-gray-200 flex flex-col overflow-hidden">
+        <div className="w-full lg:w-[335px] lg:shrink-0 bg-white rounded-lg border border-gray-200 flex flex-col overflow-hidden">
 
           {/* Panel header */}
           <div className="px-[22.97px] pt-[22.97px] shrink-0">
@@ -357,8 +429,15 @@ export default function CalendarPage() {
               of a fixed primary-green swatch every DJ previously shared. */}
           <div className="flex-1 overflow-y-auto px-[15px] pt-3 pb-4 flex flex-col gap-3 no-scrollbar">
             {selectedDateEvents.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-[#9ca3af] text-sm gap-2">
-                <span className="text-4xl">📅</span>
+              <div className="flex flex-col items-center justify-center h-full text-[#9ca3af] text-sm gap-2 py-6">
+                {/* Was the 📅 emoji — its actual glyph (at least on this
+                    platform) is a red-tabbed page with "17" printed on it as
+                    part of the icon's own fixed artwork, not a placeholder
+                    that reflects the real selected date. Next to "Events on
+                    Wednesday, September 23" that read as a second, wrong date
+                    sitting right below the correct one. A plain outlined icon
+                    has no baked-in content to contradict. */}
+                <CalendarX2 size={32} strokeWidth={1.5} className="text-gray-300" />
                 <span>No events on this date</span>
               </div>
             ) : (

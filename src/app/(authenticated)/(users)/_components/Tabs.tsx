@@ -26,7 +26,15 @@ const Tabs = () => {
   const pathname = usePathname();
 
   return (
-    <div className="flex gap-2">
+    // These eight tabs carry fixed widths totalling ~800px, so they cannot fit
+    // a phone by wrapping OR shrinking — wrapping would stack them three rows
+    // deep and push the actual page content below the fold. A horizontally
+    // scrollable strip is the conventional mobile answer: the active tab stays
+    // readable at full size and the rest are a swipe away.
+    //
+    // `-mx-*`/`px-*` bleed the strip to the container edges so the first and
+    // last tab aren't visually clipped mid-glyph at the scroll extremes.
+    <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0 pb-1 snap-x">
       {tabData.map((tab) => {
         // Extract the pathname without query params for matching
         const tabPath = tab.href.split("?")[0];
@@ -34,7 +42,7 @@ const Tabs = () => {
         const isActive = pathname.startsWith(tabPath);
 
         return (
-          <Link href={tab.href} key={tab.href}>
+          <Link href={tab.href} key={tab.href} className="shrink-0 snap-start">
             <Button
               type={isActive ? "primary" : undefined}
               className={tab.className}

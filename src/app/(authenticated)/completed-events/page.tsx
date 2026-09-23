@@ -155,14 +155,18 @@ const CompletedEventsPage = () => {
   return (
     <>
       <div className="space-y-4 mt-4">
-        <div className="flex justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
           <div className="flex items-center gap-3">
             <Link href="/dashboard" className="">
               <BackButton />
             </Link>
             <h2 className="themeH1">Completed Events</h2>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Same 3+1 orphan bug as Open Enquiry/Users/Clients/Confirmed
+              Events: 4 buttons under plain `flex-wrap` packed 3 onto row one
+              and stranded "Download Invoice" alone on row two. 2-column grid
+              below `sm` gives every button an even half-width cell instead. */}
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
             <Button
               onClick={() => {
                 if (!selectedId) {
@@ -236,7 +240,7 @@ const CompletedEventsPage = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
           <div className="flex max-w-full items-center gap-2 rounded-lg bg-white px-4 h-10">
             <MagnifyingGlass w={18} h={18} />
             <input
@@ -269,7 +273,7 @@ const CompletedEventsPage = () => {
               }}
             />
           </div>
-          <div className="col-span-2 text-end">
+          <div className="sm:col-span-2 flex flex-wrap gap-2 sm:justify-end">
             <CSVLink
               data={csvData ?? []}
               filename="clients.csv"

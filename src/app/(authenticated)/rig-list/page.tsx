@@ -3,7 +3,7 @@ import Button from "@/src/components/Button";
 import { BackButton } from "@/src/components/Icons";
 import { Printer, Save, SquareCheckBig } from "lucide-react";
 import Link from "next/link";
-import { Select, Spin } from "antd";
+import { Checkbox, Select, Spin } from "antd";
 import { useRigListEventsDropdown } from "@/src/api/dropdown";
 import dayjs from "dayjs";
 import { useState, useEffect } from "react";
@@ -17,7 +17,11 @@ const Page = () => {
   const { isClient } = useRole();
   const [eventId, setEventId] = useState("");
   const [note, setNote] = useState("");
-  const { data: eventsDropdown } = useRigListEventsDropdown();
+  // Staff only see events they're the DJ for by default — this lets them opt
+  // into seeing every confirmed event, matching the "Show cancelled events"
+  // checkbox on Confirmed Events. No effect for Admin, who already sees all.
+  const [showAll, setShowAll] = useState(false);
+  const { data: eventsDropdown } = useRigListEventsDropdown(showAll);
   const { data: rigNotesData, isLoading } = useGetRigList(eventId);
   const { mutate: saveRigNotesMutation } = useSaveRigNotes();
 
@@ -71,7 +75,17 @@ const Page = () => {
 
   return (
     <div className="space-y-4 mt-4">
-      <div className="flex justify-between items-center">
+      {/* Unlike most page headers, this one was stacking below `sm` (640px)
+          for no reason — title + two short buttons ("Rig List", "Save",
+          "Print") only need ~290px total, which is comfortably under, e.g.,
+          375px's ~335px of usable width after the app shell's own padding.
+          `sm:flex-row` was copied from other headers that genuinely need it
+          (longer titles, 4+ buttons) without checking whether THIS row
+          actually did. It's `flex-wrap` here instead of a breakpoint swap —
+          not a specific pixel threshold to tune, just "stay one row, and only
+          break if a screen is ever too narrow to avoid it" (roughly sub-300px,
+          narrower than any real device this app targets). */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Link href="/dashboard" className="shrink-0">
             <BackButton />
@@ -93,15 +107,22 @@ const Page = () => {
 
       {/* Event selector — plain white filter bar, matching Completed Events'
           filter row rather than a colored primary bar. */}
-      <div className="grid grid-cols-4 gap-2">
-        <Select
-          value={eventId ? eventId : undefined}
-          className="w-full col-span-2 bg-white rounded-lg"
-          placeholder="Select event"
-          options={eventsptions}
-          onChange={(value) => setEventId(value || "")}
-          allowClear
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+        <div className="sm:col-span-2 space-y-2">
+          <Select
+            value={eventId ? eventId : undefined}
+            className="w-full bg-white rounded-lg"
+            placeholder="Select event"
+            options={eventsptions}
+            onChange={(value) => setEventId(value || "")}
+            allowClear
+          />
+          <div>
+            <Checkbox checked={showAll} onChange={(e) => setShowAll(e.target.checked)}>
+              Show all
+            </Checkbox>
+          </div>
+        </div>
       </div>
 
       {/* Plain section title under the dropdown, matching the confirmed-events
@@ -129,15 +150,10 @@ const Page = () => {
                     // title, which lost the actual item name whenever staff
                     // added their own rig notes.
                     const equipmentName = pkg.equipment?.name || "Equipment";
-                    // Same "10x Equipment Name" prefix the Outlook calendar
-                    // sync already uses for this exact case (see
-                    // buildEventCalendarContent in microsoftGraph.js) — a
-                    // sold quantity > 1 wasn't shown here at all before.
-                    // Quantity is always shown, including "1 X". Laravel omits
-                    // the prefix at 1, but a bare name left the crew guessing
-                    // whether one was booked or the count was simply missing.
+                    // "10x Equipment Name" when more than one is booked;
+                    // just the name at qty 1 — matches Laravel.
                     const qty = Number(pkg.quantity) || 1;
-                    const title = `${qty}x ${equipmentName}`;
+                    const title = qty > 1 ? `${qty}x ${equipmentName}` : equipmentName;
                     // Matches Laravel exactly (complete_events.js's rig-list
                     // render loop): an equipment item with NO rig_notes set,
                     // neither on this event nor on the catalog record, is

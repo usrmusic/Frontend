@@ -51,16 +51,27 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
   })();
 
   return (
-    <div className="md:mx-[150px] mx-10">
-      
+    // `mx-10` (40px a side) was eating a quarter of a 393px phone before any
+    // content rendered. Scales up to the original 150px inset only once the
+    // viewport can spare it.
+    <div className="mx-0 sm:mx-6 md:mx-[150px]">
+
+      {/* `max-w-[394px]` alone does NOT stop this overflowing: next/image emits
+          an intrinsic `width: 394px`, and a max-width equal to that intrinsic
+          width never clamps it below the container — so on a 393px phone the
+          thumbnail ran off the right edge and got sliced. `w-full` is what
+          actually binds it to the parent; max-w then caps it on wide screens.
+          The fixed `h-[500px]` + `object-cover` went with it: once the width is
+          fluid, a locked height crops the artwork differently at every
+          viewport. `h-auto` keeps the real aspect ratio. */}
       <Image
         src={"/images/contract_thumb.jpg"}
         alt="contract"
         width={394}
         height={500}
-        className="max-w-[394px] h-[500px] m-auto object-cover"
+        className="w-full max-w-[394px] h-auto m-auto object-contain"
       />
-      <div className="text-center text-lg">
+      <div className="text-center text-base sm:text-lg">
         <div className="my-4">
           <p>
             This contract has been prepared for{" "}
@@ -248,10 +259,10 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
         <p className="font-bold">Agreed Terms and Conditions</p>
         {/* 1.1 */}
         <div className="font-bold flex">
-          <span className="w-10 shrink-0">1.1</span>
+          <span className="w-8 sm:w-10 shrink-0">1.1</span>
           <span>Definitions</span>
         </div>
-        <div className="pl-14 space-y-2">
+        <div className="pl-2 sm:pl-14 space-y-2">
           <p>
             <strong>Price:</strong> the charges payable by the Client for the
             supply of the Services by the USR, as set out in the Contract
@@ -268,27 +279,27 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
         </div>
         {/* 2 */}
         <div className="font-bold flex">
-          <span className="w-10 shrink-0">2.</span>
+          <span className="w-8 sm:w-10 shrink-0">2.</span>
           <span>Package &amp; Supply of Services</span>
         </div>
         <div className="space-y-2">
           <div className="flex">
-            <span className="font-bold w-10 shrink-0">2.1</span>
-            <p className="pl-4">
+            <span className="font-bold w-8 sm:w-10 shrink-0">2.1</span>
+            <p className="pl-2 sm:pl-4">
               USR shall perform the Services and provide the Package on Event
               Date for the duration of the Event Period.
             </p>
           </div>
           <div className="flex">
-            <span className="font-bold w-10 shrink-0">2.2</span>
-            <p className="pl-4">
+            <span className="font-bold w-8 sm:w-10 shrink-0">2.2</span>
+            <p className="pl-2 sm:pl-4">
               In supplying the Services, USR shall perform the Services with
               reasonable care and skill.
             </p>
           </div>
           <div className="flex">
-            <span className="font-bold w-10 shrink-0">2.3</span>
-            <p className="pl-4">
+            <span className="font-bold w-8 sm:w-10 shrink-0">2.3</span>
+            <p className="pl-2 sm:pl-4">
               USR does not warrant that the Services will be uninterrupted or
               error-free. There may be brief stoppages or technical issues
               during the Event and USR will use reasonable endeavours to rectify
@@ -296,8 +307,8 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
             </p>
           </div>
           <div className="flex">
-            <span className="font-bold w-10 shrink-0">2.4</span>
-            <p className="pl-4">
+            <span className="font-bold w-8 sm:w-10 shrink-0">2.4</span>
+            <p className="pl-2 sm:pl-4">
               The Client may request a date change prior to the Event Date or a
               variation to the Package. Such change may be subject to additional
               charges or Cancellation Costs (as set out at 5.7) if such date is
@@ -308,20 +319,20 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
         </div>
         {/* 3 */}
         <div className="font-bold flex">
-          <span className="w-10 shrink-0">3.</span>
+          <span className="w-8 sm:w-10 shrink-0">3.</span>
           <span>Clients Obligations</span>
         </div>
         <div className="space-y-2">
           <div className="flex">
-            <span className="font-bold w-10 shrink-0">3.1</span>
-            <p className="pl-4">
+            <span className="font-bold w-8 sm:w-10 shrink-0">3.1</span>
+            <p className="pl-2 sm:pl-4">
               The Client shall co-operate with USR in all matters relating to
               the Services.
             </p>
           </div>
           <div className="flex">
-            <span className="font-bold w-10 shrink-0">3.2</span>
-            <p className="pl-4">
+            <span className="font-bold w-8 sm:w-10 shrink-0">3.2</span>
+            <p className="pl-2 sm:pl-4">
               If USRs performance of its obligations under the Contract is
               prevented or delayed by any act or omission of the Client (or
               venue staff) USR shall: a) not be liable for any costs, charges or
@@ -333,20 +344,20 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
         </div>
         {/* 4 */}
         <div className="font-bold flex">
-          <span className="w-10 shrink-0">4.</span>
+          <span className="w-8 sm:w-10 shrink-0">4.</span>
           <span>Charges and payment</span>
         </div>
         <div className="space-y-2">
           <div className="flex">
-            <span className="font-bold w-10 shrink-0">4.1</span>
-            <p className="pl-4">
+            <span className="font-bold w-8 sm:w-10 shrink-0">4.1</span>
+            <p className="pl-2 sm:pl-4">
               In consideration for the provision of the Services, the Client
               shall pay USR the Charges in accordance with the Contract Details.
             </p>
           </div>
           <div className="flex">
-            <span className="font-bold w-10 shrink-0">4.2</span>
-            <p className="pl-4">
+            <span className="font-bold w-8 sm:w-10 shrink-0">4.2</span>
+            <p className="pl-2 sm:pl-4">
               The Deposit shall be deducted from the final payment. Once payment
               has been received, USR’s sole obligation is to provide the
               Services subject to the terms of this Contract.
@@ -355,8 +366,8 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
         </div>
         {/* 5 */}
         <div className="flex">
-          <span className="font-bold w-10 shrink-0">5</span>
-          <p className="pl-4 font-bold">
+          <span className="font-bold w-8 sm:w-10 shrink-0">5</span>
+          <p className="pl-2 sm:pl-4 font-bold">
             Liability &amp; Cancellation -
             <span className="underline">
               Clients Attention Is Particularly Drawn to This Clause
@@ -365,15 +376,15 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
         </div>
         <div className="space-y-2">
           <div className="flex">
-            <span className="font-bold w-10 shrink-0">5.1</span>
-            <p className="pl-4">
+            <span className="font-bold w-8 sm:w-10 shrink-0">5.1</span>
+            <p className="pl-2 sm:pl-4">
               Nothing in the Contract limits any liability where it is unlawful
               to do so.
             </p>
           </div>
           <div className="flex">
-            <span className="font-bold w-10 shrink-0">5.2</span>
-            <p className="pl-4">
+            <span className="font-bold w-8 sm:w-10 shrink-0">5.2</span>
+            <p className="pl-2 sm:pl-4">
               USR shall not be liable to the Client for any losses, damages,
               costs or expenses which are not reasonably foreseeable. Subject to
               5.1, USRs total liability to the Client shall be limited to 50%
@@ -381,8 +392,8 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
             </p>
           </div>
           <div className="flex">
-            <span className="font-bold w-10 shrink-0">5.3</span>
-            <p className="pl-4">
+            <span className="font-bold w-8 sm:w-10 shrink-0">5.3</span>
+            <p className="pl-2 sm:pl-4">
               Client shall be responsible for any loss of or damage to any of
               USR equipment arising out of or in connection with any damage,
               misuse, theft, mishandling of USR equipment at the Event by the
@@ -393,8 +404,8 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
             </p>
           </div>
           <div className="flex">
-            <span className="font-bold w-10 shrink-0">5.4</span>
-            <p className="pl-4">
+            <span className="font-bold w-8 sm:w-10 shrink-0">5.4</span>
+            <p className="pl-2 sm:pl-4">
               USR may cancel the Contract with immediate effect if:
               <br />
               (i) You fail to make any payments as specified in the Contract
@@ -404,8 +415,8 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
             </p>
           </div>
           <div className="flex">
-            <span className="font-bold w-10 shrink-0">5.5</span>
-            <p className="pl-4">
+            <span className="font-bold w-8 sm:w-10 shrink-0">5.5</span>
+            <p className="pl-2 sm:pl-4">
               You may end your contract with us. However, your rights to any
               refund of the Price, or part thereof, will depend on when you
               decide to end your Contract or the reason in which the contract is
@@ -417,8 +428,8 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
             </p>
           </div>
           <div className="flex">
-            <span className="font-bold w-10 shrink-0">5.6</span>
-            <p className="pl-4">
+            <span className="font-bold w-8 sm:w-10 shrink-0">5.6</span>
+            <p className="pl-2 sm:pl-4">
               Except where we are at fault, if you cancel your Event or this
               Contract, you agree that the Cancellation Costs set out in the
               Cancellation Costs Table (below) will apply and you agree that they
@@ -426,8 +437,8 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
             </p>
           </div>
           <div className="flex">
-            <span className="font-bold w-10 shrink-0">5.7</span>
-            <p className="pl-4">
+            <span className="font-bold w-8 sm:w-10 shrink-0">5.7</span>
+            <p className="pl-2 sm:pl-4">
               <strong>
                 <u>
                   CANCELLATIONS COSTS TABLE – FOR CANCELLATIONS WHERE WE ARE NOT
@@ -445,8 +456,9 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
           </div>
         </div>
         {/* Cancellation Costs Table (full, matches Laravel) */}
-        <div className="pl-14 space-y-2">
-          <table className="w-full border border-gray-300 text-sm">
+        <div className="pl-2 sm:pl-14 space-y-2">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[420px] border border-gray-300 text-sm">
             <thead>
               <tr className="bg-gray-100">
                 <th className="border p-2 text-left">
@@ -482,6 +494,7 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
               </tr>
             </tbody>
           </table>
+          </div>
           <p>
             The above Cancellation Costs will not apply if you cancel because we
             have breached our own obligations to you under your Contract.
@@ -489,13 +502,13 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
         </div>
         {/* 6 */}
         <div className="font-bold flex">
-          <span className="w-10 shrink-0">6.</span>
+          <span className="w-8 sm:w-10 shrink-0">6.</span>
           <span>General</span>
         </div>
         <div className="space-y-2">
           <div className="flex">
-            <span className="font-bold w-10 shrink-0">6.1</span>
-            <p className="pl-4">
+            <span className="font-bold w-8 sm:w-10 shrink-0">6.1</span>
+            <p className="pl-2 sm:pl-4">
               <strong>Force majeure.</strong> Neither party shall be in breach
               of the Contract nor liable for delay in performing, or failure to
               perform, any of its obligations under the Contract if such delay
@@ -513,8 +526,8 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
             </p>
           </div>
           <div className="flex">
-            <span className="font-bold w-10 shrink-0">6.2</span>
-            <p className="pl-4">
+            <span className="font-bold w-8 sm:w-10 shrink-0">6.2</span>
+            <p className="pl-2 sm:pl-4">
               <strong>USR Packages.</strong> Packages are subject to Venue
               restrictions on power supply, smoke alarms, capacity, timing and
               other Venue rules and regulations. We shall not be liable for any
@@ -529,8 +542,8 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
             </p>
           </div>
           <div className="flex">
-            <span className="font-bold w-10 shrink-0">6.3</span>
-            <p className="pl-4">
+            <span className="font-bold w-8 sm:w-10 shrink-0">6.3</span>
+            <p className="pl-2 sm:pl-4">
               <strong>Entire agreement.</strong> The Contract constitutes the
               entire agreement between the parties and supersedes and
               extinguishes all previous agreements, promises, assurances,
@@ -539,16 +552,16 @@ const Contracts = ({ data, isModifyMode, onSignatureChange }: { data: ConfirmEve
             </p>
           </div>
           <div className="flex">
-            <span className="font-bold w-10 shrink-0">6.4</span>
-            <p className="pl-4">
+            <span className="font-bold w-8 sm:w-10 shrink-0">6.4</span>
+            <p className="pl-2 sm:pl-4">
               <strong>Variation.</strong> No variation of the Contract shall be
               effective unless it is in writing and signed by the parties (or
               their authorised representatives).
             </p>
           </div>
           <div className="flex">
-            <span className="font-bold w-10 shrink-0">6.5</span>
-            <p className="pl-4">
+            <span className="font-bold w-8 sm:w-10 shrink-0">6.5</span>
+            <p className="pl-2 sm:pl-4">
               <strong>Governing Law &amp; Jurisdiction.</strong> The Contract,
               and any dispute or claim (including non-contractual disputes or
               claims) arising out of or in connection with it or its subject

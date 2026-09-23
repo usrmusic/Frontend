@@ -240,8 +240,17 @@ const ClientsPageContent = () => {
     <div className="space-y-4 mt-4">
       {/* Filters Card */}
       <Card variant="green">
-        <div className="flex items-center justify-between">
-          <div className="flex w-[300px] items-center gap-2 rounded-lg bg-white px-4 h-10">
+        {/* Search always gets its own complete row and the action buttons
+            always get the row below — never sharing one row, at any width. This
+            replaces `sm:flex-row`, which put search and buttons side by side
+            from `sm` up: with a search box capped at `sm:w-[300px]` and a
+            2-4 button group beside it, that row could exceed available width
+            at in-between sizes (a 768px iPad, for example), forcing an uneven
+            wrap of whichever few buttons didn't fit rather than a clean two-row
+            layout. Unconditional `flex-col` removes the possibility entirely —
+            each row is exactly one group, full width, every time. */}
+        <div className="flex flex-col gap-3">
+          <div className="flex w-full items-center gap-2 rounded-lg bg-white px-4 h-10">
             <MagnifyingGlass w={18} h={18} />
             <input
               type="text"
@@ -251,15 +260,25 @@ const ClientsPageContent = () => {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <div className="flex gap-2">
-            <Button onClick={() => setModalOpen(true)}>Add</Button>
+          {/* Below `sm` this is a 2-col CSS grid — cells stretch evenly by
+              default there, no extra classes needed. From `sm`, `flex-1` on
+              every button spreads all four across the full row width instead
+              of sitting left-aligned at natural size with empty space
+              trailing them. `min-w` per button keeps each label from being
+              squeezed narrower than it needs (Show Deactivated is the long
+              one), and lets the row wrap onto a second line if it's ever
+              genuinely too narrow for all four at their minimums. */}
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+            <Button className="sm:flex-1 sm:min-w-[90px]" onClick={() => setModalOpen(true)}>Add</Button>
             <Button
+              className="sm:flex-1 sm:min-w-[100px]"
               disabled={selectedRowKeys.length === 0}
               onClick={() => setAlertModal(true)}
             >
               Remove
             </Button>
             <Button
+              className="sm:flex-1 sm:min-w-[170px]"
               onClick={() => {
                 setShowDeactivated((v) => !v);
                 setParams((p) => ({ ...p, page: 1 }));
@@ -267,12 +286,16 @@ const ClientsPageContent = () => {
             >
               {showDeactivated ? "Show Active" : "Show Deactivated"}
             </Button>
+            {/* CSVLink's <a> is the actual flex item here, not the Button
+                inside it — the Button needs its own matching width or it
+                sits at natural size inside a stretched-but-invisible <a>. */}
             <CSVLink
               data={csvData ?? []}
               filename="clients.csv"
               headers={csvHeaders}
+              className="sm:flex-1 sm:min-w-[130px]"
             >
-              <Button>Export Data</Button>
+              <Button className="w-full">Export Data</Button>
             </CSVLink>
           </div>
         </div>

@@ -17,7 +17,7 @@ import {
   TbTruckDelivery,
 } from "react-icons/tb";
 import { RiFileListLine } from "react-icons/ri";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { deleteCookie } from "cookies-next";
@@ -39,6 +39,26 @@ type LinkItem = {
   permissionAny?: string[];
 };
 
+// ── Responsive model ────────────────────────────────────────────────────────
+// Below `xl` (1280px) the sidebar is an off-canvas drawer: it sits at the left
+// screen edge, full height, always label-expanded, and is translated out of
+// view until the header's hamburger opens it. At `xl` and up it is the
+// original floating rail that collapses to icons.
+//
+// The pivot is `xl`, not `lg`. At `lg` (1024px) an iPad Pro portrait (1032px
+// viewport) qualified as "desktop" and got the persistent rail — which costs
+// 48px offset + 240px rail + 16px gap = 304px, ~29% of the screen, and left
+// the header only 74px for the greeting once its search/year/action tools had
+// taken their fixed widths. 1280px is the first width where the rail and a
+// side-by-side header genuinely coexist. Header.tsx pivots on the same
+// breakpoint and the two must stay in sync.
+//
+// The split is expressed entirely in Tailwind `xl:` classes rather than a JS
+// breakpoint check, because a JS check can only produce a correct answer after
+// mount — which means a phone would paint one frame of the 240px desktop rail
+// before snapping to the drawer. CSS media queries resolve before first paint,
+// so there is no flash. `expanded` therefore only ever means "expanded on
+// desktop"; on mobile the drawer is unconditionally expanded.
 const Sidebar = () => {
   const pathname = usePathname();
   const queryClient = useQueryClient();
@@ -60,6 +80,10 @@ const Sidebar = () => {
   // Always start collapsed to match SSR, then sync from localStorage after mount
   const [expanded, setExpanded] = useState<boolean>(false);
 
+  // Mobile drawer open/closed. Never persisted — a drawer should always start
+  // shut on a fresh page load.
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   useEffect(() => {
     try {
       setExpanded(localStorage.getItem("sidebar-expanded") === "1");
@@ -67,6 +91,37 @@ const Sidebar = () => {
       // ignore
     }
   }, []);
+
+  // The hamburger lives in Header, which is a sibling in the layout tree, so
+  // there is no shared parent to hold this state without lifting it into a
+  // provider. The app already uses window CustomEvents for exactly this kind
+  // of cross-component signal (see `sidebar:toggle`, `dashboard:yearChange`),
+  // so this follows that convention rather than introducing a second pattern.
+  useEffect(() => {
+    function onMobileToggle() {
+      setMobileOpen((s) => !s);
+    }
+    window.addEventListener("sidebar:mobileToggle", onMobileToggle);
+    return () =>
+      window.removeEventListener("sidebar:mobileToggle", onMobileToggle);
+  }, []);
+
+  // Navigating away must close the drawer, or the new page renders underneath
+  // an open overlay.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  // Lock the page behind the drawer so a scroll gesture over the backdrop
+  // moves the drawer's own list rather than the content underneath it.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [mobileOpen]);
 
   const handleToggle = (next: boolean) => {
     try {
@@ -85,6 +140,10 @@ const Sidebar = () => {
 
   const showTooltip = (event: MouseEvent<HTMLElement>, label: string) => {
     if (expanded) return;
+    // Tooltips exist to name an icon that has no visible label. In the mobile
+    // drawer every item is labelled, and a touch "hover" would leave one
+    // stranded on screen with no pointer-leave to dismiss it.
+    if (typeof window !== "undefined" && !window.matchMedia("(min-width: 1280px)").matches) return;
     const rect = event.currentTarget.getBoundingClientRect();
     setTooltip({
       label,
@@ -163,17 +222,70 @@ const Sidebar = () => {
 
   const [moreOpen, setMoreOpen] = useState(false);
 
+  // ── Shared class fragments ────────────────────────────────────────────────
+  // Mobile-first: the un-prefixed classes describe the drawer (full-width rows
+  // with visible labels); the `xl:` variants restore the desktop rail, which
+  // still honours `expanded`.
+  const railRow = expanded
+    ? "justify-start w-full gap-3 px-3 py-2 rounded-md"
+    : "justify-start w-full gap-3 px-3 py-2 rounded-md xl:justify-center xl:w-10 xl:h-10 xl:gap-0 xl:px-0 xl:py-0 xl:rounded-full";
+
+  const railLabel = expanded
+    ? "max-w-[200px] opacity-100 ml-2"
+    : "max-w-[200px] opacity-100 ml-2 xl:max-w-0 xl:opacity-0 xl:ml-0";
+
+  // Touch targets: 44px minimum is the accessibility floor for a finger, and
+  // the desktop rows are 36-40px. `min-h-11` on mobile only, so the desktop
+  // rail's tighter rhythm is untouched.
+  const touch = "min-h-11 xl:min-h-0";
+
   return (
     <>
+      {/* Backdrop — mobile only. `xl:hidden` rather than unmounting it so the
+          fade can play out on the way back to desktop width. */}
       <div
-        className={`fixed no-scrollbar overflow-x-hidden top-12.5 bottom-12.5 left-12 bg-secondary-50 flex flex-col gap-6 py-5 rounded-[50px] transition-all duration-300 ease-in-out ${expanded ? "w-60 items-start px-4" : "w-20  items-center"} z-50`}
+        onClick={() => setMobileOpen(false)}
+        aria-hidden
+        className={`fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] transition-opacity duration-300 xl:hidden ${
+          mobileOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      />
+
+      <div
+        // `transition-[translate,width]`, NOT `transition-[transform,width]`.
+        // Tailwind v4 compiles `translate-x-*` to the standalone `translate`
+        // CSS property (`translate: -100% 0`), not to `transform:
+        // translateX()` the way v3 did. A transition-property list naming
+        // `transform` therefore never matches what actually changes, and the
+        // drawer jumps into place with no animation. Tailwind's own
+        // `transition-transform` utility covers this by listing all four
+        // (`transform, translate, scale, rotate`) — worth copying if this ever
+        // grows beyond a slide.
+        className={`fixed no-scrollbar overflow-x-hidden z-50 bg-secondary-50 flex flex-col gap-6 py-5 transition-[translate,width] duration-300 ease-in-out
+          inset-y-0 left-0 w-[min(84vw,272px)] items-start px-4 rounded-r-3xl shadow-2xl
+          ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
+          xl:translate-x-0 xl:inset-y-auto xl:top-12.5 xl:bottom-12.5 xl:left-12 xl:rounded-[50px] xl:shadow-none
+          ${expanded ? "xl:w-60 xl:items-start xl:px-4" : "xl:w-20 xl:items-center xl:px-0"}`}
         aria-expanded={expanded}
+        aria-hidden={undefined}
       >
+        {/* Drawer close affordance — mobile only. Without it the only way out
+            is the backdrop, which is not discoverable enough to be the sole
+            exit. */}
+        <button
+          type="button"
+          onClick={() => setMobileOpen(false)}
+          aria-label="Close menu"
+          className="absolute right-3 top-3 flex size-9 items-center justify-center rounded-full text-gray-500 hover:bg-black hover:text-white transition-colors xl:hidden"
+        >
+          <X size={18} />
+        </button>
+
         <div
-          className={`flex flex-col ${expanded ? "gap-4 w-full" : "gap-3"} h-full overflow-hidden`}
+          className={`flex flex-col gap-2 w-full h-full overflow-hidden mt-10 xl:mt-0 ${expanded ? "xl:gap-4" : "xl:gap-3"}`}
         >
           <div
-            className={`flex flex-col ${expanded ? "gap-4 w-full" : "gap-3 items-center"} flex-1 overflow-y-auto overflow-x-hidden no-scrollbar`}
+            className={`flex flex-col gap-2 w-full flex-1 overflow-y-auto overflow-x-hidden no-scrollbar ${expanded ? "xl:gap-4" : "xl:gap-3 xl:items-center"}`}
             style={{ msOverflowStyle: "none", scrollbarWidth: "none" }}
           >
           {visibleStandalone.map((item, index) => {
@@ -186,11 +298,11 @@ const Sidebar = () => {
                 onMouseEnter={(e) => showTooltip(e, item.label)}
                 onMouseMove={(e) => showTooltip(e, item.label)}
                 onMouseLeave={hideTooltip}
-                className={`group relative flex shrink-0 items-center ${expanded ? "justify-start w-full gap-3 px-3 py-2 rounded-md" : "justify-center size-10 rounded-full"} hover:bg-black hover:text-white transition-colors duration-200 ${isActive ? "bg-black text-white" : ""}`}
+                className={`group relative flex shrink-0 items-center ${railRow} ${touch} hover:bg-black hover:text-white transition-colors duration-200 ${isActive ? "bg-black text-white" : ""}`}
               >
-                {item.icon}
+                <span className="shrink-0">{item.icon}</span>
                 <span
-                  className={`text-sm transition-all duration-300 overflow-hidden whitespace-nowrap ${expanded ? "max-w-[200px] opacity-100 ml-2" : "max-w-0 opacity-0 ml-0"}`}
+                  className={`text-sm transition-all duration-300 overflow-hidden whitespace-nowrap ${railLabel}`}
                 >
                   {item.label}
                 </span>
@@ -203,7 +315,14 @@ const Sidebar = () => {
               <button
                 type="button"
                 onClick={() => {
-                  if (!expanded) {
+                  // On the collapsed desktop rail there is nowhere to draw a
+                  // submenu, so "More" first expands the rail. The mobile
+                  // drawer is already expanded, so it just toggles — hence the
+                  // matchMedia guard rather than keying off `expanded` alone.
+                  const isDesktop =
+                    typeof window === "undefined" ||
+                    window.matchMedia("(min-width: 1280px)").matches;
+                  if (isDesktop && !expanded) {
                     setExpanded(true);
                     handleToggle(true);
                     setMoreOpen(true);
@@ -214,13 +333,15 @@ const Sidebar = () => {
                 onMouseEnter={(e) => showTooltip(e, "More")}
                 onMouseMove={(e) => showTooltip(e, "More")}
                 onMouseLeave={hideTooltip}
-                className={`group relative flex w-full items-center ${expanded ? "justify-start gap-3 px-3 py-2 rounded-md" : "justify-center size-10 rounded-full"} hover:bg-black hover:text-white transition-colors duration-200 ${groupedMore.some((c) => pathname.startsWith(c.href.split("?")[0])) ? "bg-black text-white" : ""}`}
+                className={`group relative flex items-center ${railRow} ${touch} hover:bg-black hover:text-white transition-colors duration-200 ${groupedMore.some((c) => pathname.startsWith(c.href.split("?")[0])) ? "bg-black text-white" : ""}`}
               >
-                <MoreHorizontal size={20} />
-                <span className={`text-sm transition-all duration-300 overflow-hidden whitespace-nowrap ${expanded ? "max-w-[200px] opacity-100 ml-2" : "max-w-0 opacity-0 ml-0"}`}>More</span>
+                <span className="shrink-0"><MoreHorizontal size={20} /></span>
+                <span className={`text-sm transition-all duration-300 overflow-hidden whitespace-nowrap ${railLabel}`}>More</span>
               </button>
 
-              <div className={`${moreOpen && expanded ? "pl-8 mt-2" : "hidden"}`}>
+              {/* Open state: always available on mobile (the drawer is always
+                  expanded), gated on `expanded` for the desktop rail. */}
+              <div className={`${moreOpen ? "pl-8 mt-2 flex flex-col gap-1" : "hidden"} ${expanded ? "" : "xl:hidden"}`}>
                 {groupedMore.map((c, idx) => {
                   const isActive = pathname.startsWith(c.href.split("?")[0]);
                   return (
@@ -230,9 +351,9 @@ const Sidebar = () => {
                       onMouseEnter={(e) => showTooltip(e, c.label)}
                       onMouseMove={(e) => showTooltip(e, c.label)}
                       onMouseLeave={hideTooltip}
-                      className={`group relative flex w-full items-center justify-start gap-3 px-3 py-2 rounded-md text-sm hover:bg-black hover:text-white transition-colors duration-200 ${isActive ? "bg-black text-white" : "text-gray-600"}`}
+                      className={`group relative flex w-full items-center justify-start gap-3 px-3 py-2 rounded-md text-sm ${touch} hover:bg-black hover:text-white transition-colors duration-200 ${isActive ? "bg-black text-white" : "text-gray-600"}`}
                     >
-                      {c.icon}
+                      <span className="shrink-0">{c.icon}</span>
                       <span className="overflow-hidden whitespace-nowrap">{c.label}</span>
                     </Link>
                   );
@@ -244,9 +365,9 @@ const Sidebar = () => {
           </div>
 
           <div
-            className={`flex flex-col ${expanded ? "gap-4 w-full" : "gap-3 items-center"} shrink-0 pt-3 mt-1 border-t border-gray-200`}
+            className={`flex flex-col gap-2 w-full shrink-0 pt-3 mt-1 border-t border-gray-200 ${expanded ? "xl:gap-4" : "xl:gap-3 xl:items-center"}`}
           >
-          <div>
+          <div className="w-full xl:w-auto">
             <Link
               href="/login"
               onClick={() => {
@@ -258,20 +379,20 @@ const Sidebar = () => {
               onMouseEnter={(e) => showTooltip(e, "Logout")}
               onMouseMove={(e) => showTooltip(e, "Logout")}
               onMouseLeave={hideTooltip}
-              className={`group relative flex shrink-0 items-center ${expanded ? "justify-start w-full gap-3 px-3 py-2 rounded-md" : "justify-center size-10 rounded-full"} hover:bg-black hover:text-white transition-colors duration-200`}
+              className={`group relative flex shrink-0 items-center ${railRow} ${touch} hover:bg-black hover:text-white transition-colors duration-200`}
             >
-              <Logout />
-              <span className={`text-sm transition-all duration-300 overflow-hidden whitespace-nowrap ${expanded ? "max-w-[200px] opacity-100 ml-2" : "max-w-0 opacity-0 ml-0"}`}>Logout</span>
+              <span className="shrink-0"><Logout /></span>
+              <span className={`text-sm transition-all duration-300 overflow-hidden whitespace-nowrap ${railLabel}`}>Logout</span>
             </Link>
           </div>
 
-          <div>
+          <div className="w-full xl:w-auto">
             <Link
               href="/profile"
               onMouseEnter={(e) => showTooltip(e, "Profile")}
               onMouseMove={(e) => showTooltip(e, "Profile")}
               onMouseLeave={hideTooltip}
-              className={`group relative flex shrink-0 items-center ${expanded ? "justify-start w-full gap-3 px-3 py-2 rounded-md" : "justify-center size-10 rounded-full"} hover:bg-black hover:text-white transition-colors duration-200`}
+              className={`group relative flex shrink-0 items-center ${railRow} ${touch} hover:bg-black hover:text-white transition-colors duration-200`}
             >
               <Avatar
                 src={getImageSrc(authUser?.profile_photo || undefined)}
@@ -285,18 +406,20 @@ const Sidebar = () => {
                     : "U"
                 }
                 size={40}
-                className="size-10"
+                className="size-10 shrink-0"
               />
               <span
-                className={`text-sm transition-all duration-300 overflow-hidden whitespace-nowrap ${expanded ? "max-w-[200px] opacity-100" : "max-w-0 opacity-0"}`}
+                className={`text-sm transition-all duration-300 overflow-hidden whitespace-nowrap ${railLabel}`}
               >
                 {authUser?.name ?? "User"}
               </span>
             </Link>
           </div>
 
+          {/* Collapse toggle is meaningless in the drawer (which has no
+              collapsed state), so it is desktop-only. */}
           <div
-            className={`w-full flex ${expanded ? "justify-end pr-1" : "justify-center"}`}
+            className={`hidden xl:flex w-full ${expanded ? "justify-end pr-1" : "justify-center"}`}
           >
             <button
               aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}

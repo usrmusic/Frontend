@@ -436,8 +436,8 @@ const ConfirmedEventsPage = () => {
   return (
     <div>
       <form className="mt-4 space-y-4" onSubmit={formik.handleSubmit}>
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+          <div className="flex items-center gap-3 min-w-0">
             <Link href="/dashboard" className="shrink-0">
               <BackButton />
             </Link>
@@ -447,7 +447,18 @@ const ConfirmedEventsPage = () => {
                 : "Confirmed Events"}
             </h2>
           </div>
-          <div className="flex gap-2">
+          {/* This group can hold up to 8 buttons across its different states
+              (Modify/Update/Cancel/Re-confirm/Send Quote/Download Invoice/
+              Send Invoice/Cancel Event/the drawer trigger), each a different
+              width — plain `flex-wrap` doesn't overflow, but it does size
+              every row to whatever that row's own buttons happen to need, so
+              row 1 ("Modify", "Send Quote") ends well short of row 2
+              ("Download Invoice", "Send Invoice"), which ends short of row 3
+              — three rows with three different right edges instead of a
+              settled block. A 2-column grid below `sm` gives every button an
+              identical cell width, so the rows line up. Matches the same fix
+              already applied to Open Enquiry, Users and Clients. */}
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
             {eventId && (
               <>
                 {isModifyMode ? (
@@ -483,14 +494,6 @@ const ConfirmedEventsPage = () => {
                     loading={isReconfirmingEvent}
                   >
                     Re-confirm Event
-                  </Button>
-                )}
-                {!isClient && !isSelectedEventCancelled && (
-                  <Button
-                    onClick={handleCancelEvent}
-                    loading={isCancelingEvent}
-                  >
-                    Cancel Event
                   </Button>
                 )}
                 {!isClient && (
@@ -577,11 +580,12 @@ const ConfirmedEventsPage = () => {
                     Send Invoice
                   </Button>
                 )}
-                {/* Additional top-level confirmed send invoice + refund buttons —
-                    Admin only (see useRole import above) */}
-                {isAdmin && (
-                  <Button onClick={() => setShowRefundModal(true)}>
-                    Refund
+                {!isClient && !isSelectedEventCancelled && (
+                  <Button
+                    onClick={handleCancelEvent}
+                    loading={isCancelingEvent}
+                  >
+                    Cancel Event
                   </Button>
                 )}
                 {/* Drawer trigger — everyone, including Client (Laravel's
@@ -595,10 +599,10 @@ const ConfirmedEventsPage = () => {
             )}
           </div>
         </div>
-        <div className="max-w-100 space-y-2">
+        <div className="w-full max-w-full sm:max-w-[430px] space-y-2">
           <Select
             value={eventId || undefined}
-            className="w-[430px]"
+            className="w-full"
             placeholder="Select event"
             options={eventsOptions}
             showSearch
@@ -653,7 +657,7 @@ const ConfirmedEventsPage = () => {
                   onChange={formik.handleChange}
                   disabled={!isModifyMode}
                 />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input
                     name="email"
                     label="Email"
@@ -762,7 +766,7 @@ const ConfirmedEventsPage = () => {
                 </div>
               </div>
               <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <Input
                     name="date"
                     label="Date"
@@ -799,7 +803,7 @@ const ConfirmedEventsPage = () => {
                     disabled={!isModifyMode}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Matches Laravel: a disabled text display of the current
                       venue's name while viewing, swapped for a real dropdown
                       of existing venues (pre-selected to the current one)
@@ -841,7 +845,7 @@ const ConfirmedEventsPage = () => {
                     disabled={!isModifyMode}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input
                     name="eventDateContact"
                     label="Event day contact"
@@ -860,7 +864,7 @@ const ConfirmedEventsPage = () => {
                     disabled={!isModifyMode}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input
                     name="depositAmount"
                     label="Deposit Amount"
@@ -892,7 +896,7 @@ const ConfirmedEventsPage = () => {
                     disabled={!isModifyMode}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input
                     name="stagTuneAndDestination"
                     label="Stag Tune/Destination"
@@ -950,7 +954,7 @@ const ConfirmedEventsPage = () => {
             showing (never for Client, who has no Payments box at all). */}
         <AnimatedMount
           show={showNotes || (showPayments && !isClient)}
-          className={`grid ${!isClient && showNotes && showPayments ? "grid-cols-2" : "grid-cols-1"} gap-4`}
+          className={`grid ${!isClient && showNotes && showPayments ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"} gap-4`}
         >
           {showNotes && (
             <div className="rounded-xl bg-white border border-gray-200 p-4">

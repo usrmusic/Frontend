@@ -54,13 +54,13 @@ export default function EventPaymentDrawer({ eventId, open, onClose, canAddPayme
   const [rigOpen, setRigOpen] = useState(false);
   const [printRig, setPrintRig] = useState(false);
 
-  // "3x Moving Head" / "1x Moving Head". Laravel omits the prefix at qty 1;
-  // showing it always is a deliberate change, so the count is never ambiguous
-  // (a bare name previously left you guessing whether it meant one or none).
+  // "3x Moving Head" but just "Moving Head" at qty 1 — matches Laravel.
   const packageName = (p: ConfirmEventPackage) =>
     p.equipment?.name || p.package_name || p.name || "Item";
-  const packageLabel = (p: ConfirmEventPackage) =>
-    `${Number(p.quantity) || 1}x ${packageName(p)}`;
+  const packageLabel = (p: ConfirmEventPackage) => {
+    const qty = Number(p.quantity) || 1;
+    return qty > 1 ? `${qty}x ${packageName(p)}` : packageName(p);
+  };
 
   // Mirrors Laravel's rig-notes rules (confirmed_events.js): only package
   // types 1 and 2 appear; an event-specific rig_note is printed as-is because
@@ -74,7 +74,13 @@ export default function EventPaymentDrawer({ eventId, open, onClose, canAddPayme
   const stripTag = (s: string) =>
     s.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").trim().toLowerCase();
 
-  const rigListItems = ((selectedEventData?.data?.event_packages ?? []) as ConfirmEventPackage[])
+  // Basics (package_type_id 1) always listed before Extras (2) — a stable
+  // sort so items within each group keep the order the API returned them in.
+  const sortedPackages = ((selectedEventData?.data?.event_packages ?? []) as ConfirmEventPackage[])
+    .slice()
+    .sort((a, b) => Number(a.package_type_id) - Number(b.package_type_id));
+
+  const rigListItems = sortedPackages
     .filter((p) => {
       const t = Number(p.package_type_id);
       return t === 1 || t === 2;
@@ -140,12 +146,23 @@ export default function EventPaymentDrawer({ eventId, open, onClose, canAddPayme
         aria-hidden={!open}
       >
         <div
-          className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${open ? "opacity-100 pointer-events-auto" : "opacity-0"}`}
+          className={`absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-300 ${open ? "opacity-100 pointer-events-auto" : "opacity-0"}`}
           onClick={handleClose}
         />
 
+        {/* `w-[420px]` is wider than a 393px phone, so the panel hung off the
+            left edge and clipped the title and venue name. `w-full` with a
+            max-width keeps the original 420px rail on anything that can hold
+            it and fits the screen on anything that can't.
+
+            The `transition-transform` here is fine, even though `translate-x-*`
+            compiles to the standalone `translate` property in Tailwind v4:
+            Tailwind's own `transition-transform` utility expands to
+            `transition-property: transform, translate, scale, rotate`, so it
+            already covers it. Only a hand-written arbitrary list needs care —
+            see the note on Sidebar.tsx's drawer. */}
         <aside
-          className={`pointer-events-auto fixed right-0 top-0 h-full w-[420px] bg-white shadow-xl z-50 transform transition-transform duration-300 ${
+          className={`pointer-events-auto fixed right-0 top-0 h-full w-full max-w-[420px] bg-white shadow-2xl rounded-l-3xl overflow-hidden z-50 transform transition-transform duration-300 ${
             open ? "translate-x-0" : "translate-x-full"
           }`}
           role="dialog"
@@ -205,9 +222,9 @@ export default function EventPaymentDrawer({ eventId, open, onClose, canAddPayme
 
                   {/* Equipment Names Only */}
                   <div className="space-y-2 pt-3 border-t border-slate-200">
-                    {(selectedEventData?.data?.event_packages)?.length ? (
+                    {sortedPackages.length ? (
                       <div className="space-y-1">
-                        {(selectedEventData?.data?.event_packages).map((p: ConfirmEventPackage) => (
+                        {sortedPackages.map((p: ConfirmEventPackage) => (
                           <div key={p.id} className="flex items-start gap-2">
                             <SquareCheckBig size={14} className="text-primary flex-shrink-0 mt-0.5" />
                             <div className="min-w-0">
@@ -329,7 +346,7 @@ export default function EventPaymentDrawer({ eventId, open, onClose, canAddPayme
                       onChange={(e) => setPaymentAmount(e.target.value)}
                     />
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="mb-1 text-xs block">Date</label>
                         <DatePicker
@@ -431,9 +448,9 @@ export default function EventPaymentDrawer({ eventId, open, onClose, canAddPayme
             </table>
 
             <h2 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[#719984]">Equipment</h2>
-            {(selectedEventData?.data?.event_packages)?.length ? (
+            {sortedPackages.length ? (
               <ul className="mb-5 text-xs">
-                {selectedEventData.data.event_packages.map((p: ConfirmEventPackage) => (
+                {sortedPackages.map((p: ConfirmEventPackage) => (
                   <li key={p.id} className="border-b border-gray-300 py-1.5">
                     <span className="font-medium">{packageLabel(p)}</span>
                     {p.notes && (

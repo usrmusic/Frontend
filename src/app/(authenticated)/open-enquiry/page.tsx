@@ -58,7 +58,7 @@ const initialParams: {
   sortOrder?: "asc" | "desc";
 } = {
   page: 1,
-  limit: 10,
+  limit: 100,
   search: "",
 };
 
@@ -211,7 +211,7 @@ const OpenEnquiryPage = () => {
   const [clickedBtn, setClickedBtn] = useState<
     "brochure" | "quote" | "invoice"
   >("invoice");
-  const [activeTab, setActiveTab] = useState<"details" | "notes">("details");
+  const [activeTab, setActiveTab] = useState<"details" | "notes">("notes");
   // Open Enquiry / Closed (Cancelled) list toggle — see getStatusCounts in
   // enquiry.controller.js for why "Closed" means Cancelled specifically.
   const [enquiryView, setEnquiryView] = useState<"open" | "closed">("open");
@@ -578,9 +578,25 @@ const OpenEnquiryPage = () => {
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Up to seven buttons here (New Enquiry, Edit, Delete, the conditional
+            Reopen, Email Update, Send Brochure, Send Quote), each a different
+            width. Plain `flex-wrap` packs greedily left-to-right, so on a
+            phone it produced an uneven 3/2/1 stack — a lone "Send Quote"
+            stranded on its own final row, the group also running noticeably
+            taller than it needed to. A 2-column grid below `sm` gives every
+            button an equal-width cell instead, so it reads as a deliberate
+            2-per-row block rather than wherever flex-wrap happened to break
+            the line. `sm` and up returns to the original flex-wrap — plenty of
+            width there for the natural variable-width row. */}
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+          {/* An odd button count (7, when the conditional Reopen is showing)
+              leaves one cell of the last grid row empty rather than the
+              button stretching to fill it — deliberately left alone rather
+              than special-cased, so every button gets identical treatment
+              instead of one being singled out as visually more prominent than
+              in the original design. */}
           <Link href="/enquiry">
-            <Button type="primary" className="themeDefaultButton">
+            <Button type="primary" className="themeDefaultButton w-full sm:w-auto">
               <Plus size={14} className="mr-1 inline" />
               New Enquiry
             </Button>
@@ -1040,6 +1056,7 @@ const OpenEnquiryPage = () => {
                       if (!id) return;
                       setSelectedRowKeys([String(id)]);
                       setSelectedRowData([record]);
+                      setActiveTab("notes");
                     } catch {}
                   },
                   onDoubleClick: () => {
@@ -1143,7 +1160,7 @@ const OpenEnquiryPage = () => {
                     Record Deposit
                   </p>
                   <form className="space-y-2.5" onSubmit={formik.handleSubmit}>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <Select
                         className="w-full h-10"
                         placeholder="Company"
@@ -1152,6 +1169,7 @@ const OpenEnquiryPage = () => {
                         onChange={(value) =>
                           formik.setFieldValue("company_name", value)
                         }
+                        popupMatchSelectWidth={280}
                       />
                       <DatePicker
                         placeholder="Date"
@@ -1171,7 +1189,7 @@ const OpenEnquiryPage = () => {
                         allowClear
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <InputNumber
                         placeholder="Amount"
                         className="w-full h-10"

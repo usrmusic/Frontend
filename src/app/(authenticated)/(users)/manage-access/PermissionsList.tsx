@@ -43,7 +43,7 @@ const PermissionsList = ({ roleId }: Props) => {
 
   return (
     <div>
-      <div className="grid grid-cols-2 gap-3 max-h-80 overflow-auto pb-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-auto pb-3">
         {permissions.map((p) => (
           <label key={p.id} className="flex items-center gap-2">
             <Checkbox checked={selected.has(p.id)} onChange={() => toggle(p.id)} />

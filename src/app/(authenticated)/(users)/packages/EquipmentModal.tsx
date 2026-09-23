@@ -129,7 +129,7 @@ const EquipmentModal = ({ modalOpen, handleCancel, initialValues }: EquipmentPro
                 <label htmlFor="is_availabilty_check" className="mb-1 text-xs flex items-center gap-1">Do you have this Equipment? *</label>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Deliberately NOT `required`: both may be left blank and are
                     submitted as 0 by onSubmit above. (Laravel marks both
                     required, but the client asked for them to be optional —

@@ -113,8 +113,8 @@ const DownloadsPage = () => {
         <h2 className="themeH1">Downloads</h2>
       </div>
       <div>
-        <div className="flex items-center justify-between">
-          <div className="flex max-w-[410px] items-center gap-2 rounded-lg bg-white px-4 py-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex w-full sm:max-w-[410px] items-center gap-2 rounded-lg bg-white px-4 py-3">
             <MagnifyingGlass w={18} h={18} />
             <input
               type="text"
@@ -124,7 +124,7 @@ const DownloadsPage = () => {
               className="w-full bg-transparent! text-sm placeholder:text-gray-500"
             />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button type="primary" icon={<FileUp size={14} />} onClick={() => setShowUploadModal(true)}>
               Upload File
             </Button>

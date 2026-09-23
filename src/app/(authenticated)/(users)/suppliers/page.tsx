@@ -155,8 +155,17 @@ const SuppliersPage = () => {
     <div className="space-y-4 mt-4">
       {/* Filters Card */}
       <Card variant="green">
-        <div className="flex items-center justify-between">
-          <div className="flex w-[300px] items-center gap-2 rounded-lg bg-white px-4 h-10">
+        {/* Search always gets its own complete row and the action buttons
+            always get the row below — never sharing one row, at any width. This
+            replaces `sm:flex-row`, which put search and buttons side by side
+            from `sm` up: with a search box capped at `sm:w-[300px]` and a
+            2-4 button group beside it, that row could exceed available width
+            at in-between sizes (a 768px iPad, for example), forcing an uneven
+            wrap of whichever few buttons didn't fit rather than a clean two-row
+            layout. Unconditional `flex-col` removes the possibility entirely —
+            each row is exactly one group, full width, every time. */}
+        <div className="flex flex-col gap-3">
+          <div className="flex w-full items-center gap-2 rounded-lg bg-white px-4 h-10">
             <MagnifyingGlass w={18} h={18} />
             <input
               type="text"
@@ -166,9 +175,14 @@ const SuppliersPage = () => {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <div className="flex gap-2">
-            <Button onClick={() => setModalOpen(true)}>Add</Button>
+          {/* Three buttons, all short labels — plain flex-wrap always fit
+              them on one row at any real width, but left them at natural
+              size flush left with empty space trailing. `flex-1` spreads
+              them across the full row width instead. */}
+          <div className="flex flex-wrap gap-2">
+            <Button className="flex-1 min-w-[90px]" onClick={() => setModalOpen(true)}>Add</Button>
             <Button
+              className="flex-1 min-w-[100px]"
               disabled={selectedRowKeys.length === 0}
               onClick={() => setAlertModal(true)}
             >
@@ -178,8 +192,9 @@ const SuppliersPage = () => {
               data={csvData ?? []}
               filename="suppliers.csv"
               headers={csvHeaders}
+              className="flex-1 min-w-[130px]"
             >
-              <Button>Export Data</Button>
+              <Button className="w-full">Export Data</Button>
             </CSVLink>
           </div>
         </div>

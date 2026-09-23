@@ -73,7 +73,7 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen">
+    <div className="flex justify-center items-center min-h-screen px-4">
       <form
         className="max-w-sm w-full mx-auto space-y-6 my-16"
         onSubmit={formik.handleSubmit}

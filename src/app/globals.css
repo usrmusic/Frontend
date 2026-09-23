@@ -117,8 +117,13 @@ button:hover {
   }
 }
 
+/* Page title. 24px is the desktop size; on a phone a long title ("Confirmed
+   Events", "Manage Access") eats the whole title row at that size and forces
+   its action buttons onto another line or off screen. Defined mobile-first so
+   every one of the ~15 pages using .themeH1 scales without each having to opt
+   in. */
 .themeH1 {
-  @apply font-semibold text-2xl leading-none tracking-normal;
+  @apply font-semibold text-xl sm:text-2xl leading-tight tracking-normal;
 }
 
 /* ── Typography scale ───────────────────────────────────────────────────────
@@ -523,4 +528,50 @@ button:hover {
 .Toastify__progress-bar--warning,
 .Toastify__progress-bar--info {
   background: rgba(255, 255, 255, 0.6) !important;
+}
+/* ── Mobile safety nets for Ant Design primitives ───────────────────────────
+   These are global on purpose. The alternative is repeating the same override
+   on ~20 modals and ~15 tables, which is exactly how the codebase ended up
+   with per-page font sizes before the typography scale above was introduced.
+
+   Each rule is scoped with :where() so it carries ZERO specificity — any page
+   that genuinely needs a different value can still override it with a plain
+   utility class, without an !important arms race. */
+@media (max-width: 640px) {
+  /* Ant Design centres a modal at its configured `width` and only caps it at
+     `calc(100vw - 32px)`. That cap leaves 16px a side, which on a 393px phone
+     is a cramped, edge-to-edge sheet. Pull it in slightly and let tall content
+     scroll inside the viewport rather than pushing the footer off screen. */
+  :where(.ant-modal) {
+    max-width: calc(100vw - 24px);
+    margin: 12px auto;
+    top: 0;
+  }
+
+  /* Modal padding: AntD ships 24px all round; at this width that is 12% of the
+     screen spent on whitespace. */
+  :where(.ant-modal-content) {
+    padding: 16px;
+  }
+
+  /* Pagination is a single nowrap row by default and overflows on a phone once
+     there are more than a handful of pages. */
+  :where(.ant-pagination) {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 8px;
+  }
+
+  /* Date/time pickers open a panel wider than the screen and get clipped. */
+  :where(.ant-picker-dropdown) {
+    max-width: calc(100vw - 16px);
+  }
+
+  /* Tighter table cells — the default 16px inline padding on a horizontally
+     scrolling table means more swiping for the same data. */
+  :where(.ant-table-tbody) > tr > td,
+  :where(.ant-table-thead) > tr > th {
+    padding-inline: 10px;
+  }
 }
