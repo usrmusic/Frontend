@@ -272,33 +272,26 @@ const Page = () => {
           {/* `shrink-0` with no wrap of its own meant this 3-button group
               (Apply Filters, Reset Filters, Columns — ~406px combined) had to
               render at full width no matter how little room was left once
-              the outer `flex-wrap` pushed it onto its own line. On a phone
-              that's narrower than the group itself, so it overflowed the
-              card and the ancestor's `overflow-hidden` sliced "Columns" down
-              to "Col…" instead of showing it. `flex-wrap` (no `shrink-0`)
-              lets it break onto a second internal row instead of overflowing
-              when it doesn't fit.
+              the outer `flex-wrap` pushed it onto its own line — that was the
+              first bug. `flex-wrap` (no `shrink-0`) lets it break onto a
+              second internal row instead of overflowing when it doesn't fit.
 
-              `flex-1` (added to match Suppliers Report's identical filter
-              bar): every sibling in this row — Search, Select, both
-              DatePickers — is `flex-1` and stretches to divide up the full
-              row width between them. This group was the one exception, sized
-              only to its own content, so on a row by itself it sat flush
-              left at its natural ~406px with a slab of plain green space
-              filling the rest of the line — the same "not properly designed"
-              gap Suppliers Report had, just not yet fixed here. `min-w`
-              keeps the three buttons from being squeezed uncomfortably
-              narrow before `flex-wrap` (above) lets them break onto a second
-              internal line if the row is ever narrower than that. */}
-          {/* The 3 buttons ALSO need `flex-1` individually, not just their
-              wrapper — the wrapper has no background of its own (it's a bare
-              layout div sitting on the green card), so stretching only IT
-              left the extra space invisible: same green as the page behind
-              it, indistinguishable from not stretching at all. Suppliers
-              Report's Apply/Reset pair already had `flex-1` on each button
-              from earlier work, which is why that fix was visible there and
-              this one wasn't. */}
-          <div className="flex-1 flex flex-wrap gap-2 min-w-[400px]">
+              `flex-1` (matching every sibling in this row — Search, Select,
+              both DatePickers) makes the group stretch to fill the line
+              instead of sitting flush left with dead green space trailing it.
+
+              What this must NOT have is a `min-w` floor. A `min-width` is a
+              hard minimum the browser won't shrink below regardless of
+              `flex-wrap` — an earlier version of this fix added
+              `min-w-[400px]` "to keep the buttons from being squeezed," but
+              at a 393px phone the available row is only ~320px after
+              padding, which is narrower than that floor. The GROUP itself
+              then overflowed the card exactly the same way the ungrouped
+              buttons used to, just one level up — "Columns" clipped again.
+              The group doesn't need a floor to stay together: it's already
+              ONE flex item in the outer `flex-wrap`, so it already moves
+              as a unit onto its own line with no min-width forcing it. */}
+          <div className="flex-1 flex flex-wrap gap-2">
             <Button className="flex-1 h-10!" onClick={applyFilters}>Apply Filters</Button>
             <Button
               className="flex-1 h-10!"
