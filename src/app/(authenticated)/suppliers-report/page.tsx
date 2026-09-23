@@ -324,26 +324,20 @@ const SuppliersPage = () => {
               Search box's explicit height, so it can't drift regardless of
               what height the row resolves to.
 
-              `flex-1`: every OTHER control in this row (Search, Select, both
-              DatePickers) is `flex-1`, so they stretch to divide up the full
-              row between them with no gap left over — this pair was the one
-              exception, sized only to its own content, and sat flush left
-              with a slab of dead green space trailing it when alone on a
-              line. Matching it to `flex-1` makes it behave like its
-              siblings: full width whenever it's alone on a line, sharing
-              evenly when it isn't.
-
-              No `min-w` floor, and `flex-wrap` added: a `min-width` doesn't
-              shrink below its stated value even under `flex-wrap`, so a
-              floor here (this pair used to carry `min-w-[280px]`, "to keep
-              the pair together as a unit") becomes the overflow itself once
-              a phone is narrower than that floor — the same bug that
-              clipped Admin Report's "Columns" button. The pair is already
-              ONE flex item in the outer row, so it already moves as a unit
-              with no floor forcing it; `flex-wrap` here is just the
-              internal fallback if this pair's own two buttons ever don't
-              fit side by side on a genuinely tiny screen. */}
-          <div className="flex-1 flex flex-wrap gap-2">
+              `w-full` (not `flex-1`), and matches Admin Report's identical
+              button-group fix — see that page for the full history. Short
+              version: `flex-1` alone looked right ("it's one flex item, so
+              it moves as a unit"), but this group also has its own
+              `flex-wrap`, which makes its automatic minimum width collapse
+              to its narrowest single button rather than both together — so
+              the OUTER row saw a ~150px-minimum item, not ~280px, and
+              packed "Apply Filters" onto the tail of the Date (To) row
+              instead of keeping the pair together. `w-full` forces an
+              exclusive row with nothing else able to share it, at any
+              width, with no min-width floor to overflow on a narrow phone.
+              `flex-wrap` still lets the pair's own two buttons break onto
+              two internal lines if a screen is too narrow for both. */}
+          <div className="w-full flex flex-wrap gap-2">
             <Button className="flex-1 h-10!" onClick={applyFilters}>
               Apply Filters
             </Button>
