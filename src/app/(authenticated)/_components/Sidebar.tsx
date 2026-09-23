@@ -311,7 +311,15 @@ const Sidebar = () => {
           })}
 
           {groupedMore.length > 0 && (
-            <div className="w-full">
+            // Every other nav item is a DIRECT child of the rail's flex
+            // container, so its `xl:items-center` centers them on the collapsed
+            // desktop rail. This one isn't — it needs a wrapper to hold the
+            // "More" submenu underneath it — and a `w-full` wrapper spans the
+            // whole rail, leaving the 40px button sitting at its left edge
+            // while every icon above it is centred. Re-applying the centring
+            // on the wrapper itself lines it back up. Collapsed-desktop only:
+            // when expanded, rows are full-width and left-aligned by design.
+            <div className={`w-full ${expanded ? "" : "xl:flex xl:flex-col xl:items-center"}`}>
               <button
                 type="button"
                 onClick={() => {
