@@ -171,17 +171,14 @@ const CompanyPage = () => {
       {contextHolder}
       {/* Filters Card */}
       <Card variant="green">
-        {/* Search always gets its own complete row and the action buttons
-            always get the row below — never sharing one row, at any width. This
-            replaces `sm:flex-row`, which put search and buttons side by side
-            from `sm` up: with a search box capped at `sm:w-[300px]` and a
-            2-4 button group beside it, that row could exceed available width
-            at in-between sizes (a 768px iPad, for example), forcing an uneven
-            wrap of whichever few buttons didn't fit rather than a clean two-row
-            layout. Unconditional `flex-col` removes the possibility entirely —
-            each row is exactly one group, full width, every time. */}
-        <div className="flex flex-col gap-3">
-          <div className="flex w-full items-center gap-2 rounded-lg bg-white px-4 h-10">
+          {/* Desktop (lg+) is the ORIGINAL layout, untouched: one row, search
+              300px on the left, buttons natural-width on the right. The stacked
+              treatment below applies only under 1024px, where the two groups
+              genuinely cannot share a row — a 300px search plus this button set
+              needs ~754px, more than a 768px tablet has after the shell's
+              padding. */}
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex w-full lg:w-[300px] items-center gap-2 rounded-lg bg-white px-4 h-10">
             <MagnifyingGlass w={18} h={18} />
             <input
               type="text"
@@ -195,13 +192,12 @@ const CompanyPage = () => {
               them on one row at any real width, but left them at natural
               size flush left with empty space trailing. `flex-1` spreads
               them across the full row width instead. */}
-          <div className="flex flex-wrap gap-2">
-            <Button className="flex-1 min-w-[90px]" onClick={() => {
+          <div className="grid grid-cols-2 gap-2 lg:flex lg:flex-wrap">
+            <Button onClick={() => {
               setCompanyItem(null);
               setModalOpen(true);
             }}>Add</Button>
             <Button
-              className="flex-1 min-w-[100px]"
               disabled={selectedRowKeys.length === 0}
               onClick={() => setAlertModal(true)}
             >
@@ -211,9 +207,8 @@ const CompanyPage = () => {
               data={csvData ?? []}
               filename="company.csv"
               headers={csvHeaders}
-              className="flex-1 min-w-[130px]"
             >
-              <Button className="w-full">Export Data</Button>
+              <Button className="w-full lg:w-auto">Export Data</Button>
             </CSVLink>
           </div>
         </div>

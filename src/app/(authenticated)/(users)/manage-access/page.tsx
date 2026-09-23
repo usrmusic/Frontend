@@ -102,16 +102,13 @@ const ManageAccessPage = () => {
     <div className="space-y-4 mt-4">
       {/* Filters Card */}
       <Card variant="green">
-        {/* Search always gets its own complete row and the action buttons
-            always get the row below — never sharing one row, at any width. This
-            replaces `sm:flex-row`, which put search and buttons side by side
-            from `sm` up: with a search box capped at `sm:w-[300px]` and a
-            2-4 button group beside it, that row could exceed available width
-            at in-between sizes (a 768px iPad, for example), forcing an uneven
-            wrap of whichever few buttons didn't fit rather than a clean two-row
-            layout. Unconditional `flex-col` removes the possibility entirely —
-            each row is exactly one group, full width, every time. */}
-        <div className="flex flex-col gap-3">
+          {/* Desktop (lg+) is the ORIGINAL layout, untouched: one row, search
+              300px on the left, buttons natural-width on the right. The stacked
+              treatment below applies only under 1024px, where the two groups
+              genuinely cannot share a row — a 300px search plus this button set
+              needs ~754px, more than a 768px tablet has after the shell's
+              padding. */}
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           {/* This page has its own search+tabs pairing that the sweep above
               never touched — different class signature (`flex items-center
               gap-4`, no responsive handling at all) from the pattern shared
@@ -120,8 +117,8 @@ const ManageAccessPage = () => {
               the same non-wrapping row. Same fix, unconditional `flex-col` —
               search gets its own row, the toggle gets the row below, neither
               ever has to share space with the other. */}
-          <div className="flex flex-col gap-3">
-            <div className="flex w-full items-center gap-2 rounded-lg bg-white px-4 h-10">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
+            <div className="flex w-full lg:w-[300px] items-center gap-2 rounded-lg bg-white px-4 h-10">
               <MagnifyingGlass w={18} h={18} />
               <input
                 type="text"
@@ -130,15 +127,15 @@ const ManageAccessPage = () => {
               />
             </div>
 
-            <div className="flex w-full items-center gap-3">
+            <div className="flex w-full lg:w-auto items-center gap-3">
               <button
-                className={`flex-1 px-3 py-1 rounded ${activeTab === "search" ? "bg-white text-black" : "text-white/80"}`}
+                className={`flex-1 lg:flex-none px-3 py-1 rounded ${activeTab === "search" ? "bg-white text-black" : "text-white/80"}`}
                 onClick={() => setActiveTab("search")}
               >
                 Roles
               </button>
               <button
-                className={`flex-1 px-3 py-1 rounded ${activeTab === "permission" ? "bg-white text-black" : "text-white/80"}`}
+                className={`flex-1 lg:flex-none px-3 py-1 rounded ${activeTab === "permission" ? "bg-white text-black" : "text-white/80"}`}
                 onClick={() => setActiveTab("permission")}
               >
                 Permissions
@@ -152,8 +149,8 @@ const ManageAccessPage = () => {
               // natural size flush left with a large gap of empty green
               // trailing it, same as every other lone-item row fixed this
               // session.
-              <div className="flex flex-wrap gap-2 w-full">
-                <Button className="w-full" onClick={() => setModalOpen(true)}>Add</Button>
+              <div className="grid grid-cols-2 gap-2 lg:flex lg:flex-wrap">
+                <Button className="w-full lg:w-auto" onClick={() => setModalOpen(true)}>Add</Button>
               </div>
             ) : (
               // Permissions tab: show nothing initially
