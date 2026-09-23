@@ -74,17 +74,14 @@ const EmailPage = () => {
     <div className="space-y-4 mt-4">
       {/* Filters Card */}
       <Card variant="green">
-        {/* Search always gets its own complete row and the action buttons
-            always get the row below — never sharing one row, at any width. This
-            replaces `sm:flex-row`, which put search and buttons side by side
-            from `sm` up: with a search box capped at `sm:w-[300px]` and a
-            2-4 button group beside it, that row could exceed available width
-            at in-between sizes (a 768px iPad, for example), forcing an uneven
-            wrap of whichever few buttons didn't fit rather than a clean two-row
-            layout. Unconditional `flex-col` removes the possibility entirely —
-            each row is exactly one group, full width, every time. */}
-        <div className="flex flex-col gap-3">
-          <div className="flex w-full items-center gap-2 rounded-lg bg-white px-4 h-10">
+          {/* Desktop (lg+) is the ORIGINAL layout, untouched: one row, search
+              300px on the left, buttons natural-width on the right. The stacked
+              treatment below applies only under 1024px, where the two groups
+              genuinely cannot share a row — a 300px search plus this button set
+              needs ~754px, more than a 768px tablet has after the shell's
+              padding. */}
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex w-full lg:w-[300px] items-center gap-2 rounded-lg bg-white px-4 h-10">
             <MagnifyingGlass w={18} h={18} />
             <input
               type="text"
@@ -94,17 +91,14 @@ const EmailPage = () => {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          {/* A single button on its own row otherwise sat at natural size
-              flush left with a large gap of empty green trailing it — same
-              lone-item fix applied everywhere else this session. */}
-          <div className="flex flex-wrap gap-2 w-full">
+          <div className="grid grid-cols-2 gap-2 lg:flex lg:flex-wrap">
             <CSVLink
               data={csvData ?? []}
               filename="emails.csv"
               headers={csvHeaders}
-              className="w-full"
+              className="w-full lg:w-auto"
             >
-              <Button className="w-full">Export Data</Button>
+              <Button className="w-full lg:w-auto">Export Data</Button>
             </CSVLink>
           </div>
         </div>

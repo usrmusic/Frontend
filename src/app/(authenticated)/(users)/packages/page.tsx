@@ -279,7 +279,7 @@ const PackagesPage = () => {
       title: "Actions",
       key: "actions",
       render: (data) => (
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 gap-2 lg:flex lg:flex-wrap">
           {/* <span className="cursor-pointer" title="View">
             <Eye size={14} />
           </span>
@@ -387,16 +387,13 @@ const PackagesPage = () => {
     <div className="space-y-4 mt-4">
       {/* Filters Card */}
       <Card variant="green">
-        {/* Search always gets its own complete row and the action buttons
-            always get the row below — never sharing one row, at any width. This
-            replaces `sm:flex-row`, which put search and buttons side by side
-            from `sm` up: with a search box capped at `sm:w-[300px]` and a
-            2-4 button group beside it, that row could exceed available width
-            at in-between sizes (a 768px iPad, for example), forcing an uneven
-            wrap of whichever few buttons didn't fit rather than a clean two-row
-            layout. Unconditional `flex-col` removes the possibility entirely —
-            each row is exactly one group, full width, every time. */}
-        <div className="flex flex-col gap-3">
+          {/* Desktop (lg+) is the ORIGINAL layout, untouched: one row, search
+              300px on the left, buttons natural-width on the right. The stacked
+              treatment below applies only under 1024px, where the two groups
+              genuinely cannot share a row — a 300px search plus this button set
+              needs ~754px, more than a 768px tablet has after the shell's
+              padding. */}
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           {/* Was `sm:flex-row` — search and the Packages/Equipment toggle
               still shared one row from `sm` up, and that row wasn't wide
               enough at every `sm`+ size either: at 768px "Equipment" was
@@ -405,8 +402,8 @@ const PackagesPage = () => {
               section) — unconditional `flex-col`, so search and the toggle
               never compete for the same row at any width, each full-width on
               its own line instead. */}
-          <div className="flex flex-col gap-3">
-            <div className="flex w-full items-center gap-2 rounded-lg bg-white px-4 h-10">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
+            <div className="flex w-full lg:w-[300px] items-center gap-2 rounded-lg bg-white px-4 h-10">
               <MagnifyingGlass w={18} h={18} />
               <input
                 type="text"
@@ -419,9 +416,9 @@ const PackagesPage = () => {
             {/* `flex-1` on each button spreads the pair across the full row
                 width instead of leaving them stranded at natural size on the
                 left with empty space trailing. */}
-            <div className="flex w-full rounded-md overflow-hidden bg-secondary-200">
+            <div className="flex w-full lg:w-auto rounded-md overflow-hidden bg-secondary-200">
               <button
-                className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                className={`flex-1 lg:flex-none px-4 py-2 text-sm font-medium transition-colors ${
                   activeTab === 'packages' ? 'bg-white text-primary' : 'text-gray-600 hover:text-primary'
                 } rounded-l-md`}
                 onClick={() => setActiveTab('packages')}
@@ -429,7 +426,7 @@ const PackagesPage = () => {
                 Packages
               </button>
               <button
-                className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                className={`flex-1 lg:flex-none px-4 py-2 text-sm font-medium transition-colors ${
                   activeTab === 'equipment' ? 'bg-white text-primary' : 'text-gray-600 hover:text-primary'
                 } rounded-r-md`}
                 onClick={() => setActiveTab('equipment')}
@@ -438,14 +435,9 @@ const PackagesPage = () => {
               </button>
             </div>
           </div>
-          {/* Three buttons, all short labels — `flex-1` spreads them across
-              the full row width instead of sitting at natural size flush
-              left with empty space trailing. `flex-wrap` is a safety net if
-              the row is ever narrower than all three minimums combined. */}
-          <div className="flex flex-wrap gap-2">
-            <Button className="flex-1 min-w-[90px]" onClick={() => { setPackageItem(null); setEquipmentItem(null); setModalOpen(true); }}>{activeTab === 'packages' ? 'Add' : 'Add'}</Button>
+          <div className="grid grid-cols-2 gap-2 lg:flex lg:flex-wrap">
+            <Button onClick={() => { setPackageItem(null); setEquipmentItem(null); setModalOpen(true); }}>{activeTab === 'packages' ? 'Add' : 'Add'}</Button>
             <Button
-              className="flex-1 min-w-[100px]"
               disabled={selectedRowKeys.length === 0}
               onClick={() => setAlertModal(true)}
             >
@@ -461,9 +453,8 @@ const PackagesPage = () => {
                   ? packageCsvHeaders
                   : equipmentCsvHeaders
               }
-              className="flex-1 min-w-[130px]"
             >
-              <Button className="w-full">Export Data</Button>
+              <Button className="w-full lg:w-auto">Export Data</Button>
             </CSVLink>
           </div>
         </div>
