@@ -322,22 +322,28 @@ const SuppliersPage = () => {
               and falls back to `auto` for, silently making `h-full!` a no-op.
               `h-10!` states the same 40px directly instead, matching the
               Search box's explicit height, so it can't drift regardless of
-              what height the row resolves to. `min-w-[280px]` keeps the pair
-              together as a unit — wrapping onto its own line if the row runs
-              out of room, rather than the two buttons splitting across two
-              different lines from each other.
+              what height the row resolves to.
 
-              `flex-1` (missing before): every OTHER control in this row
-              (Search, Select, both DatePickers) is `flex-1`, so they stretch
-              to divide up the full row between them with no gap left over —
-              this was the one exception, sized only to its own content
-              (min-w-280px) with nothing telling it to grow. On a row of its
-              own it sat 280px wide, flush left, with a slab of plain green
-              dead space filling the rest of that line — the "not properly
-              designed" gap in the screenshot. Matching it to `flex-1` makes
-              it behave exactly like its siblings: full width whenever it's
-              alone on a line, sharing evenly when it isn't. */}
-          <div className="flex-1 flex gap-2 min-w-[280px]">
+              `flex-1`: every OTHER control in this row (Search, Select, both
+              DatePickers) is `flex-1`, so they stretch to divide up the full
+              row between them with no gap left over — this pair was the one
+              exception, sized only to its own content, and sat flush left
+              with a slab of dead green space trailing it when alone on a
+              line. Matching it to `flex-1` makes it behave like its
+              siblings: full width whenever it's alone on a line, sharing
+              evenly when it isn't.
+
+              No `min-w` floor, and `flex-wrap` added: a `min-width` doesn't
+              shrink below its stated value even under `flex-wrap`, so a
+              floor here (this pair used to carry `min-w-[280px]`, "to keep
+              the pair together as a unit") becomes the overflow itself once
+              a phone is narrower than that floor — the same bug that
+              clipped Admin Report's "Columns" button. The pair is already
+              ONE flex item in the outer row, so it already moves as a unit
+              with no floor forcing it; `flex-wrap` here is just the
+              internal fallback if this pair's own two buttons ever don't
+              fit side by side on a genuinely tiny screen. */}
+          <div className="flex-1 flex flex-wrap gap-2">
             <Button className="flex-1 h-10!" onClick={applyFilters}>
               Apply Filters
             </Button>
