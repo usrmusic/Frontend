@@ -269,29 +269,38 @@ const Page = () => {
               setDateTo(Array.isArray(dateString) ? dateString[0] || "" : dateString)
             }
           />
-          {/* `shrink-0` with no wrap of its own meant this 3-button group
-              (Apply Filters, Reset Filters, Columns — ~406px combined) had to
-              render at full width no matter how little room was left once
-              the outer `flex-wrap` pushed it onto its own line — that was the
-              first bug. `flex-wrap` (no `shrink-0`) lets it break onto a
-              second internal row instead of overflowing when it doesn't fit.
+          {/* Third attempt at this one row, so the reasoning that DIDN'T hold
+              is worth keeping:
 
-              `flex-1` (matching every sibling in this row — Search, Select,
-              both DatePickers) makes the group stretch to fill the line
-              instead of sitting flush left with dead green space trailing it.
+              1. `shrink-0`, no wrap: forced full width regardless of room —
+                 overflowed and clipped "Columns" on a phone.
+              2. `flex-1 min-w-[400px]`: a `min-width` is a hard floor even
+                 under `flex-wrap` — at 393px the row is only ~320px after
+                 padding, narrower than the floor, so the GROUP overflowed
+                 the same way, one level up.
+              3. `flex-1`, no min-w: this looked right ("it's already one
+                 flex item, so it already moves as a unit") but missed that
+                 the group ALSO has its own `flex-wrap`. A flex item's
+                 automatic minimum width defaults to its MIN-CONTENT size —
+                 and because this container can wrap internally, its
+                 min-content collapses to just its narrowest single
+                 unwrappable piece (~150px, one button), not all three
+                 buttons together. The outer row's wrap algorithm saw a
+                 150px-minimum item, not a 406px one, and happily packed
+                 "Apply Filters" onto the tail of the Date (To) row —
+                 buttons interleaved with unrelated fields instead of
+                 staying together.
 
-              What this must NOT have is a `min-w` floor. A `min-width` is a
-              hard minimum the browser won't shrink below regardless of
-              `flex-wrap` — an earlier version of this fix added
-              `min-w-[400px]` "to keep the buttons from being squeezed," but
-              at a 393px phone the available row is only ~320px after
-              padding, which is narrower than that floor. The GROUP itself
-              then overflowed the card exactly the same way the ungrouped
-              buttons used to, just one level up — "Columns" clipped again.
-              The group doesn't need a floor to stay together: it's already
-              ONE flex item in the outer `flex-wrap`, so it already moves
-              as a unit onto its own line with no min-width forcing it. */}
-          <div className="flex-1 flex flex-wrap gap-2">
+              `w-full` (not `flex-1`) is what actually guarantees "own row,
+              any width, no floor": a 100%-wide flex item cannot coexist with
+              anything else on its line — there is no room left for a
+              sibling once one item claims the whole row — so it forces a
+              wrap boundary on both sides with no min-width, no floor, and
+              no dependence on what the group's own narrowest child happens
+              to be. `flex-wrap` still lets its 3 buttons break onto two
+              internal lines if a screen is too narrow for all three, now
+              without ever leaking into the row above or below it. */}
+          <div className="w-full flex flex-wrap gap-2">
             <Button className="flex-1 h-10!" onClick={applyFilters}>Apply Filters</Button>
             <Button
               className="flex-1 h-10!"
