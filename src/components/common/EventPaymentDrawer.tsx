@@ -146,12 +146,23 @@ export default function EventPaymentDrawer({ eventId, open, onClose, canAddPayme
         aria-hidden={!open}
       >
         <div
-          className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${open ? "opacity-100 pointer-events-auto" : "opacity-0"}`}
+          className={`absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-300 ${open ? "opacity-100 pointer-events-auto" : "opacity-0"}`}
           onClick={handleClose}
         />
 
+        {/* `w-[420px]` is wider than a 393px phone, so the panel hung off the
+            left edge and clipped the title and venue name. `w-full` with a
+            max-width keeps the original 420px rail on anything that can hold
+            it and fits the screen on anything that can't.
+
+            The `transition-transform` here is fine, even though `translate-x-*`
+            compiles to the standalone `translate` property in Tailwind v4:
+            Tailwind's own `transition-transform` utility expands to
+            `transition-property: transform, translate, scale, rotate`, so it
+            already covers it. Only a hand-written arbitrary list needs care —
+            see the note on Sidebar.tsx's drawer. */}
         <aside
-          className={`pointer-events-auto fixed right-0 top-0 h-full w-[420px] bg-white shadow-xl z-50 transform transition-transform duration-300 ${
+          className={`pointer-events-auto fixed right-0 top-0 h-full w-full max-w-[420px] bg-white shadow-2xl rounded-l-3xl overflow-hidden z-50 transform transition-transform duration-300 ${
             open ? "translate-x-0" : "translate-x-full"
           }`}
           role="dialog"
@@ -335,7 +346,7 @@ export default function EventPaymentDrawer({ eventId, open, onClose, canAddPayme
                       onChange={(e) => setPaymentAmount(e.target.value)}
                     />
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="mb-1 text-xs block">Date</label>
                         <DatePicker

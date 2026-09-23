@@ -75,7 +75,17 @@ const Page = () => {
 
   return (
     <div className="space-y-4 mt-4">
-      <div className="flex justify-between items-center">
+      {/* Unlike most page headers, this one was stacking below `sm` (640px)
+          for no reason — title + two short buttons ("Rig List", "Save",
+          "Print") only need ~290px total, which is comfortably under, e.g.,
+          375px's ~335px of usable width after the app shell's own padding.
+          `sm:flex-row` was copied from other headers that genuinely need it
+          (longer titles, 4+ buttons) without checking whether THIS row
+          actually did. It's `flex-wrap` here instead of a breakpoint swap —
+          not a specific pixel threshold to tune, just "stay one row, and only
+          break if a screen is ever too narrow to avoid it" (roughly sub-300px,
+          narrower than any real device this app targets). */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Link href="/dashboard" className="shrink-0">
             <BackButton />
@@ -97,8 +107,8 @@ const Page = () => {
 
       {/* Event selector — plain white filter bar, matching Completed Events'
           filter row rather than a colored primary bar. */}
-      <div className="grid grid-cols-4 gap-2">
-        <div className="col-span-2 space-y-2">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+        <div className="sm:col-span-2 space-y-2">
           <Select
             value={eventId ? eventId : undefined}
             className="w-full bg-white rounded-lg"

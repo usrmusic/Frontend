@@ -140,7 +140,7 @@ const SuppliersPage = () => {
   };
   return (
     <div className="mt-4 space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <Link href="/dashboard" className="">
             <BackButton />
@@ -156,18 +156,55 @@ const SuppliersPage = () => {
           */}
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      {/* `auto-fit` fixed the overflow (each card now gets at least the
+          230px it needs — see the sizing math below) but left an odd-item
+          side effect: 5 cards at 230px+ naturally pack 3-per-row, and the
+          leftover 2 sat at their normal card width on their own row,
+          leaving a slab of dead space beside them instead of using it.
+
+          This grid is hard-coded to exactly 5 known stats (not dynamic data
+          — `stats` above is a fixed literal array), so unlike a generic
+          "however many items happen to exist" grid, a deliberate layout for
+          those 5 can be stated directly instead of guessed at: a 6-column
+          track lets the first 3 cards each take 2 columns (3-per-row) and
+          the last 2 each take 3 columns — the same total width (6 units)
+          divided differently, so row two fills edge-to-edge instead of
+          stopping halfway. If a 6th stat is ever added this stops being
+          exact and needs revisiting; it isn't a generic solution, it's this
+          specific row's known shape.
+
+          Sizing floor: a card needs roughly 230px (40px icon + label/value
+          text + the 18px eye toggle + gap + the 52px trailing chart image +
+          padding). `lg:grid-cols-6` (col-span-2 = 1/3 of the row) is only
+          safe once there's enough width for that — the original bug was
+          exactly this check being skipped. Below `lg`, `sm:grid-cols-2`
+          keeps 2 per row (each ≈288px+ at `sm`, comfortably clear of the
+          230px floor), with the 5th card spanning both columns as a full-
+          width closer rather than a lone half-width island. Below `sm`,
+          everything stacks full width — always safe at any card content
+          size. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-6">
         {stats.map((item, index) => {
           const statKey = item.toggleKey;
           const isToggleable = Boolean(statKey);
           const isVisible = statKey ? Boolean(showStat[statKey]) : true;
           const iconColor = item.variant === "green" ? "#fff" : undefined;
+          // Index 4 is the last of 5 — full width at the 2-col `sm` tier
+          // (closes the row instead of sitting alone beside empty space);
+          // indices 3-4 are the "wide" pair at the 6-col `lg` tier — see the
+          // layout note above the grid.
+          const spanClass =
+            index === 4
+              ? "sm:col-span-2 lg:col-span-3"
+              : index === 3
+                ? "lg:col-span-3"
+                : "lg:col-span-2";
 
           return (
             <Card
               key={`${item.label}-${index}`}
               variant={item.variant}
-              className={`flex items-center justify-between`}
+              className={`flex items-center justify-between ${spanClass}`}
               onClick={
                 isToggleable && !isLoading && statKey
                   ? () =>
@@ -219,8 +256,26 @@ const SuppliersPage = () => {
         })}
       </div>
       <div className="rounded-2xl overflow-hidden">
-        <div className="bg-primary p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
-          <div className="flex items-center gap-2 rounded-lg bg-white px-4 h-10">
+        {/* Was `grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5` — a fixed
+            column count assumed to divide evenly at each breakpoint, which
+            was the same mistake as the stat-card grid above it: at `lg`
+            (1024px), 5 equal columns work out to ~187px each, but this row
+            holds a search box, a select whose placeholder alone reads
+            "Confirmed and Completed Events", two date pickers, AND a 2-button
+            pair — none of which fit in 187px. A previous fix (col-span
+            juggling per breakpoint) patched the button pair's specific
+            symptom but left the Select and both DatePickers just as
+            squeezed, which is why Reset Filters was still visibly clipped.
+
+            `flex-wrap` + a `min-w` per control is the same pattern already
+            proven correct on Admin Report's identical filter bar (see that
+            page — it even has more controls than this one and doesn't break
+            at any width): each control states the narrowest it can
+            comfortably render at, and wraps onto a new line the moment the
+            row can't fit it anymore, at ANY viewport, not just the specific
+            widths a breakpoint happens to land on. */}
+        <div className="bg-primary p-4 flex flex-wrap gap-2">
+          <div className="flex-1 min-w-[180px] flex items-center gap-2 rounded-lg bg-white px-4 h-10">
             <MagnifyingGlass w={18} h={18} />
             <input
               type="text"
@@ -230,11 +285,11 @@ const SuppliersPage = () => {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <div className="max-w-full">
+          <div className="flex-1 min-w-[220px] max-w-full">
             <Select
               allowClear
               placeholder="Confirmed and Completed Events"
-              className="w-full bg-transparent rounded-lg text-xs"
+              className="w-full h-10 bg-white rounded-lg text-xs"
               value={selectedEventStatus || undefined}
               onChange={(val) => setSelectedEventStatus(String(val || ""))}
               options={[
@@ -246,7 +301,7 @@ const SuppliersPage = () => {
           </div>
           <DatePicker
             placeholder="Date (From)"
-            className="w-full !bg-white"
+            className="flex-1 min-w-[140px] h-10 !bg-white"
             value={dateFrom ? dayjs(dateFrom) : null}
             onChange={(_, dateString) =>
               setDateFrom(Array.isArray(dateString) ? dateString[0] || "" : dateString)
@@ -254,18 +309,40 @@ const SuppliersPage = () => {
           />
           <DatePicker
             placeholder="Date (To)"
-            className="w-full !bg-white"
+            className="flex-1 min-w-[140px] h-10 !bg-white"
             value={dateTo ? dayjs(dateTo) : null}
             onChange={(_, dateString) =>
               setDateTo(Array.isArray(dateString) ? dateString[0] || "" : dateString)
             }
           />
-          <div className="flex gap-2">
-            <Button className="flex-1 h-full!" onClick={applyFilters}>
+          {/* `h-full!` (height: 100% !important) only resolves against a
+              parent that has a DEFINITE height. This flex row has none of its
+              own — it's sized by its content — so "100% of an auto height"
+              is exactly the kind of percentage CSS treats as indeterminate
+              and falls back to `auto` for, silently making `h-full!` a no-op.
+              `h-10!` states the same 40px directly instead, matching the
+              Search box's explicit height, so it can't drift regardless of
+              what height the row resolves to. `min-w-[280px]` keeps the pair
+              together as a unit — wrapping onto its own line if the row runs
+              out of room, rather than the two buttons splitting across two
+              different lines from each other.
+
+              `flex-1` (missing before): every OTHER control in this row
+              (Search, Select, both DatePickers) is `flex-1`, so they stretch
+              to divide up the full row between them with no gap left over —
+              this was the one exception, sized only to its own content
+              (min-w-280px) with nothing telling it to grow. On a row of its
+              own it sat 280px wide, flush left, with a slab of plain green
+              dead space filling the rest of that line — the "not properly
+              designed" gap in the screenshot. Matching it to `flex-1` makes
+              it behave exactly like its siblings: full width whenever it's
+              alone on a line, sharing evenly when it isn't. */}
+          <div className="flex-1 flex gap-2 min-w-[280px]">
+            <Button className="flex-1 h-10!" onClick={applyFilters}>
               Apply Filters
             </Button>
             <Button
-              className="flex-1 h-full!"
+              className="flex-1 h-10!"
               icon={<RefreshCw size={14} />}
               onClick={resetFilters}
             >

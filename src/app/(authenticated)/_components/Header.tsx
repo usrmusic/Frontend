@@ -9,6 +9,7 @@ import { extractUser } from "@/src/lib/user";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import { useDashboardDropdown } from "@/src/api/dasboard";
 import { MagnifyingGlass, Plus } from "@/src/components/Icons";
+import { Menu } from "lucide-react";
 import Link from "next/link";
 import useRole from "@/src/hooks/useRole";
 
@@ -76,23 +77,45 @@ const Header = () => {
   const imageSrc = getImageSrc(user?.profile_photo);
 
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
+    // Below `xl` (1280px) the greeting and the tools stack into two rows.
+    // Side by side they cannot both fit: the tools are ~510px of fixed width
+    // (320 search + 110 year + 48 action + gaps), so on a 1032px iPad the
+    // greeting was left with 74px and rendered as "H...".
+    <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between xl:gap-4">
+      <div className="flex items-center gap-3 min-w-0">
+        {/* Only entry point to the nav below `xl`, where the sidebar is an
+            off-canvas drawer. Signals via the same CustomEvent bus the sidebar
+            already listens on. Must stay on the same breakpoint as Sidebar's
+            rail/drawer pivot or the nav becomes unreachable. */}
+        <button
+          type="button"
+          aria-label="Open menu"
+          onClick={() => window.dispatchEvent(new CustomEvent("sidebar:mobileToggle"))}
+          className="xl:hidden shrink-0 size-11 flex items-center justify-center rounded-full bg-white text-foreground hover:bg-black hover:text-white transition-colors"
+        >
+          <Menu size={20} />
+        </button>
         <UserAvatar
           src={imageSrc}
           initials={user?.name ? user.name.split(" ").map(n => n[0]).slice(0,2).join("") : "U"}
           size={48}
-          className="rounded-full"
+          className="rounded-full shrink-0 hidden sm:block"
         />
-        <div>
-          <h3 className="text-2xl font-medium mb-1">Hello{user?.name ? `, ${user.name}` : ''}</h3>
+        <div className="min-w-0">
+          {/* Drops a step on small screens — 24px of "Hello, <long name>"
+              wraps to three lines on a 375px phone. */}
+          <h3 className="text-lg sm:text-2xl font-medium mb-0 sm:mb-1 truncate">Hello{user?.name ? `, ${user.name}` : ''}</h3>
           {/* gray-500 is #6B7280 — the exact value the removed `--color-gray-100`
-              override used to supply to this one line. */}
-          <p className="text-gray-500">Explore information and activity about your events</p>
+              override used to supply to this one line. Purely decorative, so it
+              is the first thing to go when vertical space is scarce. */}
+          <p className="text-gray-500 text-sm hidden sm:block">Explore information and activity about your events</p>
         </div>
       </div>
-      <div className="flex gap-4 items-center">
-        <div style={{ width: 320 }} className="rounded-full bg-white flex items-center pl-4 pr-2 h-12">
+      <div className="flex gap-2 sm:gap-3 xl:gap-4 items-center w-full xl:w-auto">
+        {/* Was a hard `width: 320`, which on a phone overflowed the row and
+            pushed the year picker off screen. Now it takes the leftover space
+            below `xl` and pins back to 320px above it. */}
+        <div className="flex-1 min-w-0 xl:flex-none xl:w-80 rounded-full bg-white flex items-center pl-3 sm:pl-4 pr-2 h-11 sm:h-12">
           <Select
             showSearch
             allowClear
@@ -179,14 +202,16 @@ const Header = () => {
             className="flex-1 bg-transparent border-0 shadow-none"
           />
 
-          <button className="shrink-0 bg-black w-10 h-10 flex items-center justify-center text-white rounded-full hover:bg-gray-800 transition-all duration-300 ml-2">
+          <button className="shrink-0 bg-black size-9 sm:size-10 flex items-center justify-center text-white rounded-full hover:bg-gray-800 transition-all duration-300 ml-2">
             {dropdownFetching ? <Spin size="small" /> : <MagnifyingGlass />}
           </button>
           </div>
         {pathname === "/dashboard" && (
           <>
             <ConfigProvider theme={{ components: { Select: { selectorBg: "transparent" } } }}>
-              <div className="bg-white rounded-full h-10 flex items-center overflow-hidden" style={{ minWidth: 110 }}>
+              {/* Narrower on mobile — a year is 4 characters and 110px of
+                  padding around it is space the search box needs. */}
+              <div className="shrink-0 bg-white rounded-full h-10 flex items-center overflow-hidden w-[86px] xl:w-[110px]">
                 <Select
                   variant="borderless"
                   value={year}
@@ -198,8 +223,8 @@ const Header = () => {
               </div>
             </ConfigProvider>
             {!isClient && (
-              <Link href={"/enquiry"}>
-                <button className="size-12 flex items-center justify-center bg-white rounded-full">
+              <Link href={"/enquiry"} className="shrink-0">
+                <button className="size-11 xl:size-12 flex items-center justify-center bg-white rounded-full">
                   <Plus />
                 </button>
               </Link>
