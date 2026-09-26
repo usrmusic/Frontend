@@ -60,6 +60,66 @@ import useRole from "@/src/hooks/useRole";
 // admin-report/useColumns.tsx, dashboard/EventOverview.tsx).
 const CANCELLED_STATUS_ID = 4;
 
+/* Field order on phone/tablet (below `lg`).
+ *
+ * Desktop lays this form out as two columns, each with its own internal
+ * sub-grids, and simply stacking those columns on a narrow screen gives you
+ * the whole left column (client, vendors, songs) before the right one ever
+ * starts (date, venue, guests) — so date and venue ended up buried below the
+ * song choices. The client asked for the order used in the legacy CRM's
+ * mobile form: contact details, then schedule, then vendors, then the music
+ * and notes.
+ *
+ * Rather than duplicate 25 fields into a second mobile-only block (two copies
+ * to keep in step forever), the wrappers collapse to `display: contents`
+ * below `lg`, which promotes every field to a direct child of the outer grid,
+ * and each field then states its own position there. At `lg` the wrappers
+ * become real containers again and all of this switches off — the desktop
+ * layout is byte-for-byte what it was.
+ *
+ * Class strings are written out in full because Tailwind only emits classes
+ * it can read literally in the source — a computed `max-lg:order-${n}` would
+ * silently produce nothing.
+ *
+ * `sm:max-lg:col-span-2` marks the fields that should still run full width on
+ * a tablet, where the flattened list runs two-up to fill the screen. On a
+ * phone it's a single column, exactly as in the screenshots.
+ */
+const MOBILE_ORDER = {
+  clientName: "max-lg:order-[1] sm:max-lg:col-span-2",
+  email: "max-lg:order-[2]",
+  phone: "max-lg:order-[3]",
+  djName: "max-lg:order-[4]",
+  venue: "max-lg:order-[5]",
+  date: "max-lg:order-[6]",
+  startTime: "max-lg:order-[7]",
+  endTime: "max-lg:order-[8]",
+  access: "max-lg:order-[9]",
+  guests: "max-lg:order-[10]",
+  videography: "max-lg:order-[11]",
+  caterer: "max-lg:order-[12]",
+  decor: "max-lg:order-[13]",
+  eventContact: "max-lg:order-[14]",
+  deposit: "max-lg:order-[15]",
+  createdBy: "max-lg:order-[16]",
+  coupleName: "max-lg:order-[17] sm:max-lg:col-span-2",
+  entrance: "max-lg:order-[18] sm:max-lg:col-span-2",
+  cake: "max-lg:order-[19] sm:max-lg:col-span-2",
+  firstDance: "max-lg:order-[20] sm:max-lg:col-span-2",
+  itinerary: "max-lg:order-[21] sm:max-lg:col-span-2",
+  stag: "max-lg:order-[22]",
+  hen: "max-lg:order-[23]",
+  dos: "max-lg:order-[24] sm:max-lg:col-span-2",
+  donts: "max-lg:order-[25] sm:max-lg:col-span-2",
+} as const;
+
+/* Wrappers that exist only to group fields on desktop. Below `lg` they step
+   out of the way entirely (`display: contents`) so their children can be
+   ordered against each other across the two-column split. */
+const COLUMN = "contents lg:block lg:space-y-4";
+const GROUP_2 = "contents lg:grid lg:grid-cols-2 lg:gap-4";
+const GROUP_3 = "contents lg:grid lg:grid-cols-3 lg:gap-4";
+
 const ConfirmedEventsPage = () => {
   // Add Payment / Refund are Admin-only, matching the legacy Laravel CRM
   // (sidebar_ui_new.blade.php's Add Payment form and confirmed_events.blade.php's
@@ -646,23 +706,28 @@ const ConfirmedEventsPage = () => {
           <div
             className={`bg-white rounded-xl p-5 ${isLoading ? "opacity-60" : ""}`}
           >
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Below `lg` this grid holds the flattened field list itself (one
+                column on a phone, two on a tablet) — see MOBILE_ORDER. At `lg`
+                its two children become the original desktop columns again. */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:grid-cols-2 lg:gap-6">
               {/* LEFT COLUMN — order/labels match Laravel @notmobile desktop form */}
-              <div className="space-y-4">
+              <div className={COLUMN}>
                 <Input
                   name="first_name"
                   label="Client name"
                   placeholder="Enter client name"
+                  containerClassName={MOBILE_ORDER.clientName}
                   value={formik.values.first_name}
                   onChange={formik.handleChange}
                   disabled={!isModifyMode}
                 />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className={GROUP_2}>
                   <Input
                     name="email"
                     label="Email"
                     type="email"
                     placeholder="Enter email"
+                    containerClassName={MOBILE_ORDER.email}
                     value={formik.values.email}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
@@ -672,6 +737,7 @@ const ConfirmedEventsPage = () => {
                     label="Phone number"
                     type="number"
                     placeholder="Enter phone number"
+                    containerClassName={MOBILE_ORDER.phone}
                     value={formik.values.phone_number}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
@@ -680,6 +746,7 @@ const ConfirmedEventsPage = () => {
                     name="djName"
                     label="DJ name"
                     placeholder="Enter DJ name"
+                    containerClassName={MOBILE_ORDER.djName}
                     value={formik.values.djName}
                     onChange={formik.handleChange}
                     disabled
@@ -688,6 +755,7 @@ const ConfirmedEventsPage = () => {
                     name="videography"
                     label="Videography"
                     placeholder="Enter videographer name"
+                    containerClassName={MOBILE_ORDER.videography}
                     value={formik.values.videography}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
@@ -696,6 +764,7 @@ const ConfirmedEventsPage = () => {
                     name="caterer"
                     label="Caterer"
                     placeholder="Enter caterer name"
+                    containerClassName={MOBILE_ORDER.caterer}
                     value={formik.values.caterer}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
@@ -704,6 +773,7 @@ const ConfirmedEventsPage = () => {
                     name="decor"
                     label="Decor"
                     placeholder="Enter decor company"
+                    containerClassName={MOBILE_ORDER.decor}
                     value={formik.values.decor}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
@@ -713,11 +783,12 @@ const ConfirmedEventsPage = () => {
                   name="name"
                   label="Name/s (How should the DJ address you on the microphone?)"
                   placeholder="Enter name/s"
+                  containerClassName={MOBILE_ORDER.coupleName}
                   value={formik.values.name}
                   onChange={formik.handleChange}
                   disabled={!isModifyMode}
                 />
-                <div>
+                <div className={MOBILE_ORDER.entrance}>
                   <label className="mb-1 block text-xs">
                     Entrance Song/Style (eg Guests upstanding, napkin waves, any
                     dhol players etc)
@@ -731,7 +802,7 @@ const ConfirmedEventsPage = () => {
                     disabled={!isModifyMode}
                   />
                 </div>
-                <div>
+                <div className={MOBILE_ORDER.cake}>
                   <label className="mb-1 block text-xs">
                     Cake Cut Song/Who to feed? (Leave song name blank if you
                     wish for DJ to select)
@@ -749,11 +820,12 @@ const ConfirmedEventsPage = () => {
                   name="firstDance"
                   label="First dance"
                   placeholder="Enter first dance song"
+                  containerClassName={MOBILE_ORDER.firstDance}
                   value={formik.values.firstDance}
                   onChange={formik.handleChange}
                   disabled={!isModifyMode}
                 />
-                <div>
+                <div className={MOBILE_ORDER.dos}>
                   <label className="mb-1 block text-xs">Do&apos;s</label>
                   <textarea
                     name="dos"
@@ -765,13 +837,15 @@ const ConfirmedEventsPage = () => {
                   />
                 </div>
               </div>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* RIGHT COLUMN */}
+              <div className={COLUMN}>
+                <div className={GROUP_3}>
                   <Input
                     name="date"
                     label="Date"
                     type="date"
                     placeholder="Select date"
+                    containerClassName={MOBILE_ORDER.date}
                     value={formik.values.date}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
@@ -781,6 +855,7 @@ const ConfirmedEventsPage = () => {
                     label="Start Time"
                     type="text"
                     placeholder="e.g. 7am, 7:30pm or 19:30"
+                    containerClassName={MOBILE_ORDER.startTime}
                     value={formik.values.start_time}
                     onChange={formik.handleChange}
                     onBlur={(e) => {
@@ -794,6 +869,7 @@ const ConfirmedEventsPage = () => {
                     label="End Time"
                     type="text"
                     placeholder="e.g. 7pm, 7:30pm or 19:30"
+                    containerClassName={MOBILE_ORDER.endTime}
                     value={formik.values.end_time}
                     onChange={formik.handleChange}
                     onBlur={(e) => {
@@ -803,7 +879,7 @@ const ConfirmedEventsPage = () => {
                     disabled={!isModifyMode}
                   />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className={GROUP_2}>
                   {/* Matches Laravel: a disabled text display of the current
                       venue's name while viewing, swapped for a real dropdown
                       of existing venues (pre-selected to the current one)
@@ -811,7 +887,7 @@ const ConfirmedEventsPage = () => {
                       not free text, and no inline "add new venue" here
                       (that only exists on the New Enquiry form). */}
                   {isModifyMode ? (
-                    <div className="w-full">
+                    <div className={`w-full ${MOBILE_ORDER.venue}`}>
                       <label className="mb-1 text-xs flex items-center gap-1">Venue</label>
                       <Select
                         className="h-10 w-full"
@@ -831,6 +907,7 @@ const ConfirmedEventsPage = () => {
                       name="venue"
                       label="Venue"
                       placeholder="Venue"
+                      containerClassName={MOBILE_ORDER.venue}
                       value={formik.values.venue}
                       onChange={formik.handleChange}
                       disabled
@@ -840,16 +917,18 @@ const ConfirmedEventsPage = () => {
                     name="accessDate"
                     label="Access Date/Time"
                     placeholder="Enter access info"
+                    containerClassName={MOBILE_ORDER.access}
                     value={formik.values.accessDate}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
                   />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className={GROUP_2}>
                   <Input
                     name="eventDateContact"
                     label="Event day contact"
                     placeholder="Enter event day contact"
+                    containerClassName={MOBILE_ORDER.eventContact}
                     value={formik.values.eventDateContact}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
@@ -859,17 +938,19 @@ const ConfirmedEventsPage = () => {
                     label="No of guests"
                     type="number"
                     placeholder="Enter number of guests"
+                    containerClassName={MOBILE_ORDER.guests}
                     value={formik.values.noOfGuests}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
                   />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className={GROUP_2}>
                   <Input
                     name="depositAmount"
                     label="Deposit Amount"
                     type="number"
                     placeholder="Enter deposit amount"
+                    containerClassName={MOBILE_ORDER.deposit}
                     value={formik.values.depositAmount}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
@@ -878,12 +959,13 @@ const ConfirmedEventsPage = () => {
                     name="createdBy"
                     label="Created by"
                     placeholder="Enter creator name"
+                    containerClassName={MOBILE_ORDER.createdBy}
                     value={formik.values.createdBy}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
                   />
                 </div>
-                <div>
+                <div className={MOBILE_ORDER.itinerary}>
                   <label className="mb-1 block text-xs">
                     Brief Itinerary/Playlist and Notes
                   </label>
@@ -896,11 +978,12 @@ const ConfirmedEventsPage = () => {
                     disabled={!isModifyMode}
                   />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className={GROUP_2}>
                   <Input
                     name="stagTuneAndDestination"
                     label="Stag Tune/Destination"
                     placeholder="Enter stag tune/destination"
+                    containerClassName={MOBILE_ORDER.stag}
                     value={formik.values.stagTuneAndDestination}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
@@ -909,12 +992,13 @@ const ConfirmedEventsPage = () => {
                     name="henTuneAndDestination"
                     label="Hen Tune/Destination"
                     placeholder="Enter hen tune/destination"
+                    containerClassName={MOBILE_ORDER.hen}
                     value={formik.values.henTuneAndDestination}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
                   />
                 </div>
-                <div>
+                <div className={MOBILE_ORDER.donts}>
                   <label className="mb-1 block text-xs">Dont&apos;s</label>
                   <textarea
                     name="donts"

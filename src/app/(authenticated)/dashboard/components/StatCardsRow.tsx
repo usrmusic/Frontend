@@ -36,27 +36,35 @@ interface StatCardsRowProps {
    identical across all four cards while the artwork scales inside it, never
    stretched. `shrink-0` keeps flex from crushing them when a card gets narrow.
    The box steps down one notch between `xl` and `2xl`, which is exactly the
-   band where four cards share a row and space is tightest. */
+   band where four cards share a row and space is tightest.
+
+   Both are purely decorative, and below `sm` the cards sit two-up on a phone
+   (~160px each) where there is only room for the label and the figure — so
+   the artwork is hidden there rather than squeezing the number it decorates. */
 const SPARKLINE = { width: 64, height: 44 } as const;
 const SPARKLINE_CLASS =
-  "shrink-0 w-12 h-8 2xl:w-16 2xl:h-11 object-contain";
+  "hidden sm:block shrink-0 w-12 h-8 2xl:w-16 2xl:h-11 object-contain";
 
 const BADGE = { width: 40, height: 40 } as const;
-const BADGE_CLASS = "shrink-0 size-9 2xl:size-10 object-contain";
+const BADGE_CLASS = "hidden sm:block shrink-0 size-9 2xl:size-10 object-contain";
 
 /* Cards sit on the same 12-column grid as the panels below them, so at `xl`
    the first two line up edge-to-edge with Event Overview and the last two with
    the Sales Analytics / Pending Payment pair. Below `xl` the panels collapse to
-   one column, so the cards fall back to two-up and then one-up.
+   one column, so the cards fall back to two-up.
 
    When Turn Over/Profit are hidden (non-Admin), only 2 cards render — at
    quarter-width each that leaves half the row empty, so those 2 take half
    the row each instead (col-span-6) to fill it, matching Admin's "two pairs"
-   layout instead of "two cards, then a gap". */
-const CARD_CLASS = (full: boolean) =>
-  `col-span-12 sm:col-span-6 ${full ? "xl:col-span-6" : "xl:col-span-3"} shadow-sm p-4 2xl:p-5 flex gap-3 2xl:gap-4 items-center min-w-0`;
+   layout instead of "two cards, then a gap".
 
-const LABEL_CLASS = "text-sm 2xl:text-base truncate";
+   Phones used to get one card per row (`col-span-12`), which pushed the four
+   figures a full screen tall before any real content. They now sit two-up at
+   every width — the same compact 2x2 block the tablet view already had. */
+const CARD_CLASS = (full: boolean) =>
+  `col-span-6 ${full ? "xl:col-span-6" : "xl:col-span-3"} shadow-sm p-3 sm:p-4 2xl:p-5 flex gap-2 sm:gap-3 2xl:gap-4 items-center min-w-0`;
+
+const LABEL_CLASS = "text-xs sm:text-sm 2xl:text-base truncate";
 
 /* The currency figures must never be clipped — a half-shown "£525,4…" is worse
    than a smaller number. A fixed `text-2xl` only fits the widest viewports, so
@@ -122,7 +130,7 @@ export default function StatCardsRow({
   };
 
   return (
-    <div className="grid grid-cols-12 gap-4">
+    <div className="grid grid-cols-12 gap-3 sm:gap-4">
       {/* Events total */}
       <Card variant="white" className={CARD_CLASS(!showFinancialCards)}>
         {isLoading ? (

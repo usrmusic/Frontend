@@ -3,38 +3,45 @@ import Button from "@/src/components/Button";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+// The fixed widths are a DESKTOP concern only — they keep the strip's buttons
+// evenly sized on a wide screen. On a phone every tab sizes to its own label
+// instead (`w-auto`), which is what lets eight of them wrap into three tidy
+// rows rather than one 800px-wide line. Written out in full (not interpolated)
+// because Tailwind only ships classes it can see literally in the source.
 const tabData = [
-  { label: "Users", href: "/users?title=Users", className: "w-23.5" },
-  { label: "Clients", href: "/clients?title=Clients", className: "w-23.5" },
-  { label: "Venues", href: "/venues?title=Venues", className: "w-23.5" },
+  { label: "Users", href: "/users?title=Users", className: "w-auto sm:w-23.5" },
+  { label: "Clients", href: "/clients?title=Clients", className: "w-auto sm:w-23.5" },
+  { label: "Venues", href: "/venues?title=Venues", className: "w-auto sm:w-23.5" },
   {
     label: "Suppliers",
     href: "/suppliers?title=Suppliers",
-    className: "w-23.5",
+    className: "w-auto sm:w-23.5",
   },
-  { label: "Packages", href: "/packages?title=Packages", className: "w-23.5" },
-  { label: "Company", href: "/company?title=Company", className: "w-23.5" },
+  { label: "Packages", href: "/packages?title=Packages", className: "w-auto sm:w-23.5" },
+  { label: "Company", href: "/company?title=Company", className: "w-auto sm:w-23.5" },
   {
     label: "Manage Access",
     href: "/manage-access?title=Manage%20Access",
-    className: "w-33.75",
+    className: "w-auto sm:w-33.75",
   },
-  { label: "Email", href: "/email?title=Email", className: "w-23.5" },
+  { label: "Email", href: "/email?title=Email", className: "w-auto sm:w-23.5" },
 ];
 
 const Tabs = () => {
   const pathname = usePathname();
 
   return (
-    // These eight tabs carry fixed widths totalling ~800px, so they cannot fit
-    // a phone by wrapping OR shrinking — wrapping would stack them three rows
-    // deep and push the actual page content below the fold. A horizontally
-    // scrollable strip is the conventional mobile answer: the active tab stays
-    // readable at full size and the rest are a swipe away.
+    // Phone: the eight tabs WRAP into compact toggle pills, so every section is
+    // visible at once. This replaces a horizontally scrollable strip — that
+    // showed roughly two and a half tabs at a time and gave no hint the other
+    // five existed, so reaching Company or Email meant swiping blind.
     //
-    // `-mx-*`/`px-*` bleed the strip to the container edges so the first and
-    // last tab aren't visually clipped mid-glyph at the scroll extremes.
-    <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0 pb-1 snap-x">
+    // `sm` and up: unchanged — the original single-row strip with its fixed
+    // widths, still scrollable on the narrow end of that range. The old
+    // `-mx-3 px-3` edge bleed went with the scrolling: it existed to stop the
+    // first and last tab being clipped mid-glyph at the scroll extremes, and a
+    // wrapped list has no extremes to clip.
+    <div className="flex flex-wrap gap-1.5 sm:flex-nowrap sm:gap-2 sm:overflow-x-auto no-scrollbar pb-1 sm:snap-x">
       {tabData.map((tab) => {
         // Extract the pathname without query params for matching
         const tabPath = tab.href.split("?")[0];
@@ -42,19 +49,21 @@ const Tabs = () => {
         const isActive = pathname.startsWith(tabPath);
 
         return (
-          <Link href={tab.href} key={tab.href} className="shrink-0 snap-start">
+          <Link href={tab.href} key={tab.href} className="shrink-0 sm:snap-start">
             <Button
               type={isActive ? "primary" : undefined}
-              className={tab.className}
+              // Pills are deliberately smaller than a standard button on a
+              // phone — at full button height three wrapped rows would eat
+              // most of the space above the fold that the table needs. Scoped
+              // with `max-sm:` so the `sm`+ strip keeps AntD's stock sizing
+              // and the desktop toolbar is byte-for-byte what it was.
+              className={`${tab.className} max-sm:h-8! max-sm:px-3! max-sm:text-xs!`}
             >
               {tab.label}
             </Button>
           </Link>
         );
       })}
-      {/* <button className="w-7.5 flex items-center justify-center rounded-lg bg-white hover:bg-secondary-200 transition-colors">
-        <MoreVertical size={18} />
-      </button> */}
     </div>
   );
 };
