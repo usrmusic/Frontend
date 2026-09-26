@@ -37,6 +37,26 @@ type LinkItem = {
   label: string;
   permission?: string;
   permissionAny?: string[];
+  /**
+   * Hide this link below `xl` (1280px) — i.e. on phones and tablets both.
+   *
+   * The two reports are wide financial tables — date-range filters, a dozen
+   * money columns, CSV export — that can only be read on a narrow screen by
+   * scrolling sideways through every column, which the client asked us to stop
+   * offering there. Permission is unchanged: the pages still work and stay one
+   * tap away on a desktop, they're just not advertised below one.
+   *
+   * `xl` rather than `md` because that is already this file's definition of
+   * "desktop" (see the responsive model note above): at `lg` an iPad Pro in
+   * portrait is 1024px and would still count as desktop, which is exactly the
+   * tablet case being excluded here. Keeping both cutoffs on `xl` means the
+   * reports appear precisely when the persistent rail does.
+   *
+   * Done in CSS (`hidden xl:flex`), not a JS viewport check, for the same
+   * reason as the rail/drawer split above — a JS check only resolves after
+   * mount, so the links would flash in and out on a phone.
+   */
+  hideBelowDesktop?: boolean;
 };
 
 // ── Responsive model ────────────────────────────────────────────────────────
@@ -199,8 +219,8 @@ const Sidebar = () => {
     { href: "/completed-events", icon: <TbReportSearch size={20} />, label: "Completed Events", permission: "complete event" },
     { href: "/file-upload", icon: <TbFileUpload size={20} />, label: "File Upload", permission: "file upload" },
     { href: "/downloads", icon: <TbFileDownload size={20} />, label: "Downloads", permissionAny: ["downloads", "media manager"] },
-    { href: "/suppliers-report", icon: <TbTruckDelivery size={20} />, label: "Suppliers Report", permission: "supplier reporting" },
-    { href: "/admin-report", icon: <TbReportAnalytics size={20} />, label: "Admin Report", permission: "admin reporting" },
+    { href: "/suppliers-report", icon: <TbTruckDelivery size={20} />, label: "Suppliers Report", permission: "supplier reporting", hideBelowDesktop: true },
+    { href: "/admin-report", icon: <TbReportAnalytics size={20} />, label: "Admin Report", permission: "admin reporting", hideBelowDesktop: true },
     { href: "/users?title=Users", icon: <Contacts />, label: "Users", permissionAny: ["user", "manage access"] },
   ];
 
@@ -298,7 +318,7 @@ const Sidebar = () => {
                 onMouseEnter={(e) => showTooltip(e, item.label)}
                 onMouseMove={(e) => showTooltip(e, item.label)}
                 onMouseLeave={hideTooltip}
-                className={`group relative flex shrink-0 items-center ${railRow} ${touch} hover:bg-black hover:text-white transition-colors duration-200 ${isActive ? "bg-black text-white" : ""}`}
+                className={`group relative ${item.hideBelowDesktop ? "hidden xl:flex" : "flex"} shrink-0 items-center ${railRow} ${touch} hover:bg-black hover:text-white transition-colors duration-200 ${isActive ? "bg-black text-white" : ""}`}
               >
                 <span className="shrink-0">{item.icon}</span>
                 <span
@@ -359,7 +379,7 @@ const Sidebar = () => {
                       onMouseEnter={(e) => showTooltip(e, c.label)}
                       onMouseMove={(e) => showTooltip(e, c.label)}
                       onMouseLeave={hideTooltip}
-                      className={`group relative flex w-full items-center justify-start gap-3 px-3 py-2 rounded-md text-sm ${touch} hover:bg-black hover:text-white transition-colors duration-200 ${isActive ? "bg-black text-white" : "text-gray-600"}`}
+                      className={`group relative ${c.hideBelowDesktop ? "hidden xl:flex" : "flex"} w-full items-center justify-start gap-3 px-3 py-2 rounded-md text-sm ${touch} hover:bg-black hover:text-white transition-colors duration-200 ${isActive ? "bg-black text-white" : "text-gray-600"}`}
                     >
                       <span className="shrink-0">{c.icon}</span>
                       <span className="overflow-hidden whitespace-nowrap">{c.label}</span>

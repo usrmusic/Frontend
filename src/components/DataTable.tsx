@@ -63,6 +63,14 @@ function DataTable<RecordType extends object = any>({
           // resolves to that final "ascend" instead of running off the array,
           // so every click toggles asc/desc forever with no unsorted step.
           sortDirections={["ascend", "descend", "ascend"]}
+          // AntD wraps every sortable header in a hover tooltip ("Click to
+          // sort descending"). On a touch screen there is no hover: the first
+          // tap only fires the emulated hover that opens the tooltip, and the
+          // sort needs a SECOND tap — which is exactly the "have to click it
+          // twice" report from Open Enquiry. The tooltip adds nothing on
+          // desktop either (the arrow already says it), so it's off for every
+          // table rather than patched per page.
+          showSorterTooltip={false}
           // Horizontal scroll is the baseline mobile/narrow behaviour for every
           // table that does not supply its own card layout: all columns stay,
           // the user swipes. `max-content` rather than a fixed pixel width so
