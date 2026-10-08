@@ -1013,22 +1013,20 @@ const OpenEnquiryPage = () => {
                           ? "created_at"
                           : null;
                   if (!field) return;
+                  // Driven entirely by our own sortState, not AntD's computed
+                  // `s.order` — its native click cycle is 3-state (ascend ->
+                  // descend -> cleared), which both re-introduced a dead
+                  // "looks unsorted" click AND made the very first click a
+                  // no-op here specifically: the backend's default (no sort
+                  // applied) is already created_at ascending, so sorting
+                  // "ascending" on the first click produced a list identical
+                  // to what was already on screen. First click on a column
+                  // now always goes descending — guaranteed to visibly
+                  // reorder the list — and every click after that is a plain
+                  // asc/desc toggle, forever (never falls back to unsorted).
                   setSortState((prev) => {
-                    // AntD's native click cycle is 3-state (ascend -> descend
-                    // -> cleared) — on the 3rd click `s.order` comes back
-                    // undefined, which used to reset to "no sort" and made
-                    // the column look stuck/un-reversible instead of simply
-                    // flipping direction. Since sortOrder below is a
-                    // controlled prop fed back from this same state, AntD's
-                    // own "current" on the next click is always whatever we
-                    // set here — so overriding only the "cleared" case into a
-                    // plain toggle turns the 3-state cycle into a clean,
-                    // always-reversible asc/desc toggle.
-                    if (s.order) return { field, order: s.order === "ascend" ? "asc" : "desc" };
-                    if (prev && prev.field === field) {
-                      return { field, order: prev.order === "asc" ? "desc" : "asc" };
-                    }
-                    return { field, order: "asc" };
+                    if (!prev || prev.field !== field) return { field, order: "desc" };
+                    return { field, order: prev.order === "asc" ? "desc" : "asc" };
                   });
                 }}
                 pagination={{
