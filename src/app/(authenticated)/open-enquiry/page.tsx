@@ -209,7 +209,7 @@ const OpenEnquiryPage = () => {
     OpenEnquiryList[] | null
   >(null);
   const [clickedBtn, setClickedBtn] = useState<
-    "brochure" | "quote" | "invoice"
+    "brochure" | "quote" | "invoice" | "update"
   >("invoice");
   const [activeTab, setActiveTab] = useState<"details" | "notes">("notes");
   // Open Enquiry / Closed (Cancelled) list toggle — see getStatusCounts in
@@ -358,6 +358,22 @@ const OpenEnquiryPage = () => {
 
   const columns: TableColumnsType<OpenEnquiryList> = [
     {
+      title: "Date Created",
+      dataIndex: "created_at",
+      key: "created_at",
+      width: 130,
+      ellipsis: true,
+      sorter: true,
+      sortOrder:
+        sortState?.field === "created_at"
+          ? sortState.order === "asc"
+            ? "ascend"
+            : "descend"
+          : undefined,
+      render: (value: string) =>
+        value ? dayjs(value).format("DD/MM/YYYY") : "-",
+    },
+    {
       title: "Name",
       dataIndex: ["users_events_user_idTousers", "name"],
       key: "name",
@@ -389,22 +405,6 @@ const OpenEnquiryPage = () => {
       sorter: true,
       sortOrder:
         sortState?.field === "date"
-          ? sortState.order === "asc"
-            ? "ascend"
-            : "descend"
-          : undefined,
-      render: (value: string) =>
-        value ? dayjs(value).format("DD/MM/YYYY") : "-",
-    },
-    {
-      title: "Date Created",
-      dataIndex: "created_at",
-      key: "created_at",
-      width: 130,
-      ellipsis: true,
-      sorter: true,
-      sortOrder:
-        sortState?.field === "created_at"
           ? sortState.order === "asc"
             ? "ascend"
             : "descend"
@@ -721,7 +721,7 @@ const OpenEnquiryPage = () => {
                 );
                 setModalTemplate(data?.email ?? null);
                 setModalCompanies(data?.companies ?? null);
-                setClickedBtn("brochure");
+                setClickedBtn("update");
                 setModalOpen(true);
               } catch (err) {
                 console.error(err);
@@ -1004,22 +1004,31 @@ const OpenEnquiryPage = () => {
                 rowKey={(data) => String(data.id)}
                 onChange={(_pagination, _filters, sorter) => {
                   const s = Array.isArray(sorter) ? sorter[0] : sorter;
-                  if (!s || !s.order) {
-                    setSortState(null);
-                    return;
-                  }
                   const field =
-                    s.columnKey === "name"
+                    s?.columnKey === "name"
                       ? "usr_name"
-                      : s.columnKey === "date"
+                      : s?.columnKey === "date"
                         ? "date"
-                        : s.columnKey === "created_at"
+                        : s?.columnKey === "created_at"
                           ? "created_at"
                           : null;
                   if (!field) return;
-                  setSortState({
-                    field,
-                    order: s.order === "ascend" ? "asc" : "desc",
+                  setSortState((prev) => {
+                    // AntD's native click cycle is 3-state (ascend -> descend
+                    // -> cleared) — on the 3rd click `s.order` comes back
+                    // undefined, which used to reset to "no sort" and made
+                    // the column look stuck/un-reversible instead of simply
+                    // flipping direction. Since sortOrder below is a
+                    // controlled prop fed back from this same state, AntD's
+                    // own "current" on the next click is always whatever we
+                    // set here — so overriding only the "cleared" case into a
+                    // plain toggle turns the 3-state cycle into a clean,
+                    // always-reversible asc/desc toggle.
+                    if (s.order) return { field, order: s.order === "ascend" ? "asc" : "desc" };
+                    if (prev && prev.field === field) {
+                      return { field, order: prev.order === "asc" ? "desc" : "asc" };
+                    }
+                    return { field, order: "asc" };
                   });
                 }}
                 pagination={{

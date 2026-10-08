@@ -145,6 +145,30 @@ export const useSendQuote = () => {
     },
   });
 };
+
+// Open Enquiry's "Email Update" quick action — a plain status-update email,
+// distinct from Send Quote/Brochure. Was previously wired to /enquiry/quote,
+// which sent the quote PDF and logged "Quote sent" on every Email Update
+// click instead of a proper "Update Email Sent" note.
+export const useSendUpdateEmail = () => {
+  return useMutation({
+    mutationFn: async (payload: SendBrochurePayload) => {
+      try {
+        const response = await AxiosInstance.post(`/enquiry/email-update`, payload);
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const msg = error.response?.data;
+          toast.error(msg?.error || "Something went wrong");
+        }
+        throw error;
+      }
+    },
+    onError: (error) => {
+      console.error("send update email failed:", error.message);
+    },
+  });
+};
 export const useSendInvoice = () => {
   return useMutation({
     mutationFn: async (payload: SendBrochurePayload) => {

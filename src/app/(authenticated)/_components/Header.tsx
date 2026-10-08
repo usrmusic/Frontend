@@ -180,6 +180,12 @@ const Header = () => {
               }
             }}
             notFoundContent={dropdownFetching ? <Spin size="small" /> : (dropdownParams ? <div className="text-sm text-gray-500">No results</div> : <div className="text-sm text-gray-500">Type to search</div>)}
+            // The trigger is a narrow search pill (as little as ~220px on a
+            // phone), but results are "DD/MM/YYYY - Client Name" strings that
+            // don't fit in that width. Decoupling the popup from the trigger
+            // width and giving it its own responsive min/max keeps every
+            // result on one line without ever overflowing the viewport.
+            popupMatchSelectWidth={false}
             options={(dropdownItems || []).map((it) => {
               const clientName = it.couple_name ?? it.client?.name ?? `#${it.id}`;
               const dateStr = it.date
@@ -195,7 +201,7 @@ const Header = () => {
               };
             })}
             loading={dropdownFetching}
-            classNames={{ popup: { root: "rounded-md" } }}
+            classNames={{ popup: { root: "rounded-md !min-w-[260px] !w-auto max-w-[min(360px,92vw)]" } }}
             filterOption={false}
             suffixIcon={null}
             style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}

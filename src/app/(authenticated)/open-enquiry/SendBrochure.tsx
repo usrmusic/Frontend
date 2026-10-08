@@ -1,5 +1,5 @@
 import { useCompanyDropdown } from "@/src/api/dropdown";
-import { useSendQuote } from "@/src/api/enquiry";
+import { useSendBrochure, useSendQuote, useSendUpdateEmail } from "@/src/api/enquiry";
 import Button from "@/src/components/Button";
 import Input from "@/src/components/Input";
 import { Modal, Select } from "antd";
@@ -10,7 +10,7 @@ interface BrochureProps {
   open: boolean;
   onCancel: VoidFunction;
   eventId: string;
-  sendMode: "brochure" | "quote" | "invoice";
+  sendMode: "brochure" | "quote" | "invoice" | "update";
   template?: {
     id?: string;
     email_name?: string;
@@ -24,6 +24,7 @@ const MODAL_TITLES = {
   brochure: "Send Brochure",
   quote: "Send Quote",
   invoice: "Send Invoice",
+  update: "Email Update",
 };
 
 const SendBrochureModal = ({
@@ -37,8 +38,22 @@ const SendBrochureModal = ({
   const { data: companyNameOptions } = useCompanyDropdown();
   const { mutateAsync: sendQuoteMutation, isPending: quoteLoading } =
     useSendQuote();
+  const { mutateAsync: sendBrochureMutation, isPending: brochureLoading } =
+    useSendBrochure();
+  const { mutateAsync: sendUpdateMutation, isPending: updateLoading } =
+    useSendUpdateEmail();
 
-  const isPending = quoteLoading;
+  // Each quick-action button hits its own backend endpoint (and its own
+  // "<X> Sent" activity note) — this used to always call the quote endpoint
+  // regardless of sendMode, so Brochure/Email Update sends were emailing the
+  // quote PDF and logging "Quote sent" no matter which button was clicked.
+  const sendForMode =
+    sendMode === "brochure"
+      ? sendBrochureMutation
+      : sendMode === "update"
+        ? sendUpdateMutation
+        : sendQuoteMutation;
+  const isPending = quoteLoading || brochureLoading || updateLoading;
 
   const companiesList = companies ?? companyNameOptions?.data ?? [];
   const formik = useFormik({
@@ -66,8 +81,7 @@ const SendBrochureModal = ({
             Number((companiesList[0] && companiesList[0].id) || 0),
         } as any;
 
-        // Use single send (quote) API for all send modes as requested
-        await sendQuoteMutation(payload);
+        await sendForMode(payload);
         toast.success("Email Sent Successfully");
 
         onCancel();
@@ -131,7 +145,7 @@ const SendBrochureModal = ({
           <Button
             htmlType="submit"
             type="primary"
-            loading={formik.isSubmitting}
+            loading={formik.isSubmitting || isPending}
           >
             Send Email
           </Button>

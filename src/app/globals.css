@@ -378,6 +378,32 @@ button:hover {
   height: auto !important;
 }
 
+/* Dropdown popups app-wide: size to their own content instead of inheriting
+   the trigger's width. Many selects here (header search, filter pills, table
+   column filters) are visually narrow, but their options are longer strings
+   (dates, names, addresses) that were getting clipped or ugly-wrapped against
+   a popup pinned to that narrow width. A floor keeps tiny triggers from
+   producing a cramped popup; a viewport-aware ceiling keeps a wide trigger's
+   popup from overflowing a phone screen. Individual selects can still opt out
+   with `popupMatchSelectWidth` when they genuinely need to match the trigger. */
+.ant-select-dropdown {
+  width: auto !important;
+  min-width: 180px;
+  max-width: min(420px, calc(100vw - 24px));
+}
+
+.ant-select-dropdown .ant-select-item-option-content {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .ant-select-dropdown {
+    min-width: 160px;
+    max-width: calc(100vw - 24px);
+  }
+}
+
 .green-header-modal .ant-modal-content {
   padding: 0 !important;
   overflow: hidden;
