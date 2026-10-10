@@ -5,7 +5,7 @@ import Button from "@/src/components/Button";
 import dayjs from "dayjs";
 import { TableColumnsType, Modal, Input as AntInput } from "antd";
 import { Download, Plus, Pencil, Trash2 } from "lucide-react";
-import Link from "next/link";
+import UploadFileModal from "@/src/components/common/UploadFileModal";
 import {
   useDownloadUpload,
   useUpdateUpload,
@@ -42,6 +42,7 @@ const Files = ({ dataSource, isModifyMode = false, eventId }: FilesProps) => {
   const { mutateAsync: updateFile } = useUpdateUpload();
   const { mutate: deleteFile } = useDeleteUpload();
   const queryClient = useQueryClient();
+  const [showUpload, setShowUpload] = useState(false);
 
   const [downloadingId, setDownloadingId] = useState<number | string | null>(
     null,
@@ -220,17 +221,21 @@ const Files = ({ dataSource, isModifyMode = false, eventId }: FilesProps) => {
     <div className="space-y-4">
       {isModifyMode && (
         <div className="mb-2">
-          <Link
-            href={`/file-upload?id=${eventId}&redirect=confirm`}
-            className="inline-block"
+          <Button
+            type="primary"
+            className="flex items-center gap-2"
+            onClick={() => setShowUpload(true)}
           >
-            <Button type="primary" className="flex items-center gap-2">
-              <Plus size={16} />
-              Add Files
-            </Button>
-          </Link>
+            <Plus size={16} />
+            Add Files
+          </Button>
         </div>
       )}
+      <UploadFileModal
+        open={showUpload}
+        onClose={() => setShowUpload(false)}
+        defaultEventId={eventId != null ? Number(eventId) : undefined}
+      />
       <DataTable
         columns={columns}
         dataSource={dataSource ?? []}

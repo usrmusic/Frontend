@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Spin, Select, ConfigProvider } from "antd";
 import UserAvatar from "@/src/components/common/Avatar";
@@ -12,6 +12,15 @@ import { MagnifyingGlass, Plus } from "@/src/components/Icons";
 import { Menu } from "lucide-react";
 import Link from "next/link";
 import useRole from "@/src/hooks/useRole";
+
+// Where a search result lives, so staff can tell a lead from a booking before
+// clicking (it also decides which page the result opens).
+const SEARCH_STATUS: Record<number, { label: string; className: string }> = {
+  1: { label: "Enquiry", className: "bg-amber-50 text-amber-700" },
+  2: { label: "Confirmed", className: "bg-primary/10 text-primary" },
+  3: { label: "Completed", className: "bg-gray-100 text-gray-600" },
+  4: { label: "Cancelled", className: "bg-red-50 text-red-600" },
+};
 
 const Header = () => {
   // Creating an enquiry is a staff-facing action — a Client submits new
@@ -29,6 +38,28 @@ const Header = () => {
   useEffect(() => {
     setSearch("");
   }, [pathname]);
+  // The search field sits inset inside a rounded pill (with the search button
+  // to its right), so a popup sized to the field itself looks narrower than,
+  // and misaligned with, the pill. Measure the pill and the field's offset in
+  // it, so the results panel spans the whole pill and lines up with its edge.
+  const searchPillRef = useRef<HTMLDivElement>(null);
+  const [searchPopup, setSearchPopup] = useState({ width: 0, offsetX: 0 });
+  useEffect(() => {
+    const pill = searchPillRef.current;
+    if (!pill) return;
+    const measure = () => {
+      const field = pill.querySelector<HTMLElement>(".ant-select");
+      const offsetX = field
+        ? field.getBoundingClientRect().left - pill.getBoundingClientRect().left
+        : 0;
+      setSearchPopup({ width: pill.offsetWidth, offsetX });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(pill);
+    return () => ro.disconnect();
+  }, []);
+
   const dropdownParams = debounced.trim().length > 1 ? { search: debounced.trim() } : undefined;
   const { data: dropdownItems, isFetching: dropdownFetching } = useDashboardDropdown(dropdownParams);
 
@@ -115,7 +146,7 @@ const Header = () => {
         {/* Was a hard `width: 320`, which on a phone overflowed the row and
             pushed the year picker off screen. Now it takes the leftover space
             below `xl` and pins back to 320px above it. */}
-        <div className="flex-1 min-w-0 xl:flex-none xl:w-80 rounded-full bg-white flex items-center pl-3 sm:pl-4 pr-2 h-11 sm:h-12">
+        <div ref={searchPillRef} className="flex-1 min-w-0 xl:flex-none xl:w-80 rounded-full bg-white flex items-center pl-3 sm:pl-4 pr-2 h-11 sm:h-12">
           <Select
             showSearch
             allowClear
@@ -195,7 +226,37 @@ const Header = () => {
               };
             })}
             loading={dropdownFetching}
-            classNames={{ popup: { root: "rounded-md" } }}
+            // Results panel matches the pill: same width, same left edge,
+            // a small gap below it.
+            popupAlign={{ offset: [-searchPopup.offsetX, 10] }}
+            styles={{
+              popup: {
+                root: searchPopup.width
+                  ? { width: searchPopup.width, minWidth: searchPopup.width }
+                  : undefined,
+              },
+            }}
+            classNames={{ popup: { root: "!rounded-2xl !p-1.5" } }}
+            optionRender={(opt) => {
+              const d = opt.data as { clientName?: string; date?: string | null; status?: number | string };
+              const status = SEARCH_STATUS[Number(d.status)];
+              const when = d.date
+                ? new Date(d.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+                : "";
+              return (
+                <div className="flex items-center justify-between gap-3 py-0.5">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-gray-900 break-words">{d.clientName}</div>
+                    {when && <div className="text-xs text-gray-500">{when}</div>}
+                  </div>
+                  {status && (
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${status.className}`}>
+                      {status.label}
+                    </span>
+                  )}
+                </div>
+              );
+            }}
             filterOption={false}
             suffixIcon={null}
             style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}
