@@ -378,30 +378,22 @@ button:hover {
   height: auto !important;
 }
 
-/* Dropdown popups app-wide: size to their own content instead of inheriting
-   the trigger's width. Many selects here (header search, filter pills, table
-   column filters) are visually narrow, but their options are longer strings
-   (dates, names, addresses) that were getting clipped or ugly-wrapped against
-   a popup pinned to that narrow width. A floor keeps tiny triggers from
-   producing a cramped popup; a viewport-aware ceiling keeps a wide trigger's
-   popup from overflowing a phone screen. Individual selects can still opt out
-   with `popupMatchSelectWidth` when they genuinely need to match the trigger. */
+/* Popup sizing itself comes from `popupMatchSelectWidth={false}` on the global
+   ConfigProvider (ThemeConfig.tsx): popups are at least as wide as their field
+   and grow to fit the longest option. This only caps them at the viewport so a
+   long option can't push a popup off a phone screen — past that cap the text
+   wraps instead of being cut off with an ellipsis. */
 .ant-select-dropdown {
-  width: auto !important;
-  min-width: 180px;
-  max-width: min(420px, calc(100vw - 24px));
+  max-width: calc(100vw - 32px);
 }
 
+/* !important: AntD's CSS-in-JS injects its own nowrap/ellipsis rule for this
+   element at runtime, after this stylesheet, so at equal specificity it wins. */
 .ant-select-dropdown .ant-select-item-option-content {
-  white-space: normal;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
   overflow-wrap: anywhere;
-}
-
-@media (max-width: 640px) {
-  .ant-select-dropdown {
-    min-width: 160px;
-    max-width: calc(100vw - 24px);
-  }
 }
 
 .green-header-modal .ant-modal-content {

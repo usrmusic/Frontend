@@ -7,6 +7,12 @@ export const colorPrimaryGradient =
 const ThemeConfig = ({ children }: { children: ReactNode }) => {
   return (
     <ConfigProvider
+      // Every Select/AutoComplete popup in the CRM grows to fit its longest
+      // option (never narrower than its field) instead of being pinned to the
+      // field's width and truncating options with "…". This also turns off
+      // AntD's virtual list, whose fixed-width rows were what forced the
+      // ellipsis in the first place.
+      popupMatchSelectWidth={false}
       theme={{
         token: {
           colorPrimary: "#719984",
