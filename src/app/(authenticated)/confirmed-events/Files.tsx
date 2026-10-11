@@ -219,12 +219,14 @@ const Files = ({ dataSource, isModifyMode = false, eventId }: FilesProps) => {
   return (
     <div className="space-y-4">
       {isModifyMode && (
-        <Link href="/file-upload">
-          <Button className="flex items-center gap-2">
-            <Plus size={16} />
-            Add Files
-          </Button>
-        </Link>
+        <div className="mb-2">
+          <Link href="/file-upload" className="inline-block">
+            <Button type="primary" className="flex items-center gap-2">
+              <Plus size={16} />
+              Add Files
+            </Button>
+          </Link>
+        </div>
       )}
       <DataTable
         columns={columns}
