@@ -31,12 +31,15 @@ type CalendarEvent = {
   couple_name: string | null;
 };
 
+// Dashboard activity feed entry — an event note or a login, already formatted
+// by the backend as "[Client] – [Action]" / "[User] – Logged in".
 type RecentNote = {
-  id: number;
-  event_id: number;
+  id: string;
+  event_id: number | null;
   notes: string;
   created_at: string;
-  created_by: string | null;
+  created_by: number | null;
+  created_by_name: string | null;
 };
 
 export type DashboardDropdownItem = {
