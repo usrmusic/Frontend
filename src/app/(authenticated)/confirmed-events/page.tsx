@@ -281,7 +281,11 @@ const ConfirmedEventsPage = () => {
     eventDateContact: data?.event_date_contact || "",
     noOfGuests: data?.no_of_guests || "",
     depositAmount: data?.deposit_amount || "",
-    createdBy: data?.created_by_name || data?.created_by || "",
+    // Every staff path records the creator, so no creator means the lead came
+    // in through the public website form.
+    createdBy:
+      data?.created_by_name ||
+      (data && data.created_by == null ? "Website enquiry" : ""),
     briefItinerary: data?.brief_itinerary || "",
     donts: data?.dont || "",
     henTuneAndDestination: data?.hen_songs || "",
@@ -958,11 +962,11 @@ const ConfirmedEventsPage = () => {
                   <Input
                     name="createdBy"
                     label="Created by"
-                    placeholder="Enter creator name"
                     containerClassName={MOBILE_ORDER.createdBy}
                     value={formik.values.createdBy}
-                    onChange={formik.handleChange}
-                    disabled={!isModifyMode}
+                    // Read-only, as in Laravel: set automatically to whoever
+                    // created the enquiry and never sent on save.
+                    disabled
                   />
                 </div>
                 <div className={MOBILE_ORDER.itinerary}>
