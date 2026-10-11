@@ -4,9 +4,8 @@ import {
   useDownloadUpload,
   useDeleteUpload,
   useUpdateUpload,
-  useUploadFile,
 } from "@/src/api/upload";
-import { Checkbox, Modal, Select, message } from "antd";
+import { Modal, message } from "antd";
 import Button from "@/src/components/Button";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, Export, MagnifyingGlass } from "@/src/components/Icons";
@@ -16,30 +15,14 @@ import dayjs from "dayjs";
 import { Download, FileUp, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { useFormik } from "formik";
 import Input from "@/src/components/Input";
-import { useConfirmEventsDropdown } from "@/src/api/dropdown";
-import { EventsDropdownItem } from "@/src/types/types";
+import UploadFileModal from "@/src/components/common/UploadFileModal";
 import { CSVLink } from "react-csv";
 
 const initialParams = {
   page: 1,
   perPage: 10,
   search: "",
-};
-
-type UploadFormValues = {
-  file: File | null;
-  delete_after: string;
-  event_id: number | undefined;
-  general: boolean;
-};
-
-const uploadFormInitialValues: UploadFormValues = {
-  file: null,
-  event_id: undefined,
-  general: false,
-  delete_after: "",
 };
 
 /** Row shape from uploads list — used when editing metadata */
@@ -57,66 +40,15 @@ const FileUploadPage = () => {
     ...params,
     search: debouncedSearch,
   });
-  const { data: eventsDropdown } = useConfirmEventsDropdown();
-
-  // Soonest event first — matches the same "date order from today" ordering
-  // used elsewhere (e.g. confirmed-events' own event picker).
-  const eventDropdownOptions = (eventsDropdown?.data as EventsDropdownItem[])
-    ?.slice()
-    .sort((a, b) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf())
-    .map((item) => ({
-      label: `${dayjs(item.date).format("DD/MM/YYYY")} - ${item.venues?.venue} (${item.users_events_user_idTousers?.name})`,
-      value: item.id,
-    }));
 
   const downloadMutation = useDownloadUpload();
   const deleteMutation = useDeleteUpload();
   const updateMutation = useUpdateUpload();
-  const uploadMutation = useUploadFile();
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [editingFile, setEditingFile] = useState<UploadListRow | null>(null);
-  const [uploadFileInputKey, setUploadFileInputKey] = useState(0);
 
-  const uploadFormik = useFormik<UploadFormValues>({
-    initialValues: uploadFormInitialValues,
-    validateOnChange: true,
-    validate: (values) => {
-      const errors: Partial<Record<keyof UploadFormValues, string>> = {};
-      if (!values.file) errors.file = "Please choose a file";
-      if (!values.general && values.event_id == null) {
-        errors.event_id = "Please select an event";
-      }
-      return errors;
-    },
-    onSubmit: async (values, { resetForm }) => {
-      const formData = new FormData();
-      formData.append("file", values.file as File);
-      if (values.event_id !== undefined) {
-        formData.append("event_id", String(values.event_id));
-      }
-      if (values.general) {
-        formData.append("general", "true");
-      }
-      if (values.delete_after) {
-        // API-friendly date (YYYY-MM-DD from native date input)
-        formData.append(
-          "delete_after",
-          dayjs(values.delete_after).format("YYYY-MM-DD"),
-        );
-      }
-      await uploadMutation.mutateAsync(formData);
-      resetForm();
-      setUploadFileInputKey((k) => k + 1);
-      setShowUploadModal(false);
-    },
-  });
-
-  const resetUploadForm = () => {
-    uploadFormik.resetForm();
-    setUploadFileInputKey((k) => k + 1);
-  };
 
   const columns: TableColumnsType = [
     {
@@ -271,7 +203,6 @@ const FileUploadPage = () => {
               type="primary"
               icon={<FileUp size={14} />}
               onClick={() => {
-                resetUploadForm();
                 setShowUploadModal(true);
               }}
             >
@@ -333,116 +264,10 @@ const FileUploadPage = () => {
         )}
       </Modal>
 
-      {/* Upload modal */}
-      <Modal
-        title="Upload File"
+      <UploadFileModal
         open={showUploadModal}
-        onCancel={() => {
-          resetUploadForm();
-          setShowUploadModal(false);
-        }}
-        footer={null}
-      >
-        <form className="space-y-4" onSubmit={uploadFormik.handleSubmit}>
-          <Input
-            key={uploadFileInputKey}
-            name="file"
-            type="file"
-            label="Choose file"
-            // Native file inputs can't have their button text changed
-            // (that's controlled by the browser), but the surrounding label
-            // and the filename text next to it can be — flex/items-center
-            // keeps the "no file chosen" text vertically centered in the
-            // box instead of sitting at the top.
-            className="flex items-center file:mr-3 file:h-full file:border-0 file:bg-secondary-200 file:px-3 file:text-sm file:text-gray-700 file:cursor-pointer"
-            onChange={(e) => {
-              const file = e.currentTarget.files?.[0] ?? null;
-              uploadFormik.setFieldValue("file", file);
-            }}
-            // No onBlur here on purpose — a native file input fires blur the
-            // instant the OS file picker opens (focus visibly moves away),
-            // well before the user has actually chosen anything. Wiring that
-            // straight to handleBlur marked the field "touched" and showed
-            // the red "Please choose a file" error the moment someone
-            // clicked Choose File, not after they'd actually failed to pick
-            // one. Formik still marks every field touched on a real submit
-            // attempt, so the error correctly shows if they try to submit
-            // with nothing chosen.
-            error={
-              uploadFormik.touched.file && uploadFormik.errors.file
-                ? uploadFormik.errors.file
-                : undefined
-            }
-          />
-          <div>
-            <label className="mb-1 block text-xs">Event</label>
-            <Select
-              className="w-full bg-secondary-100!"
-              placeholder="Select event"
-              options={eventDropdownOptions}
-              allowClear
-              disabled={uploadFormik.values.general}
-              status={
-                uploadFormik.touched.event_id && uploadFormik.errors.event_id
-                  ? "error"
-                  : undefined
-              }
-              value={uploadFormik.values.event_id}
-              onChange={(value) => {
-                uploadFormik.setFieldValue(
-                  "event_id",
-                  value == null ? undefined : Number(value),
-                );
-              }}
-              onBlur={() => uploadFormik.setFieldTouched("event_id", true)}
-            />
-            {uploadFormik.touched.event_id && uploadFormik.errors.event_id ? (
-              <p className="mt-1 text-xs text-red-500">
-                {uploadFormik.errors.event_id}
-              </p>
-            ) : null}
-          </div>
-          <Input
-            type="date"
-            name="delete_after"
-            label="Delete after"
-            value={uploadFormik.values.delete_after}
-            onChange={(e) =>
-              uploadFormik.setFieldValue("delete_after", e.target.value)
-            }
-            onBlur={uploadFormik.handleBlur}
-          />
-          <Checkbox
-            checked={uploadFormik.values.general}
-            onChange={(e) => {
-              const checked = e.target.checked;
-              uploadFormik.setFieldValue("general", checked);
-              if (checked) {
-                uploadFormik.setFieldValue("event_id", undefined);
-              }
-            }}
-          >
-            General
-          </Checkbox>
-          <div className="flex justify-end gap-3">
-            <Button
-              onClick={() => {
-                resetUploadForm();
-                setShowUploadModal(false);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              htmlType="submit"
-              type="primary"
-              loading={uploadMutation.isPending || uploadFormik.isSubmitting}
-            >
-              Upload
-            </Button>
-          </div>
-        </form>
-      </Modal>
+        onClose={() => setShowUploadModal(false)}
+      />
     </div>
   );
 };

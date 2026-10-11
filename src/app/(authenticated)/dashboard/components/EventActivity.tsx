@@ -1,11 +1,12 @@
 "use client";
 import Card from "@/src/components/Card";
 import { Skeleton } from "antd";
+import dayjs from "dayjs";
 
 type ActivityNote = {
   id?: number | string;
   notes?: string | null;
-  created_by?: string | null;
+  created_by?: number | string | null;
   created_by_name?: string | null;
   created_at?: string | Date | null;
 };
@@ -47,9 +48,9 @@ export default function EventActivity({
                   {note.notes || "—"}
                 </div>
                 <div className="text-xs text-gray-400 truncate">
-                  {note.created_by_name ?? note.created_by ?? "System"} ·{" "}
+                  {note.created_by_name ?? "System"}
                   {note.created_at
-                    ? new Date(note.created_at).toLocaleString()
+                    ? ` – ${dayjs(note.created_at).format("DD/MM/YYYY, HH:mm")}`
                     : ""}
                 </div>
               </div>

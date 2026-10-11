@@ -75,14 +75,6 @@ const WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(dayjs().startOf("month"));
   const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs>(dayjs());
-  // Derived from currentMonth rather than tracked separately — it used to be
-  // its own state, kept in sync manually wherever currentMonth changed. The
-  // month-nav arrows only ever called setCurrentMonth (not setYear), so
-  // clicking through months into the next year moved the visible grid into
-  // (say) September 2027 while the API query stayed on year=2026, silently
-  // fetching zero events for a grid that had real events in it.
-  const year = currentMonth.year();
-
   useEffect(() => {
     function onYearChange(e: Event) {
       const ev = e as CustomEvent<{ year: number }>;
@@ -110,7 +102,9 @@ export default function CalendarPage() {
     setSelectedDate(parsed);
   }, [searchParams]);
 
-  const { data: rawData } = useCalendar({ year });
+  // One fetch of every Confirmed/Completed event, past and future — the grid
+  // filters by the visible month itself, so navigating never refetches.
+  const { data: rawData } = useCalendar();
 
   const events: CalendarEvent[] = useMemo(() => {
     if (!rawData) return [];

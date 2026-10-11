@@ -1,17 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import AxiosInstance from "../lib/axios";
 
-interface QueryParams {
-  year: number;
-}
-
-export const useCalendar = (params: QueryParams) => {
+export const useCalendar = () => {
   return useQuery({
-    queryKey: ["calendar", params],
+    queryKey: ["calendar"],
     queryFn: async () => {
-      const response = await AxiosInstance.get(`/calendar`, {
-        params,
-      });
+      const response = await AxiosInstance.get(`/calendar`);
       return response.data;
     },
   });

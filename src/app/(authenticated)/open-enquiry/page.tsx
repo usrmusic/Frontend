@@ -1176,7 +1176,6 @@ const OpenEnquiryPage = () => {
                         onChange={(value) =>
                           formik.setFieldValue("company_name", value)
                         }
-                        popupMatchSelectWidth={280}
                       />
                       <DatePicker
                         placeholder="Date"
