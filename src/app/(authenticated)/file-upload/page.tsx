@@ -15,6 +15,7 @@ import { TableColumnsType } from "antd";
 import dayjs from "dayjs";
 import { Download, FileUp, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useFormik } from "formik";
 import Input from "@/src/components/Input";
@@ -49,6 +50,18 @@ type UploadListRow = {
 };
 
 const FileUploadPage = () => {
+  // Laravel parity: a confirmed event's "Add Files" sends staff here with
+  // `?id=<event>&redirect=confirm`. In that mode the page is only the upload
+  // form (event pre-selected), never the CRM-wide file list, and both Back and
+  // a successful upload return to that event.
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const returnEventId =
+    searchParams?.get("redirect") === "confirm" ? searchParams.get("id") : null;
+  const eventOnly = Boolean(returnEventId);
+  const eventHref = (id: string | number | null | undefined) =>
+    `/confirmed-events?search=${id ?? returnEventId}`;
+
   const [params, setParams] = useState(initialParams);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 1000);
@@ -80,7 +93,9 @@ const FileUploadPage = () => {
   const [uploadFileInputKey, setUploadFileInputKey] = useState(0);
 
   const uploadFormik = useFormik<UploadFormValues>({
-    initialValues: uploadFormInitialValues,
+    initialValues: eventOnly
+      ? { ...uploadFormInitialValues, event_id: Number(returnEventId) }
+      : uploadFormInitialValues,
     validateOnChange: true,
     validate: (values) => {
       const errors: Partial<Record<keyof UploadFormValues, string>> = {};
@@ -107,11 +122,26 @@ const FileUploadPage = () => {
         );
       }
       await uploadMutation.mutateAsync(formData);
+      if (eventOnly) {
+        // Land on the event the file was actually uploaded to — staff may have
+        // switched events in the dropdown after arriving here.
+        router.push(eventHref(values.event_id));
+        return;
+      }
       resetForm();
       setUploadFileInputKey((k) => k + 1);
       setShowUploadModal(false);
     },
   });
+
+  const closeUploadForm = () => {
+    if (eventOnly) {
+      router.push(eventHref(returnEventId));
+      return;
+    }
+    resetUploadForm();
+    setShowUploadModal(false);
+  };
 
   const resetUploadForm = () => {
     uploadFormik.resetForm();
@@ -239,6 +269,115 @@ const FileUploadPage = () => {
     event: row.event,
   }));
 
+  const uploadForm = (
+    <form className="space-y-4" onSubmit={uploadFormik.handleSubmit}>
+      <Input
+        key={uploadFileInputKey}
+        name="file"
+        type="file"
+        label="Choose file"
+        // Native file inputs can't have their button text changed
+        // (that's controlled by the browser), but the surrounding label
+        // and the filename text next to it can be — flex/items-center
+        // keeps the "no file chosen" text vertically centered in the
+        // box instead of sitting at the top.
+        className="flex items-center file:mr-3 file:h-full file:border-0 file:bg-secondary-200 file:px-3 file:text-sm file:text-gray-700 file:cursor-pointer"
+        onChange={(e) => {
+          const file = e.currentTarget.files?.[0] ?? null;
+          uploadFormik.setFieldValue("file", file);
+        }}
+        // No onBlur here on purpose — a native file input fires blur the
+        // instant the OS file picker opens (focus visibly moves away),
+        // well before the user has actually chosen anything. Wiring that
+        // straight to handleBlur marked the field "touched" and showed
+        // the red "Please choose a file" error the moment someone
+        // clicked Choose File, not after they'd actually failed to pick
+        // one. Formik still marks every field touched on a real submit
+        // attempt, so the error correctly shows if they try to submit
+        // with nothing chosen.
+        error={
+          uploadFormik.touched.file && uploadFormik.errors.file
+            ? uploadFormik.errors.file
+            : undefined
+        }
+      />
+      <div>
+        <label className="mb-1 block text-xs">Event</label>
+        <Select
+          className="w-full bg-secondary-100!"
+          placeholder="Select event"
+          options={eventDropdownOptions}
+          allowClear
+          disabled={uploadFormik.values.general}
+          status={
+            uploadFormik.touched.event_id && uploadFormik.errors.event_id
+              ? "error"
+              : undefined
+          }
+          value={uploadFormik.values.event_id}
+          onChange={(value) => {
+            uploadFormik.setFieldValue(
+              "event_id",
+              value == null ? undefined : Number(value),
+            );
+          }}
+          onBlur={() => uploadFormik.setFieldTouched("event_id", true)}
+        />
+        {uploadFormik.touched.event_id && uploadFormik.errors.event_id ? (
+          <p className="mt-1 text-xs text-red-500">
+            {uploadFormik.errors.event_id}
+          </p>
+        ) : null}
+      </div>
+      <Input
+        type="date"
+        name="delete_after"
+        label="Delete after"
+        value={uploadFormik.values.delete_after}
+        onChange={(e) =>
+          uploadFormik.setFieldValue("delete_after", e.target.value)
+        }
+        onBlur={uploadFormik.handleBlur}
+      />
+      <Checkbox
+        checked={uploadFormik.values.general}
+        onChange={(e) => {
+          const checked = e.target.checked;
+          uploadFormik.setFieldValue("general", checked);
+          if (checked) {
+            uploadFormik.setFieldValue("event_id", undefined);
+          }
+        }}
+      >
+        General
+      </Checkbox>
+      <div className="flex justify-end gap-3">
+        <Button onClick={closeUploadForm}>Cancel</Button>
+        <Button
+          htmlType="submit"
+          type="primary"
+          loading={uploadMutation.isPending || uploadFormik.isSubmitting}
+        >
+          Upload
+        </Button>
+      </div>
+    </form>
+  );
+
+  if (eventOnly) {
+    return (
+      <div className="mt-4 space-y-4">
+        <div className="flex items-center gap-3">
+          <Link href={eventHref(returnEventId)} className="shrink-0">
+            <BackButton />
+          </Link>
+          <h2 className="themeH1">Upload File</h2>
+        </div>
+        <div className="max-w-xl rounded-2xl bg-white p-5">{uploadForm}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="mt-4 space-y-4">
       <div className="flex items-center gap-3">
@@ -343,105 +482,7 @@ const FileUploadPage = () => {
         }}
         footer={null}
       >
-        <form className="space-y-4" onSubmit={uploadFormik.handleSubmit}>
-          <Input
-            key={uploadFileInputKey}
-            name="file"
-            type="file"
-            label="Choose file"
-            // Native file inputs can't have their button text changed
-            // (that's controlled by the browser), but the surrounding label
-            // and the filename text next to it can be — flex/items-center
-            // keeps the "no file chosen" text vertically centered in the
-            // box instead of sitting at the top.
-            className="flex items-center file:mr-3 file:h-full file:border-0 file:bg-secondary-200 file:px-3 file:text-sm file:text-gray-700 file:cursor-pointer"
-            onChange={(e) => {
-              const file = e.currentTarget.files?.[0] ?? null;
-              uploadFormik.setFieldValue("file", file);
-            }}
-            // No onBlur here on purpose — a native file input fires blur the
-            // instant the OS file picker opens (focus visibly moves away),
-            // well before the user has actually chosen anything. Wiring that
-            // straight to handleBlur marked the field "touched" and showed
-            // the red "Please choose a file" error the moment someone
-            // clicked Choose File, not after they'd actually failed to pick
-            // one. Formik still marks every field touched on a real submit
-            // attempt, so the error correctly shows if they try to submit
-            // with nothing chosen.
-            error={
-              uploadFormik.touched.file && uploadFormik.errors.file
-                ? uploadFormik.errors.file
-                : undefined
-            }
-          />
-          <div>
-            <label className="mb-1 block text-xs">Event</label>
-            <Select
-              className="w-full bg-secondary-100!"
-              placeholder="Select event"
-              options={eventDropdownOptions}
-              allowClear
-              disabled={uploadFormik.values.general}
-              status={
-                uploadFormik.touched.event_id && uploadFormik.errors.event_id
-                  ? "error"
-                  : undefined
-              }
-              value={uploadFormik.values.event_id}
-              onChange={(value) => {
-                uploadFormik.setFieldValue(
-                  "event_id",
-                  value == null ? undefined : Number(value),
-                );
-              }}
-              onBlur={() => uploadFormik.setFieldTouched("event_id", true)}
-            />
-            {uploadFormik.touched.event_id && uploadFormik.errors.event_id ? (
-              <p className="mt-1 text-xs text-red-500">
-                {uploadFormik.errors.event_id}
-              </p>
-            ) : null}
-          </div>
-          <Input
-            type="date"
-            name="delete_after"
-            label="Delete after"
-            value={uploadFormik.values.delete_after}
-            onChange={(e) =>
-              uploadFormik.setFieldValue("delete_after", e.target.value)
-            }
-            onBlur={uploadFormik.handleBlur}
-          />
-          <Checkbox
-            checked={uploadFormik.values.general}
-            onChange={(e) => {
-              const checked = e.target.checked;
-              uploadFormik.setFieldValue("general", checked);
-              if (checked) {
-                uploadFormik.setFieldValue("event_id", undefined);
-              }
-            }}
-          >
-            General
-          </Checkbox>
-          <div className="flex justify-end gap-3">
-            <Button
-              onClick={() => {
-                resetUploadForm();
-                setShowUploadModal(false);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              htmlType="submit"
-              type="primary"
-              loading={uploadMutation.isPending || uploadFormik.isSubmitting}
-            >
-              Upload
-            </Button>
-          </div>
-        </form>
+        {uploadForm}
       </Modal>
     </div>
   );

@@ -220,7 +220,10 @@ const Files = ({ dataSource, isModifyMode = false, eventId }: FilesProps) => {
     <div className="space-y-4">
       {isModifyMode && (
         <div className="mb-2">
-          <Link href="/file-upload" className="inline-block">
+          <Link
+            href={`/file-upload?id=${eventId}&redirect=confirm`}
+            className="inline-block"
+          >
             <Button type="primary" className="flex items-center gap-2">
               <Plus size={16} />
               Add Files

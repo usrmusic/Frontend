@@ -51,8 +51,14 @@ export const useUploadFile = () => {
       });
       return response.data;
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["uploads-list"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["uploads-list"] });
+      // A confirmed event's Files tab lists its own files plus global ones,
+      // so any upload can change it. refetchType "all" because the app's
+      // queries don't refetch on mount — a merely-stale cache would still show
+      // the old list when the user is sent back to the event.
+      queryClient.invalidateQueries({ queryKey: ["confirm-event"], refetchType: "all" });
+    },
     onError: (err) => {
       console.error(err);
       // Surface the real reason (e.g. "File type ... isn't supported", or
