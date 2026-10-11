@@ -13,14 +13,8 @@ import { Menu } from "lucide-react";
 import Link from "next/link";
 import useRole from "@/src/hooks/useRole";
 
-// Where a search result lives, so staff can tell a lead from a booking before
-// clicking (it also decides which page the result opens).
-const SEARCH_STATUS: Record<number, { label: string; className: string }> = {
-  1: { label: "Enquiry", className: "bg-amber-50 text-amber-700" },
-  2: { label: "Confirmed", className: "bg-primary/10 text-primary" },
-  3: { label: "Completed", className: "bg-gray-100 text-gray-600" },
-  4: { label: "Cancelled", className: "bg-red-50 text-red-600" },
-};
+// Longest real search term is a client name, email or phone number.
+const SEARCH_MAX_LENGTH = 50;
 
 const Header = () => {
   // Creating an enquiry is a staff-facing action — a Client submits new
@@ -55,6 +49,9 @@ const Header = () => {
       setSearchPopup({ width: pill.offsetWidth, offsetX });
     };
     measure();
+    // AntD v6's Select drops `maxLength`, so set it on the real input — the
+    // browser then blocks extra typing and truncates pastes.
+    pill.querySelector("input")?.setAttribute("maxlength", String(SEARCH_MAX_LENGTH));
     const ro = new ResizeObserver(measure);
     ro.observe(pill);
     return () => ro.disconnect();
@@ -146,13 +143,16 @@ const Header = () => {
         {/* Was a hard `width: 320`, which on a phone overflowed the row and
             pushed the year picker off screen. Now it takes the leftover space
             below `xl` and pins back to 320px above it. */}
-        <div ref={searchPillRef} className="flex-1 min-w-0 xl:flex-none xl:w-80 rounded-full bg-white flex items-center pl-3 sm:pl-4 pr-2 h-11 sm:h-12">
+        {/* overflow-hidden: long typed text must stay inside the pill rather
+            than running across the year picker and + button. The results
+            popup is portalled to <body>, so it isn't clipped by this. */}
+        <div ref={searchPillRef} className="flex-1 min-w-0 xl:flex-none xl:w-80 rounded-full bg-white flex items-center pl-3 sm:pl-4 pr-2 h-11 sm:h-12 overflow-hidden">
           <Select
             showSearch
             allowClear
             value={search || undefined}
             placeholder="Search..."
-            onSearch={(val) => setSearch(val)}
+            onSearch={(val) => setSearch(val.slice(0, SEARCH_MAX_LENGTH))}
             onSelect={(val, option) => {
               const idStr = String(val);
               let label = idStr;
@@ -236,31 +236,11 @@ const Header = () => {
                   : undefined,
               },
             }}
-            classNames={{ popup: { root: "!rounded-2xl !p-1.5" } }}
-            optionRender={(opt) => {
-              const d = opt.data as { clientName?: string; date?: string | null; status?: number | string };
-              const status = SEARCH_STATUS[Number(d.status)];
-              const when = d.date
-                ? new Date(d.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
-                : "";
-              return (
-                <div className="flex items-center justify-between gap-3 py-0.5">
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-gray-900 break-words">{d.clientName}</div>
-                    {when && <div className="text-xs text-gray-500">{when}</div>}
-                  </div>
-                  {status && (
-                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${status.className}`}>
-                      {status.label}
-                    </span>
-                  )}
-                </div>
-              );
-            }}
+            classNames={{ popup: { root: "rounded-md" } }}
             filterOption={false}
             suffixIcon={null}
             style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}
-            className="flex-1 bg-transparent border-0 shadow-none"
+            className="flex-1 min-w-0 bg-transparent border-0 shadow-none"
           />
 
           <button className="shrink-0 bg-black size-9 sm:size-10 flex items-center justify-center text-white rounded-full hover:bg-gray-800 transition-all duration-300 ml-2">
