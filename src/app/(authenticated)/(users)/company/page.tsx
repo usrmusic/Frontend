@@ -2,7 +2,7 @@
 import { Company, useCompanies, useDeleteCompany } from "@/src/api/usersApi";
 import AxiosInstance from "@/src/lib/axios";
 import Button from "@/src/components/Button";
-import Card from "@/src/components/Card";
+import Card, { MOBILE_PLAIN_CARD } from "@/src/components/Card";
 import AlertModal from "@/src/components/common/AlertModal";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
@@ -13,6 +13,7 @@ import { Pencil } from "lucide-react";
 import { useState } from "react";
 import CompanyModal from "./CompanyModal";
 import { CSVLink } from "react-csv";
+import MobileActionsMenu, { TitleActions } from "@/src/components/common/MobileActionsMenu";
 
 const initialParams: {
   page: number;
@@ -169,8 +170,38 @@ const CompanyPage = () => {
   return (
     <div className="space-y-4 mt-4">
       {contextHolder}
-      {/* Filters Card */}
-      <Card variant="green">
+      {/* Phone: the toolbar buttons move into the title row's ⋮ menu. */}
+      <TitleActions>
+        <MobileActionsMenu
+          items={[
+            {
+              key: "add",
+              label: "Add",
+              onClick: () => {
+                setCompanyItem(null);
+                setModalOpen(true);
+              },
+            },
+            {
+              key: "remove",
+              label: "Remove",
+              disabled: selectedRowKeys.length === 0,
+              onClick: () => setAlertModal(true),
+            },
+            {
+              key: "export",
+              label: (
+                <CSVLink data={csvData ?? []} filename="company.csv" headers={csvHeaders}>
+                  Export Data
+                </CSVLink>
+              ),
+            },
+          ]}
+        />
+      </TitleActions>
+      {/* Filters Card — on a phone only the search shows, as a plain white
+          bar (the buttons are in the ⋮ menu above). */}
+      <Card variant="green" className={MOBILE_PLAIN_CARD}>
           {/* Desktop (lg+) is the ORIGINAL layout, untouched: one row, search
               300px on the left, buttons natural-width on the right. The stacked
               treatment below applies only under 1024px, where the two groups
@@ -192,7 +223,7 @@ const CompanyPage = () => {
               them on one row at any real width, but left them at natural
               size flush left with empty space trailing. `flex-1` spreads
               them across the full row width instead. */}
-          <div className="grid grid-cols-2 gap-2 lg:flex lg:flex-wrap">
+          <div className="hidden sm:grid grid-cols-2 gap-2 lg:flex lg:flex-wrap">
             <Button onClick={() => {
               setCompanyItem(null);
               setModalOpen(true);

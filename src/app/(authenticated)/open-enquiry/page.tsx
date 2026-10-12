@@ -11,6 +11,7 @@ import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
+import MobileMenuButton from "@/src/components/common/MobileMenuButton";
 import {
   ListFilter,
   Phone,
@@ -34,9 +35,10 @@ import {
 import type { TableRowSelection } from "antd/es/table/interface";
 import dayjs from "dayjs";
 import Link from "next/link";
+import MobileActionsMenu from "@/src/components/common/MobileActionsMenu";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Modal } from "antd";
+import { Grid, Modal } from "antd";
 import { useSearchParams } from "next/navigation";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import SendBrochureModal from "./SendBrochure";
@@ -94,7 +96,7 @@ function deriveStatus(row: OpenEnquiryList): {
    visually consistent with the one sparkline style the app already has. */
 function Sparkline({ id, stroke }: { id: string; stroke: string }) {
   return (
-    <svg width="60" height="41" viewBox="0 0 60 41" fill="none" aria-hidden>
+    <svg viewBox="0 0 60 41" fill="none" aria-hidden className="w-9 h-6 sm:w-[60px] sm:h-[41px] shrink-0">
       <path
         d="M1.21484 39.45L8.68659 35.7132C8.90741 35.6028 9.07957 35.4146 9.16992 35.1848L11.0192 30.4823C11.2679 29.8496 12.0619 29.6443 12.5862 30.0769L13.9518 31.2037C14.4994 31.6555 15.3303 31.4088 15.5425 30.7313L24.5703 1.91614C24.874 0.946735 26.2621 0.995282 26.4974 1.98353L31.0089 20.9365C31.2247 21.8431 32.4541 21.9877 32.8743 21.1558L36.4584 14.0604C36.8332 13.3184 37.8971 13.3311 38.2541 14.0818L44.7433 27.7301C45.0635 28.4035 45.9815 28.5023 46.4376 27.9123L48.8769 24.7569C49.1921 24.3493 49.7654 24.2478 50.2013 24.5225L51.6627 25.4436C52.1611 25.7577 52.8217 25.5751 53.088 25.0495L58.4943 14.378"
         stroke={`url(#${id})`}
@@ -251,6 +253,7 @@ const OpenEnquiryPage = () => {
     "" | "new" | "open" | "quoted"
   >("");
   const [eventTypeFilter, setEventTypeFilter] = useState("");
+  const screens = Grid.useBreakpoint();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const hasActiveFilters = Boolean(statusFilter || eventTypeFilter);
 
@@ -356,12 +359,17 @@ const OpenEnquiryPage = () => {
     onChange: onSelectChange,
   };
 
+  // Narrower first three columns on a phone so Date Created, Name and Mobile
+  // all fit on screen before the table scrolls (long values ellipsize).
+  // `xs` is only set once measured, so desktop never renders the narrow widths first.
+  const isPhone = screens.xs === true;
+
   const columns: TableColumnsType<OpenEnquiryList> = [
     {
       title: "Date Created",
       dataIndex: "created_at",
       key: "created_at",
-      width: 130,
+      width: isPhone ? 112 : 130,
       ellipsis: true,
       sorter: true,
       sortOrder:
@@ -377,7 +385,7 @@ const OpenEnquiryPage = () => {
       title: "Name",
       dataIndex: ["users_events_user_idTousers", "name"],
       key: "name",
-      width: 150,
+      width: isPhone ? 105 : 150,
       ellipsis: true,
       // Server-side (see sortState above) — sorts the whole list, not just
       // the current page.
@@ -393,7 +401,7 @@ const OpenEnquiryPage = () => {
       title: "Mobile",
       dataIndex: ["users_events_user_idTousers", "contact_number"],
       key: "mobile",
-      width: 130,
+      width: isPhone ? 101 : 130,
       ellipsis: true,
     },
     {
@@ -559,23 +567,250 @@ const OpenEnquiryPage = () => {
   })(selected?.deposit_amount);
   const notesCount = selected?.event_notes?.length ?? 0;
 
+  const handleDelete = () => {
+    if (!selectedRowKeys.length) {
+      toast.error("Please select an enquiry first");
+      return;
+    }
+    Modal.confirm({
+      icon: null,
+      rootClassName: "usr-confirm-modal",
+      title: "Delete enquiry",
+      content:
+        "Are you sure you want to delete this enquiry? This action cannot be undone. This will permanently remove the enquiry and related temporary data.",
+      centered: true,
+      maskClosable: false,
+      okText: "Delete",
+      okButtonProps: {
+        type: "primary",
+        className: "!bg-primary !border-primary hover:!opacity-90",
+      },
+      cancelText: "Cancel",
+      onOk: () => {
+        const id = String(selectedRowKeys[0]);
+        setButtonLoading("delete");
+        deleteEnquiry.mutate(id, {
+          onSuccess: () => {
+            toast.success("Enquiry deleted");
+            setSelectedRowKeys([]);
+            setSelectedRowData(null);
+            setButtonLoading(null);
+          },
+          onError: () => {
+            setButtonLoading(null);
+          },
+        });
+      },
+    });
+  };
+
+  const handleReopen = () => {
+    if (!selectedRowKeys.length) {
+      toast.error("Please select an enquiry first");
+      return;
+    }
+    Modal.confirm({
+      icon: null,
+      rootClassName: "usr-confirm-modal",
+      title: "Reopen enquiry",
+      content:
+        "This will move the enquiry back to Open Enquiries.",
+      centered: true,
+      maskClosable: false,
+      okText: "Reopen",
+      okButtonProps: {
+        type: "primary",
+        className: "!bg-primary !border-primary hover:!opacity-90",
+      },
+      cancelText: "Cancel",
+      onOk: () => {
+        const id = String(selectedRowKeys[0]);
+        setButtonLoading("reopen");
+        reopenEnquiry.mutate(id, {
+          onSuccess: () => {
+            toast.success("Enquiry reopened");
+            setSelectedRowKeys([]);
+            setSelectedRowData(null);
+            setButtonLoading(null);
+          },
+          onError: () => {
+            setButtonLoading(null);
+          },
+        });
+      },
+    });
+  };
+
+  const handleEmailUpdate = async () => {
+    if (!selectedRowKeys.length) {
+      toast.error("Please select an enquiry first");
+      return;
+    }
+    setButtonLoading("emailUpdate");
+    try {
+      const data = await fetchEmailTemplate(
+        String(selectedRowKeys[0]),
+        "EMAIL FOR UPDATE",
+      );
+      setModalTemplate(data?.email ?? null);
+      setModalCompanies(data?.companies ?? null);
+      setClickedBtn("update");
+      setModalOpen(true);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load email template");
+    } finally {
+      setButtonLoading(null);
+    }
+  };
+
+  const handleSendBrochure = async () => {
+    if (!selectedRowKeys.length) {
+      toast.error("Please select an enquiry first");
+      return;
+    }
+    setButtonLoading("brochure");
+    try {
+      const data = await fetchEmailTemplate(
+        String(selectedRowKeys[0]),
+        "EMAIL BROCHURE",
+      );
+      setModalTemplate(data?.email ?? null);
+      setModalCompanies(data?.companies ?? null);
+      setClickedBtn("brochure");
+      setModalOpen(true);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load email template");
+    } finally {
+      setButtonLoading(null);
+    }
+  };
+
+  const handleSendQuote = async () => {
+    if (!selectedRowKeys.length) {
+      toast.error("Please select an enquiry first");
+      return;
+    }
+    setButtonLoading("quote");
+    try {
+      const data = await fetchEmailTemplate(
+        String(selectedRowKeys[0]),
+        "SEND QUOTE-OPEN",
+      );
+      // Substitute the deposit placeholder here too — the compose
+      // box was showing the literal "{--amount--}" token verbatim
+      // (and sending it that way) because this quick-action button
+      // never ran the substitution the Enquiry form's own Send
+      // Quote flow does. Defaults to 0, matching Laravel.
+      const rawEmail = data?.email as { body?: string } | null | undefined;
+      const email = rawEmail
+        ? {
+            ...rawEmail,
+            body: String(rawEmail.body ?? "").replace(
+              "{--amount--}",
+              `£${selectedDeposit ?? 0}`,
+            ),
+          }
+        : rawEmail;
+      setModalTemplate(email ?? null);
+      setModalCompanies(data?.companies ?? null);
+      setClickedBtn("quote");
+      setModalOpen(true);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load email template");
+    } finally {
+      setButtonLoading(null);
+    }
+  };
+
   if (isClient) {
     return <AccessDenied message="Open enquiries aren't available for client accounts." />;
   }
 
   return (
-    <div className="mt-8 space-y-5">
+    // Phone (below sm): the wrappers marked `max-sm:contents` below flatten
+    // so title row, stat cards, buttons, table and panel are siblings of this
+    // one flex column, and `max-sm:order-*` puts the stat cards straight
+    // under the title (above the buttons), per the mobile design.
+    <div className="mt-8 space-y-5 max-sm:space-y-0 max-sm:flex max-sm:flex-col max-sm:gap-4">
       {/* Page header */}
-      <div className="flex flex-col gap-3 justify-between lg:flex-row lg:items-center">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-3 justify-between lg:flex-row lg:items-center max-sm:contents">
+        <div className="flex items-center gap-2 sm:gap-3 max-sm:order-1">
+          <MobileMenuButton />
           <Link href="/dashboard" className="shrink-0">
             <BackButton />
           </Link>
-          <div>
+          <div className="min-w-0">
             <h2 className="themeH1">Open Enquiry</h2>
-            <p className="text-sm text-gray-500">
+            <p className="text-[11px] sm:text-sm text-gray-500">
               Manage and respond to your enquiries
             </p>
+          </div>
+          {/* Phone: the toolbar keeps Edit / Send Quote / Email Update /
+              Delete; the rest of it moves in here. */}
+          <div className="ml-auto">
+            <MobileActionsMenu
+              selectedKeys={[`status:${statusFilter}`, `type:${eventTypeFilter}`]}
+              items={[
+                { key: "new", label: "New Enquiry", onClick: () => router.push("/enquiry") },
+                ...(enquiryView === "closed"
+                  ? [{ key: "reopen", label: "Reopen", onClick: handleReopen }]
+                  : []),
+                { key: "brochure", label: "Send Brochure", onClick: handleSendBrochure },
+                {
+                  key: "panel",
+                  label: showSidePanel ? "Hide panel" : "Show panel",
+                  onClick: () => setShowSidePanel((v) => !v),
+                },
+                // The Filters popover's two filters, as menu groups (the
+                // popover button is hidden on a phone). Tapping the active
+                // choice again clears it.
+                { type: "divider" },
+                ...(enquiryView === "open"
+                  ? [
+                      {
+                        type: "group" as const,
+                        key: "status",
+                        label: "Status",
+                        children: (["new", "open", "quoted"] as const).map((v) => ({
+                          key: `status:${v}`,
+                          label: v[0].toUpperCase() + v.slice(1),
+                          onClick: () => setStatusFilter(statusFilter === v ? "" : v),
+                        })),
+                      },
+                    ]
+                  : []),
+                ...(eventTypeOptions.length
+                  ? [
+                      {
+                        type: "group" as const,
+                        key: "type",
+                        label: "Event Type",
+                        children: eventTypeOptions.map((o) => ({
+                          key: `type:${o.value}`,
+                          label: o.label,
+                          onClick: () =>
+                            setEventTypeFilter(eventTypeFilter === o.value ? "" : o.value),
+                        })),
+                      },
+                    ]
+                  : []),
+                ...(hasActiveFilters
+                  ? [
+                      {
+                        key: "clear",
+                        label: "Clear filters",
+                        onClick: () => {
+                          setStatusFilter("");
+                          setEventTypeFilter("");
+                        },
+                      },
+                    ]
+                  : []),
+              ]}
+            />
           </div>
         </div>
         {/* Up to seven buttons here (New Enquiry, Edit, Delete, the conditional
@@ -588,14 +823,14 @@ const OpenEnquiryPage = () => {
             2-per-row block rather than wherever flex-wrap happened to break
             the line. `sm` and up returns to the original flex-wrap — plenty of
             width there for the natural variable-width row. */}
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center max-sm:order-3">
           {/* An odd button count (7, when the conditional Reopen is showing)
               leaves one cell of the last grid row empty rather than the
               button stretching to fill it — deliberately left alone rather
               than special-cased, so every button gets identical treatment
               instead of one being singled out as visually more prominent than
               in the original design. */}
-          <Link href="/enquiry">
+          <Link href="/enquiry" className="max-sm:hidden">
             <Button type="primary" className="themeDefaultButton w-full sm:w-auto">
               <Plus size={14} className="mr-1 inline" />
               New Enquiry
@@ -603,7 +838,7 @@ const OpenEnquiryPage = () => {
           </Link>
           <Button
             type="default"
-            className="themeDefaultButton"
+            className="themeDefaultButton max-sm:order-1"
             onClick={() => {
               if (!selectedRowKeys.length) {
                 toast.error("Please select an enquiry first");
@@ -618,191 +853,43 @@ const OpenEnquiryPage = () => {
           </Button>
           <Button
             type="default"
-            className="themeDefaultButton"
+            className="themeDefaultButton max-sm:order-4"
             loading={buttonLoading === "delete"}
-            onClick={() => {
-              if (!selectedRowKeys.length) {
-                toast.error("Please select an enquiry first");
-                return;
-              }
-              Modal.confirm({
-      icon: null,
-                rootClassName: "usr-confirm-modal",
-                title: "Delete enquiry",
-                content:
-                  "Are you sure you want to delete this enquiry? This action cannot be undone. This will permanently remove the enquiry and related temporary data.",
-                centered: true,
-                maskClosable: false,
-                okText: "Delete",
-                okButtonProps: {
-                  type: "primary",
-                  className: "!bg-primary !border-primary hover:!opacity-90",
-                },
-                cancelText: "Cancel",
-                onOk: () => {
-                  const id = String(selectedRowKeys[0]);
-                  setButtonLoading("delete");
-                  deleteEnquiry.mutate(id, {
-                    onSuccess: () => {
-                      toast.success("Enquiry deleted");
-                      setSelectedRowKeys([]);
-                      setSelectedRowData(null);
-                      setButtonLoading(null);
-                    },
-                    onError: () => {
-                      setButtonLoading(null);
-                    },
-                  });
-                },
-              });
-            }}
+            onClick={handleDelete}
           >
             Delete
           </Button>
           {enquiryView === "closed" && (
             <Button
               type="default"
-              className="themeDefaultButton"
+              className="themeDefaultButton max-sm:hidden!"
               loading={buttonLoading === "reopen"}
-              onClick={() => {
-                if (!selectedRowKeys.length) {
-                  toast.error("Please select an enquiry first");
-                  return;
-                }
-                Modal.confirm({
-                  icon: null,
-                  rootClassName: "usr-confirm-modal",
-                  title: "Reopen enquiry",
-                  content:
-                    "This will move the enquiry back to Open Enquiries.",
-                  centered: true,
-                  maskClosable: false,
-                  okText: "Reopen",
-                  okButtonProps: {
-                    type: "primary",
-                    className: "!bg-primary !border-primary hover:!opacity-90",
-                  },
-                  cancelText: "Cancel",
-                  onOk: () => {
-                    const id = String(selectedRowKeys[0]);
-                    setButtonLoading("reopen");
-                    reopenEnquiry.mutate(id, {
-                      onSuccess: () => {
-                        toast.success("Enquiry reopened");
-                        setSelectedRowKeys([]);
-                        setSelectedRowData(null);
-                        setButtonLoading(null);
-                      },
-                      onError: () => {
-                        setButtonLoading(null);
-                      },
-                    });
-                  },
-                });
-              }}
+              onClick={handleReopen}
             >
               Reopen
             </Button>
           )}
           <Button
             type="default"
-            className="themeDefaultButton"
+            className="themeDefaultButton max-sm:order-3"
             loading={buttonLoading === "emailUpdate"}
-            onClick={async () => {
-              if (!selectedRowKeys.length) {
-                toast.error("Please select an enquiry first");
-                return;
-              }
-              setButtonLoading("emailUpdate");
-              try {
-                const data = await fetchEmailTemplate(
-                  String(selectedRowKeys[0]),
-                  "EMAIL FOR UPDATE",
-                );
-                setModalTemplate(data?.email ?? null);
-                setModalCompanies(data?.companies ?? null);
-                setClickedBtn("update");
-                setModalOpen(true);
-              } catch (err) {
-                console.error(err);
-                toast.error("Failed to load email template");
-              } finally {
-                setButtonLoading(null);
-              }
-            }}
+            onClick={handleEmailUpdate}
           >
             Email Update
           </Button>
           <Button
             type="default"
-            className="themeDefaultButton"
+            className="themeDefaultButton max-sm:hidden!"
             loading={buttonLoading === "brochure"}
-            onClick={async () => {
-              if (!selectedRowKeys.length) {
-                toast.error("Please select an enquiry first");
-                return;
-              }
-              setButtonLoading("brochure");
-              try {
-                const data = await fetchEmailTemplate(
-                  String(selectedRowKeys[0]),
-                  "EMAIL BROCHURE",
-                );
-                setModalTemplate(data?.email ?? null);
-                setModalCompanies(data?.companies ?? null);
-                setClickedBtn("brochure");
-                setModalOpen(true);
-              } catch (err) {
-                console.error(err);
-                toast.error("Failed to load email template");
-              } finally {
-                setButtonLoading(null);
-              }
-            }}
+            onClick={handleSendBrochure}
           >
             Send Brochure
           </Button>
           <Button
             type="primary"
-            className="themeDefaultButton"
+            className="themeDefaultButton max-sm:order-2"
             loading={buttonLoading === "quote"}
-            onClick={async () => {
-              if (!selectedRowKeys.length) {
-                toast.error("Please select an enquiry first");
-                return;
-              }
-              setButtonLoading("quote");
-              try {
-                const data = await fetchEmailTemplate(
-                  String(selectedRowKeys[0]),
-                  "SEND QUOTE-OPEN",
-                );
-                // Substitute the deposit placeholder here too — the compose
-                // box was showing the literal "{--amount--}" token verbatim
-                // (and sending it that way) because this quick-action button
-                // never ran the substitution the Enquiry form's own Send
-                // Quote flow does. Defaults to 0, matching Laravel.
-                const rawEmail = data?.email as { body?: string } | null | undefined;
-                const email = rawEmail
-                  ? {
-                      ...rawEmail,
-                      body: String(rawEmail.body ?? "").replace(
-                        "{--amount--}",
-                        `£${selectedDeposit ?? 0}`,
-                      ),
-                    }
-                  : rawEmail;
-                setModalTemplate(email ?? null);
-                setModalCompanies(data?.companies ?? null);
-                setClickedBtn("quote");
-                setModalOpen(true);
-              } catch (err) {
-                console.error(err);
-                toast.error("Failed to load email template");
-              } finally {
-                setButtonLoading(null);
-              }
-            }}
+            onClick={handleSendQuote}
           >
             Send Quote
           </Button>
@@ -820,12 +907,12 @@ const OpenEnquiryPage = () => {
           steps: `col-span-3` (25%) is too narrow, `col-span-4` (33%) too wide.
           Flex lets both pages state the same 29% directly instead of rounding to
           whichever column count happens to be available. */}
-      <div className="flex flex-col xl:flex-row gap-6">
+      <div className="flex flex-col xl:flex-row gap-6 max-sm:contents">
         {/* Left column: KPI cards, search/filters, table. `min-w-0` is
             required: a flex item defaults to min-width:auto, so the table's
             own scroll container would refuse to shrink and push the panel
             off-screen instead. */}
-        <div className="flex-1 min-w-0 space-y-4">
+        <div className="flex-1 min-w-0 space-y-4 max-sm:contents">
           {/* KPI row — this page's own enquiry lifecycle, not the whole
               business: Total = Open + Closed. Open = still-pending enquiries
               (event_status_id 1). Closed = Cancelled (status 4) — a lead
@@ -836,17 +923,19 @@ const OpenEnquiryPage = () => {
               getStatusCounts in enquiry.controller.js. The Closed card is
               clickable — it switches the table below to the Closed
               (Cancelled) list. */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Three across on every screen; on a phone the cards go compact
+              (smaller padding, number and sparkline) so they fit side by side. */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 max-sm:order-2">
             <Card
               variant="white"
-              className="p-5 flex items-center justify-between"
+              className="p-3 sm:p-5 flex items-center justify-between gap-1 min-w-0"
             >
               <div>
-                <p className="text-sm text-gray-500">Total</p>
+                <p className="text-xs sm:text-sm text-gray-500">Total</p>
                 {isLoadingStatusCounts ? (
                   <Spin size="small" className="mt-2 block" />
                 ) : (
-                  <p className="text-3xl font-semibold text-gray-900 mt-1">
+                  <p className="text-2xl sm:text-3xl font-semibold text-gray-900 mt-1">
                     {statusCounts?.total ?? "—"}
                   </p>
                 )}
@@ -855,15 +944,15 @@ const OpenEnquiryPage = () => {
             </Card>
             <Card
               variant="white"
-              className={`p-5 flex items-center justify-between cursor-pointer transition-colors ${enquiryView === "open" ? "ring-2 ring-primary" : ""}`}
+              className={`p-3 sm:p-5 flex items-center justify-between gap-1 min-w-0 cursor-pointer transition-colors ${enquiryView === "open" ? "ring-2 ring-primary" : ""}`}
               onClick={() => setEnquiryView("open")}
             >
               <div>
-                <p className="text-sm text-gray-500">Open</p>
+                <p className="text-xs sm:text-sm text-gray-500">Open</p>
                 {isLoadingStatusCounts ? (
                   <Spin size="small" className="mt-2 block" />
                 ) : (
-                  <p className="text-3xl font-semibold text-gray-900 mt-1">
+                  <p className="text-2xl sm:text-3xl font-semibold text-gray-900 mt-1">
                     {statusCounts?.open ?? "—"}
                   </p>
                 )}
@@ -872,15 +961,15 @@ const OpenEnquiryPage = () => {
             </Card>
             <Card
               variant="white"
-              className={`p-5 flex items-center justify-between cursor-pointer transition-colors ${enquiryView === "closed" ? "ring-2 ring-primary" : ""}`}
+              className={`p-3 sm:p-5 flex items-center justify-between gap-1 min-w-0 cursor-pointer transition-colors ${enquiryView === "closed" ? "ring-2 ring-primary" : ""}`}
               onClick={() => setEnquiryView("closed")}
             >
               <div>
-                <p className="text-sm text-gray-500">Closed</p>
+                <p className="text-xs sm:text-sm text-gray-500">Closed</p>
                 {isLoadingStatusCounts ? (
                   <Spin size="small" className="mt-2 block" />
                 ) : (
-                  <p className="text-3xl font-semibold text-gray-900 mt-1">
+                  <p className="text-2xl sm:text-3xl font-semibold text-gray-900 mt-1">
                     {statusCounts?.closed ?? "—"}
                   </p>
                 )}
@@ -899,7 +988,7 @@ const OpenEnquiryPage = () => {
               from real data (Status from the same New/Open/Quoted derivation
               used elsewhere on this page; Event Type from the distinct
               dj_package_name values actually present), nothing invented. */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden max-sm:order-4">
             <div className="px-2 py-2 flex items-center gap-0 border-b border-gray-100">
               <div className="flex-1 flex items-center gap-2 px-3 py-1.5">
                 <MagnifyingGlass w={18} h={18} />
@@ -911,7 +1000,8 @@ const OpenEnquiryPage = () => {
                   onChange={(e) => setSearchInput(e.target.value)}
                 />
               </div>
-              <div className="w-px self-stretch bg-gray-200 mx-1" />
+              {/* Filters live in the title row's ⋮ menu on a phone. */}
+              <div className="hidden sm:block w-px self-stretch bg-gray-200 mx-1" />
               <Popover
                 open={filtersOpen}
                 onOpenChange={setFiltersOpen}
@@ -973,7 +1063,7 @@ const OpenEnquiryPage = () => {
               >
                 <button
                   type="button"
-                  className={`shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors ${
+                  className={`max-sm:hidden shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors ${
                     hasActiveFilters
                       ? "bg-primary/10 text-primary font-medium"
                       : "text-gray-600 hover:bg-gray-50"
@@ -988,14 +1078,16 @@ const OpenEnquiryPage = () => {
               </Popover>
               <button
                 type="button"
-                className="xl:hidden shrink-0 rounded-lg border border-gray-200 ml-1 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+                className="hidden sm:block xl:hidden shrink-0 rounded-lg border border-gray-200 ml-1 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
                 onClick={() => setShowSidePanel((v) => !v)}
               >
                 {showSidePanel ? "Hide panel" : "Show panel"}
               </button>
             </div>
 
-            <div className="[&_.ant-table-thead_th]:whitespace-nowrap [&_.ant-table-tbody_td]:whitespace-nowrap">
+            {/* Tighter cell padding on a phone so Date Created, Name and Mobile
+                all fit before the table scrolls. */}
+            <div className="[&_.ant-table-thead_th]:whitespace-nowrap [&_.ant-table-tbody_td]:whitespace-nowrap max-sm:[&_.ant-table-cell]:px-2!">
               <DataTable<OpenEnquiryList>
                 columns={columns}
                 dataSource={enquiryData?.data}
@@ -1109,7 +1201,7 @@ const OpenEnquiryPage = () => {
             nothing to stretch OR cap against — the panel takes its natural
             content height there, which is already correct. */}
         {showSidePanel && (
-          <aside className="xl:w-[29%] xl:shrink-0">
+          <aside className="xl:w-[29%] xl:shrink-0 max-sm:order-5">
             <div className="h-full xl:max-h-[calc(100vh-64px)] xl:sticky xl:-top-6 flex flex-col bg-white rounded-2xl shadow-sm overflow-hidden">
               {/* Header — name, with the derived status directly underneath
                   it (matching the reference design's stacked layout). No

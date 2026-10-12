@@ -7,6 +7,13 @@ interface CardProps extends PropsWithChildren {
   onClick?: () => void;
 }
 
+/* For a toolbar Card that holds only a search bar on a phone (its buttons
+   moved into a ⋮ menu): drops the card's background, shadow and padding below
+   `sm` so the search reads as a plain white bar. `!` is needed to beat the
+   inline background/shadow styles below. */
+export const MOBILE_PLAIN_CARD =
+  "max-sm:bg-none! max-sm:bg-transparent! max-sm:shadow-none! max-sm:p-0! max-sm:rounded-none!";
+
 const Card = ({ children, variant = "white", className = "", onClick }: CardProps) => {
   const bgVariant = {
     white: "#fff",

@@ -3,8 +3,10 @@ import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import Input from "@/src/components/Input";
 import { BackButton } from "@/src/components/Icons";
+import MobileMenuButton from "@/src/components/common/MobileMenuButton";
 import { PlusIcon, Save, ChevronDown, ChevronUp, Printer, SquareCheckBig, X, Send, MoreVertical, Plus } from "lucide-react";
 import Link from "next/link";
+import MobileActionsMenu from "@/src/components/common/MobileActionsMenu";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -1333,7 +1335,7 @@ const NewEnquiryPageInner = () => {
 
           return (
             <Form>
-              <div className="mt-8 space-y-6">
+              <div className="mt-8 max-sm:mt-0 space-y-6">
                 {/* Header row. Was gated on `lg` (1024px), which is the
                     sidebar's rail/drawer pivot — a sensible threshold for that,
                     but unrelated to how wide THIS row actually is. Title + four
@@ -1344,10 +1346,25 @@ const NewEnquiryPageInner = () => {
                     (768px), comfortably one row above it. */}
                 <div className="flex flex-col gap-3 justify-between md:flex-row md:items-center">
                   <div className="flex items-center gap-3">
+                    <MobileMenuButton />
                     <Link href="/dashboard">
                       <BackButton />
                     </Link>
                     <h2 className="themeH1">{editId ? "Edit Enquiry" : "New Enquiry"}</h2>
+                    {/* Phone: Print and the summary move in here; the toolbar
+                        keeps Save and Send Quote. */}
+                    <div className="ml-auto">
+                      <MobileActionsMenu
+                        items={[
+                          { key: "print", label: "Print", onClick: () => setPrintMode("enquiry") },
+                          {
+                            key: "summary",
+                            label: "Summary",
+                            onClick: () => setMobileSummaryOpen((v) => !v),
+                          },
+                        ]}
+                      />
+                    </div>
                   </div>
                   {/* `flex-wrap` alone left an orphaned ⋮ button stranded on its
                       own second line at phone widths — Save/Print/Send Quote
@@ -1377,6 +1394,7 @@ const NewEnquiryPageInner = () => {
                       type="default"
                       icon={<Printer size={14} />}
                       onClick={() => setPrintMode("enquiry")}
+                      className="max-sm:hidden!"
                     >
                       Print
                     </Button>
@@ -1404,6 +1422,7 @@ const NewEnquiryPageInner = () => {
                         else setMobileSummaryOpen((v) => !v);
                       }}
                       aria-label={showSummaryDrawer ? "Hide summary" : "Show summary"}
+                      className="max-sm:hidden!"
                     >
                       <MoreVertical size={14} />
                     </Button>

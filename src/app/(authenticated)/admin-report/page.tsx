@@ -4,6 +4,7 @@ import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
+import MobileMenuButton from "@/src/components/common/MobileMenuButton";
 import { DatePicker, Select, Dropdown, Checkbox } from "antd";
 import { RefreshCw, Eye, EyeOff, Columns3 } from "lucide-react";
 import { useDebounce } from "@/src/hooks/useDebounce";
@@ -138,6 +139,7 @@ const Page = () => {
     <div className="mt-4 space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
+          <MobileMenuButton />
           <Link href="/dashboard" className="">
             <BackButton />
           </Link>

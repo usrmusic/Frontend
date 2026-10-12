@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCalendar } from "@/src/api/calendar";
 import { BackButton } from "@/src/components/Icons";
+import MobileMenuButton from "@/src/components/common/MobileMenuButton";
 
 // A DJ with no colour assigned falls back to neutral grey — matches the
 // Users table swatch and the dashboard's mini calendar.
@@ -170,6 +171,7 @@ export default function CalendarPage() {
       {/* ── Page title row — matches other pages (completed-events, etc.) ── */}
       <div className="flex justify-between">
         <div className="flex items-center gap-3">
+          <MobileMenuButton />
           <Link href="/dashboard">
             <BackButton />
           </Link>
@@ -478,9 +480,11 @@ export default function CalendarPage() {
                       </div>
                     </div>
 
-                    {/* Divider + address */}
-                    <div className="border-t border-gray-100" />
-                    <div className="flex gap-[6px] items-start px-[14.82px] py-[10px]">
+                    {/* Divider + address — not on a phone, where the venue
+                        line above already says the same and the cards are
+                        kept to avatar / name / venue / time. */}
+                    <div className="hidden sm:block border-t border-gray-100" />
+                    <div className="hidden sm:flex gap-[6px] items-start px-[14.82px] py-[10px]">
                       <MapPin size={12} className="shrink-0 text-[#4a5565] mt-0.5" />
                       <p className="text-[11px] text-[#4a5565] leading-[16.212px]">
                         {venue || "No venue specified"}
