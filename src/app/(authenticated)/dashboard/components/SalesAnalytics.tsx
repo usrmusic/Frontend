@@ -182,10 +182,14 @@ export default function SalesAnalytics({
             height-driven size alone claimed too much width and ellipsized
             the DJ stats. Capping width to a fraction of the row directly,
             rather than relying on flex-shrink, is what actually keeps this
-            from crowding the text at any card height. */}
+            from crowding the text at any card height.
+
+            Phone (below md): the card's height comes from the short DJ list,
+            so `h-full` resolved to almost nothing and the donut vanished —
+            it gets an explicit size there instead. */}
         <div
           ref={donutWrapRef}
-          className="relative shrink-0 flex items-center justify-center aspect-square h-full max-h-40 min-h-16 max-w-[38%]"
+          className="relative shrink-0 flex items-center justify-center aspect-square h-full max-h-40 min-h-16 max-w-[38%] max-md:h-32 max-md:max-w-[45%]"
         >
           {(() => {
             const top = topDjs;

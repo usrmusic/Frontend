@@ -5,6 +5,7 @@ import Button from "@/src/components/Button";
 import AlertModal from "@/src/components/common/AlertModal";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
+import MobileMenuButton from "@/src/components/common/MobileMenuButton";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import { formatFileSize } from "@/src/utils/formatFileSize";
 import { TableColumnsType } from "antd";
@@ -107,10 +108,21 @@ const DownloadsPage = () => {
   return (
     <div className="mt-4 space-y-4">
       <div className="flex items-center gap-3">
+        <MobileMenuButton />
         <Link href="/dashboard" className="shrink-0">
           <BackButton />
         </Link>
         <h2 className="themeH1">Downloads</h2>
+        {/* Phone: Upload File sits in the title row (the toolbar copy below
+            is hidden there). */}
+        <Button
+          type="primary"
+          icon={<FileUp size={14} />}
+          onClick={() => setShowUploadModal(true)}
+          className="ml-auto sm:hidden"
+        >
+          Upload File
+        </Button>
       </div>
       <div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -124,7 +136,7 @@ const DownloadsPage = () => {
               className="w-full bg-transparent! text-sm placeholder:text-gray-500"
             />
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="hidden sm:flex flex-wrap items-center gap-2">
             <Button type="primary" icon={<FileUp size={14} />} onClick={() => setShowUploadModal(true)}>
               Upload File
             </Button>
@@ -147,6 +159,11 @@ const DownloadsPage = () => {
             setParams({ ...params, page, perPage: pageSize }),
         }}
         rowKey={(data) => data.id}
+        // Four short columns: fit them to the screen (long names wrap)
+        // rather than scrolling Size and Actions off the edge of a phone.
+        // Tighter cell padding there leaves the file name most of the width.
+        scroll={undefined}
+        className="max-sm:[&_.ant-table-cell]:px-2!"
       />
       <AlertModal
         open={modalOpen}

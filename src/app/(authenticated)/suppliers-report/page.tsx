@@ -3,6 +3,7 @@ import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, Export, MagnifyingGlass } from "@/src/components/Icons";
+import MobileMenuButton from "@/src/components/common/MobileMenuButton";
 import { DatePicker, Select } from "antd";
 import dayjs from "dayjs";
 import { MoreVertical, RefreshCw, Eye, EyeOff } from "lucide-react";
@@ -142,6 +143,7 @@ const SuppliersPage = () => {
     <div className="mt-4 space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
+          <MobileMenuButton />
           <Link href="/dashboard" className="">
             <BackButton />
           </Link>

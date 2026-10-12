@@ -11,6 +11,7 @@ import {
 } from "@/src/api/events";
 import Button from "@/src/components/Button";
 import { BackButton } from "@/src/components/Icons";
+import MobileMenuButton from "@/src/components/common/MobileMenuButton";
 import Input from "@/src/components/Input";
 import EventPaymentDrawer from "@/src/components/common/EventPaymentDrawer";
 import AnimatedMount from "@/src/components/common/AnimatedMount";
@@ -28,6 +29,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import MobileActionsMenu from "@/src/components/common/MobileActionsMenu";
 import { CSSProperties, useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -497,19 +499,70 @@ const ConfirmedEventsPage = () => {
     },
   ];
 
+  const handleSendQuote = async () => {
+    if (!eventId) return;
+    setButtonLoading("quote");
+    try {
+      const data = await fetchEmailTemplate(
+        String(eventId),
+        "SEND QUOTE-CONFIRMED",
+      );
+      const rawTemplate = data?.email ?? null;
+      // Substitute the deposit placeholder with the real
+      // amount before showing it in the compose box —
+      // otherwise it displays the literal "{--amount--}"
+      // token until send-time, which reads as broken.
+      // Uses actual payments received (minus refunds), not
+      // the events.deposit_amount column — that column only
+      // gets set if a deposit was entered at confirm-time,
+      // so it reads 0 whenever the deposit was recorded as
+      // a payment afterwards instead.
+      const template = rawTemplate
+        ? {
+            ...rawTemplate,
+            body: String(rawTemplate.body ?? "").replace(
+              "{--amount--}",
+              `£${adjustedPaidAmount}`,
+            ),
+          }
+        : rawTemplate;
+      setQuoteTemplate(template);
+      setShowQuoteModal(true);
+    } catch {
+      toast.error("Failed to load email template");
+    } finally {
+      setButtonLoading(null);
+    }
+  };
+
   return (
     <div>
       <form className="mt-4 space-y-4" onSubmit={formik.handleSubmit}>
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
           <div className="flex items-center gap-3 min-w-0">
+            <MobileMenuButton />
             <Link href="/dashboard" className="shrink-0">
               <BackButton />
             </Link>
-            <h2 className="themeH1">
+            <h2 className="themeH1 truncate">
               {(searchParams?.get("from") ?? "") === "completed"
                 ? "Completed Event"
                 : "Confirmed Events"}
             </h2>
+            {/* Phone: Send Quote and the Event Payment drawer move in here;
+                the toolbar below keeps the four main buttons. */}
+            {eventId && (
+              <div className="ml-auto">
+                <MobileActionsMenu
+                  items={[
+                    ...(!isClient
+                      ? [{ key: "quote", label: "Send Quote", onClick: handleSendQuote }]
+                      : []),
+                    { key: "payment", label: "Event Payment", onClick: () => setShowDrawer(true) },
+                  ]}
+                />
+              </div>
+            )}
           </div>
           {/* This group can hold up to 8 buttons across its different states
               (Modify/Update/Cancel/Re-confirm/Send Quote/Download Invoice/
@@ -542,6 +595,7 @@ const ConfirmedEventsPage = () => {
                   <Button
                     htmlType="button"
                     onClick={() => setIsModifyMode(true)}
+                    className="max-sm:order-1"
                   >
                     Modify
                   </Button>
@@ -556,48 +610,16 @@ const ConfirmedEventsPage = () => {
                     type="primary"
                     onClick={handleReconfirmEvent}
                     loading={isReconfirmingEvent}
+                    className="max-sm:order-4"
                   >
                     Re-confirm Event
                   </Button>
                 )}
                 {!isClient && (
                   <Button
-                    onClick={async () => {
-                      if (!eventId) return;
-                      setButtonLoading("quote");
-                      try {
-                        const data = await fetchEmailTemplate(
-                          String(eventId),
-                          "SEND QUOTE-CONFIRMED",
-                        );
-                        const rawTemplate = data?.email ?? null;
-                        // Substitute the deposit placeholder with the real
-                        // amount before showing it in the compose box —
-                        // otherwise it displays the literal "{--amount--}"
-                        // token until send-time, which reads as broken.
-                        // Uses actual payments received (minus refunds), not
-                        // the events.deposit_amount column — that column only
-                        // gets set if a deposit was entered at confirm-time,
-                        // so it reads 0 whenever the deposit was recorded as
-                        // a payment afterwards instead.
-                        const template = rawTemplate
-                          ? {
-                              ...rawTemplate,
-                              body: String(rawTemplate.body ?? "").replace(
-                                "{--amount--}",
-                                `£${adjustedPaidAmount}`,
-                              ),
-                            }
-                          : rawTemplate;
-                        setQuoteTemplate(template);
-                        setShowQuoteModal(true);
-                      } catch {
-                        toast.error("Failed to load email template");
-                      } finally {
-                        setButtonLoading(null);
-                      }
-                    }}
+                    onClick={handleSendQuote}
                     loading={buttonLoading === "quote"}
+                    className="max-sm:hidden!"
                   >
                     Send Quote
                   </Button>
@@ -605,6 +627,7 @@ const ConfirmedEventsPage = () => {
                 <Button
                   loading={isDownloadingInvoice}
                   onClick={handleDownloadInvoice}
+                  className="max-sm:order-3"
                 >
                   Download Invoice
                 </Button>
@@ -640,6 +663,7 @@ const ConfirmedEventsPage = () => {
                       }
                     }}
                     loading={buttonLoading === "invoice"}
+                    className="max-sm:order-2"
                   >
                     Send Invoice
                   </Button>
@@ -648,6 +672,7 @@ const ConfirmedEventsPage = () => {
                   <Button
                     onClick={handleCancelEvent}
                     loading={isCancelingEvent}
+                    className="max-sm:order-4"
                   >
                     Cancel Event
                   </Button>
@@ -656,7 +681,7 @@ const ConfirmedEventsPage = () => {
                     Client-facing sidebar panel has the same Package Summary +
                     read-only Total/Deposit/Outstanding). The drawer itself
                     hides Rig List, Edit, and Add Payment for Client. */}
-                <Button onClick={() => setShowDrawer(true)}>
+                <Button onClick={() => setShowDrawer(true)} className="max-sm:hidden!">
                   <MoreVertical size={14} />
                 </Button>
               </>

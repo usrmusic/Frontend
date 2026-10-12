@@ -79,6 +79,7 @@ export default function EventOverview({
     {
       title: "Date",
       key: "date",
+      width: 96,
       render: (_text: unknown, record: UpcomingEventRow) => {
         const d = record?.date || record?.event_date || record?.eventDate;
         return d ? new Date(d).toLocaleDateString("en-GB") : "";
@@ -87,12 +88,15 @@ export default function EventOverview({
     {
       title: "Venue",
       key: "venue",
+      ellipsis: true,
       render: (_text: unknown, record: UpcomingEventRow) => 
         record?.venue_name || record?.venue || "",
     },
     {
       title: "DJ Name",
       key: "dj_name",
+      width: "32%",
+      ellipsis: true,
       render: (_text: unknown, record: UpcomingEventRow) => 
         record?.dj_name || record?.dj?.name || "",
     },
@@ -130,10 +134,10 @@ export default function EventOverview({
             <div className="max-h-[220px] xl:max-h-[260px] overflow-auto no-scrollbar">
               <Table<UpcomingEventRow>
                 size="small"
-                // Not routed through components/DataTable, so it needs its own
-                // horizontal scroll — without it the date/venue/DJ columns
-                // squeeze to a few characters each on a phone.
-                scroll={{ x: "max-content" }}
+                // Three columns that always fit the card: Date is fixed, DJ
+                // Name gets a share, Venue takes the rest — a long venue or DJ
+                // name ellipsizes instead of pushing DJ Name off a phone screen.
+                tableLayout="fixed"
                 pagination={false}
                 dataSource={events}
                 rowKey={(r) => r.id}

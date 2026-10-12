@@ -16,6 +16,9 @@ import useRole from "@/src/hooks/useRole";
 // Longest real search term is a client name, email or phone number.
 const SEARCH_MAX_LENGTH = 50;
 
+// Pages without their own title row keep this header on a phone.
+const HEADER_ON_PHONE = ["/dashboard", "/profile"];
+
 const Header = () => {
   // Creating an enquiry is a staff-facing action — a Client submits new
   // enquiries via the public website form (publicEnquiry.ts), not this
@@ -109,8 +112,15 @@ const Header = () => {
     // Side by side they cannot both fit: the tools are ~510px of fixed width
     // (320 search + 110 year + 48 action + gaps), so on a 1032px iPad the
     // greeting was left with 74px and rendered as "H...".
-    <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between xl:gap-4">
-      <div className="flex items-center gap-3 min-w-0">
+    // Phone (below `sm`): one row again — the search is hidden there, which
+    // leaves only the year picker and + button (dashboard) next to the
+    // greeting, per the mobile design.
+    //
+    // Every page except Dashboard and Profile has its own title row with a
+    // phone-only ☰ (MobileMenuButton), so on a phone this header is hidden
+    // there and ☰ ← Title sit on one row, per the mobile design.
+    <div className={`flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between xl:gap-4 max-sm:flex-row max-sm:items-center ${HEADER_ON_PHONE.includes(pathname) ? "max-sm:mb-4" : "max-sm:hidden"}`}>
+      <div className="flex items-center gap-3 min-w-0 max-sm:flex-1">
         {/* Only entry point to the nav below `xl`, where the sidebar is an
             off-canvas drawer. Signals via the same CustomEvent bus the sidebar
             already listens on. Must stay on the same breakpoint as Sidebar's
@@ -139,14 +149,15 @@ const Header = () => {
           <p className="text-gray-500 text-sm hidden sm:block">Explore information and activity about your events</p>
         </div>
       </div>
-      <div className="flex gap-2 sm:gap-3 xl:gap-4 items-center w-full xl:w-auto">
+      <div className="flex gap-2 sm:gap-3 xl:gap-4 items-center w-full xl:w-auto max-sm:w-auto max-sm:shrink-0">
         {/* Was a hard `width: 320`, which on a phone overflowed the row and
             pushed the year picker off screen. Now it takes the leftover space
             below `xl` and pins back to 320px above it. */}
         {/* overflow-hidden: long typed text must stay inside the pill rather
             than running across the year picker and + button. The results
             popup is portalled to <body>, so it isn't clipped by this. */}
-        <div ref={searchPillRef} className="flex-1 min-w-0 xl:flex-none xl:w-80 rounded-full bg-white flex items-center pl-3 sm:pl-4 pr-2 h-11 sm:h-12 overflow-hidden">
+        {/* Not shown on a phone (per the mobile design). */}
+        <div ref={searchPillRef} className="flex-1 min-w-0 xl:flex-none xl:w-80 rounded-full bg-white flex items-center pl-3 sm:pl-4 pr-2 h-11 sm:h-12 overflow-hidden max-sm:hidden">
           <Select
             showSearch
             allowClear

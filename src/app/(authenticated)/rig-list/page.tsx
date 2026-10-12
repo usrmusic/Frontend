@@ -1,6 +1,7 @@
 "use client";
 import Button from "@/src/components/Button";
 import { BackButton } from "@/src/components/Icons";
+import MobileMenuButton from "@/src/components/common/MobileMenuButton";
 import { Printer, Save, SquareCheckBig } from "lucide-react";
 import Link from "next/link";
 import { Checkbox, Select, Spin } from "antd";
@@ -84,24 +85,32 @@ const Page = () => {
           actually did. It's `flex-wrap` here instead of a breakpoint swap —
           not a specific pixel threshold to tune, just "stay one row, and only
           break if a screen is ever too narrow to avoid it" (roughly sub-300px,
-          narrower than any real device this app targets). */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+          narrower than any real device this app targets).
+
+          The phone ☰ added to this row since pushed Save/Print onto a second
+          line, so it no longer wraps: gaps tighten on a phone and the title
+          truncates if a screen is ever too narrow, keeping ☰ ← Rig List
+          Save Print on one row as in the mobile design. */}
+      <div className="flex items-center justify-between gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <MobileMenuButton />
           <Link href="/dashboard" className="shrink-0">
             <BackButton />
           </Link>
-          <h2 className="themeH1">Rig List</h2>
+          <h2 className="themeH1 truncate">Rig List</h2>
         </div>
-        <div className="flex gap-3">
+        {/* Narrowest phones (<380px) drop the button icons so "Rig List" isn't cut. */}
+        <div className="flex gap-2 sm:gap-3 shrink-0 max-[379px]:[&_.ant-btn-icon]:hidden!">
           <Button
             type="primary"
             icon={<Save size={14} />}
             disabled={!eventId}
             onClick={handleSave}
+            className="max-sm:h-8! max-sm:px-3!"
           >
             Save
           </Button>
-          <Button icon={<Printer size={14} />}>Print</Button>
+          <Button icon={<Printer size={14} />} className="max-sm:h-8! max-sm:px-3!">Print</Button>
         </div>
       </div>
 
@@ -225,13 +234,12 @@ const Page = () => {
             {/* Event info block — shown at top when event is loaded */}
             {event && (
               <div className="px-5 pt-5 shrink-0 flex">
-                {/* Compact single-column "bubble" pinned to the top-left rather
-                    than a full-width two-column grid: the details are short
-                    labels, so stretching them across the card left large gaps
-                    and squeezed the notes area. `inline-block` width + `mr-auto`
-                    keep it only as wide as its content, freeing vertical space
-                    for the notes box below. */}
-                <div className="mr-auto w-full max-w-[320px] min-w-[280px] rounded-xl bg-secondary-200/50 border border-secondary-200 px-4 py-3 space-y-2 text-sm">
+                {/* Compact "bubble" pinned to the top-left rather than a
+                    full-width block: the details are short labels, so
+                    stretching them across the card left large gaps and
+                    squeezed the notes area. Two columns (Venue | Date,
+                    DJ | Time) keep it short on a phone too. */}
+                <div className="mr-auto w-full sm:max-w-[360px] rounded-xl bg-secondary-200/50 border border-secondary-200 px-4 py-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                   {event.venues?.venue && (
                     <div>
                       <p className="text-xs text-gray-400 mb-0.5">Venue</p>
@@ -242,6 +250,12 @@ const Page = () => {
                     <div>
                       <p className="text-xs text-gray-400 mb-0.5">Date</p>
                       <p className="font-medium text-gray-900 text-sm">{dayjs(event.date).format("DD/MM/YYYY")}</p>
+                    </div>
+                  )}
+                  {event.users_events_dj_idTousers?.name && (
+                    <div>
+                      <p className="text-xs text-gray-400 mb-0.5">DJ</p>
+                      <p className="font-medium text-gray-900 text-sm">{event.users_events_dj_idTousers.name}</p>
                     </div>
                   )}
                   {(event.start_time || event.end_time) && (
@@ -258,12 +272,6 @@ const Page = () => {
                       <p className="font-medium text-gray-900 text-sm">
                         {event.access_time !== "N/A" ? formatTime(event.access_time) : "N/A"}
                       </p>
-                    </div>
-                  )}
-                  {event.users_events_dj_idTousers?.name && (
-                    <div>
-                      <p className="text-xs text-gray-400 mb-0.5">DJ</p>
-                      <p className="font-medium text-gray-900 text-sm">{event.users_events_dj_idTousers.name}</p>
                     </div>
                   )}
                 </div>

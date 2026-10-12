@@ -9,6 +9,7 @@ import { Modal, message } from "antd";
 import Button from "@/src/components/Button";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, Export, MagnifyingGlass } from "@/src/components/Icons";
+import MobileMenuButton from "@/src/components/common/MobileMenuButton";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import { TableColumnsType } from "antd";
 import dayjs from "dayjs";
@@ -18,6 +19,7 @@ import { useState } from "react";
 import Input from "@/src/components/Input";
 import UploadFileModal from "@/src/components/common/UploadFileModal";
 import { CSVLink } from "react-csv";
+import MobileActionsMenu from "@/src/components/common/MobileActionsMenu";
 
 const initialParams = {
   page: 1,
@@ -174,10 +176,35 @@ const FileUploadPage = () => {
   return (
     <div className="mt-4 space-y-4">
       <div className="flex items-center gap-3">
+        <MobileMenuButton />
         <Link href="/dashboard" className="shrink-0">
           <BackButton />
         </Link>
-        <h2 className="themeH1">File Upload</h2>
+        <h2 className="themeH1 truncate min-w-0">File Upload</h2>
+        {/* Phone: Upload File sits in the title row and Export moves into the
+            ⋮ menu (the toolbar buttons below are hidden there). */}
+        <div className="ml-auto flex items-center gap-2 shrink-0 sm:hidden">
+          <Button
+            type="primary"
+            icon={<FileUp size={14} />}
+            onClick={() => setShowUploadModal(true)}
+          >
+            {/* "File" drops on the narrowest phones so the title isn't cut. */}
+            Upload<span className="max-[379px]:hidden"> File</span>
+          </Button>
+          <MobileActionsMenu
+            items={[
+              {
+                key: "export",
+                label: (
+                  <CSVLink data={csvData ?? []} filename="file-upload.csv" headers={csvHeaders}>
+                    Export Data
+                  </CSVLink>
+                ),
+              },
+            ]}
+          />
+        </div>
       </div>
       <div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -191,7 +218,7 @@ const FileUploadPage = () => {
               className="w-full bg-transparent! text-sm placeholder:text-gray-500"
             />
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="hidden sm:flex flex-wrap items-center gap-2">
             <CSVLink
               data={csvData ?? []}
               filename="file-upload.csv"

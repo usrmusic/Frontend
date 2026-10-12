@@ -3,6 +3,7 @@ import { useGetCompletedEventsList } from "@/src/api/events";
 import Button from "@/src/components/Button";
 import DataTable from "@/src/components/DataTable";
 import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
+import MobileMenuButton from "@/src/components/common/MobileMenuButton";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
@@ -18,6 +19,7 @@ import { MoreVertical } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { CSVLink } from "react-csv";
+import MobileActionsMenu from "@/src/components/common/MobileActionsMenu";
 import useRole from "@/src/hooks/useRole";
 import AccessDenied from "@/src/components/common/AccessDenied";
 
@@ -26,6 +28,12 @@ const initialParams = {
   perPage: 10,
   search: "",
 };
+
+const PAYMENT_STATUS_OPTIONS = [
+  { label: "All", value: "" },
+  { label: "Completed", value: "completed" },
+  { label: "Pending", value: "pending" },
+];
 
 const CompletedEventsPage = () => {
   const [params, setParams] = useState(initialParams);
@@ -157,10 +165,42 @@ const CompletedEventsPage = () => {
       <div className="space-y-4 mt-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
           <div className="flex items-center gap-3">
+            <MobileMenuButton />
             <Link href="/dashboard" className="">
               <BackButton />
             </Link>
             <h2 className="themeH1">Completed Events</h2>
+            {/* Phone: the payment-status filter and Export move in here (the
+                filter row's copies are hidden there). */}
+            <div className="ml-auto">
+              <MobileActionsMenu
+                selectedKeys={[`payment:${paymentStatus}`]}
+                items={[
+                  {
+                    type: "group",
+                    key: "payment",
+                    label: "Payment status",
+                    children: PAYMENT_STATUS_OPTIONS.map((o) => ({
+                      key: `payment:${o.value}`,
+                      label: o.label,
+                      onClick: () => {
+                        setPaymentStatus(o.value);
+                        setParams((p) => ({ ...p, page: 1 }));
+                      },
+                    })),
+                  },
+                  { type: "divider" },
+                  {
+                    key: "export",
+                    label: (
+                      <CSVLink data={csvData ?? []} filename="clients.csv" headers={csvHeaders}>
+                        Export Data
+                      </CSVLink>
+                    ),
+                  },
+                ]}
+              />
+            </div>
           </div>
           {/* Same 3+1 orphan bug as Open Enquiry/Users/Clients/Confirmed
               Events: 4 buttons under plain `flex-wrap` packed 3 onto row one
@@ -251,16 +291,12 @@ const CompletedEventsPage = () => {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <div className="max-w-full">
+          <div className="max-w-full hidden sm:block">
             <Select
               allowClear
               placeholder="Payment status"
               className="w-full bg-white rounded-lg"
-              options={[
-                { label: "All", value: "" },
-                { label: "Completed", value: "completed" },
-                { label: "Pending", value: "pending" },
-              ]}
+              options={PAYMENT_STATUS_OPTIONS}
               filterOption={(input, option) =>
                 String(option?.label ?? "")
                   .toLowerCase()
@@ -273,7 +309,7 @@ const CompletedEventsPage = () => {
               }}
             />
           </div>
-          <div className="sm:col-span-2 flex flex-wrap gap-2 sm:justify-end">
+          <div className="sm:col-span-2 hidden sm:flex flex-wrap gap-2 sm:justify-end">
             <CSVLink
               data={csvData ?? []}
               filename="clients.csv"

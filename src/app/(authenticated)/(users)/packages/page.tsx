@@ -9,7 +9,7 @@ import {
   Equipment,
 } from "@/src/api/usersApi";
 import Button from "@/src/components/Button";
-import Card from "@/src/components/Card";
+import Card, { MOBILE_PLAIN_CARD } from "@/src/components/Card";
 import AlertModal from "@/src/components/common/AlertModal";
 import DataTable from "@/src/components/DataTable";
 import { MagnifyingGlass } from "@/src/components/Icons";
@@ -23,6 +23,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import PackageModal from "./PackageModal";
 import EquipmentModal from "./EquipmentModal";
 import { CSVLink } from "react-csv";
+import MobileActionsMenu, { TitleActions } from "@/src/components/common/MobileActionsMenu";
 
 const initialParams: {
   page: number;
@@ -279,7 +280,7 @@ const PackagesPage = () => {
       title: "Actions",
       key: "actions",
       render: (data) => (
-        <div className="grid grid-cols-2 gap-2 lg:flex lg:flex-wrap">
+        <div className="hidden sm:grid grid-cols-2 gap-2 lg:flex lg:flex-wrap">
           {/* <span className="cursor-pointer" title="View">
             <Eye size={14} />
           </span>
@@ -385,8 +386,43 @@ const PackagesPage = () => {
 
   return (
     <div className="space-y-4 mt-4">
-      {/* Filters Card */}
-      <Card variant="green">
+      {/* Phone: the toolbar buttons move into the title row's ⋮ menu. */}
+      <TitleActions>
+        <MobileActionsMenu
+          items={[
+            {
+              key: "add",
+              label: "Add",
+              onClick: () => {
+                setPackageItem(null);
+                setEquipmentItem(null);
+                setModalOpen(true);
+              },
+            },
+            {
+              key: "remove",
+              label: "Remove",
+              disabled: selectedRowKeys.length === 0,
+              onClick: () => setAlertModal(true),
+            },
+            {
+              key: "export",
+              label: (
+                <CSVLink
+                  data={activeTab === "packages" ? packageCsvData : equipmentCsvData}
+                  filename={activeTab === "packages" ? "packages.csv" : "equipment.csv"}
+                  headers={activeTab === "packages" ? packageCsvHeaders : equipmentCsvHeaders}
+                >
+                  Export Data
+                </CSVLink>
+              ),
+            },
+          ]}
+        />
+      </TitleActions>
+      {/* Filters Card — on a phone only the search and the Packages/Equipment
+          switch show, without the green card behind them. */}
+      <Card variant="green" className={MOBILE_PLAIN_CARD}>
           {/* Desktop (lg+) is the ORIGINAL layout, untouched: one row, search
               300px on the left, buttons natural-width on the right. The stacked
               treatment below applies only under 1024px, where the two groups
@@ -416,10 +452,13 @@ const PackagesPage = () => {
             {/* `flex-1` on each button spreads the pair across the full row
                 width instead of leaving them stranded at natural size on the
                 left with empty space trailing. */}
-            <div className="flex w-full lg:w-auto rounded-md overflow-hidden bg-secondary-200">
+            {/* On a phone the switch sits on the page background, which is the
+                same colour as its track — a white track with a green selected
+                segment keeps it readable there. */}
+            <div className="flex w-full lg:w-auto rounded-md overflow-hidden bg-secondary-200 max-sm:bg-white max-sm:p-1">
               <button
                 className={`flex-1 lg:flex-none px-4 py-2 text-sm font-medium transition-colors ${
-                  activeTab === 'packages' ? 'bg-white text-primary' : 'text-gray-600 hover:text-primary'
+                  activeTab === 'packages' ? 'bg-white text-primary max-sm:bg-primary max-sm:text-white' : 'text-gray-600 hover:text-primary'
                 } rounded-l-md`}
                 onClick={() => setActiveTab('packages')}
               >
@@ -427,7 +466,7 @@ const PackagesPage = () => {
               </button>
               <button
                 className={`flex-1 lg:flex-none px-4 py-2 text-sm font-medium transition-colors ${
-                  activeTab === 'equipment' ? 'bg-white text-primary' : 'text-gray-600 hover:text-primary'
+                  activeTab === 'equipment' ? 'bg-white text-primary max-sm:bg-primary max-sm:text-white' : 'text-gray-600 hover:text-primary'
                 } rounded-r-md`}
                 onClick={() => setActiveTab('equipment')}
               >
