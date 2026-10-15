@@ -6,8 +6,8 @@ import { CalendarX2, ChevronLeft, ChevronRight, MapPin, Plus } from "lucide-reac
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCalendar } from "@/src/api/calendar";
-import { BackButton } from "@/src/components/Icons";
 import MobileMenuButton from "@/src/components/common/MobileMenuButton";
+import BackLink from "@/src/components/common/BackLink";
 
 // A DJ with no colour assigned falls back to neutral grey — matches the
 // Users table swatch and the dashboard's mini calendar.
@@ -172,9 +172,7 @@ export default function CalendarPage() {
       <div className="flex justify-between">
         <div className="flex items-center gap-3">
           <MobileMenuButton />
-          <Link href="/dashboard">
-            <BackButton />
-          </Link>
+          <BackLink />
           <h2 className="themeH1">Calendar</h2>
         </div>
       </div>
@@ -396,8 +394,9 @@ export default function CalendarPage() {
         ──────────────────────────────────────────── */}
         <div className="w-full lg:w-[335px] lg:shrink-0 bg-white rounded-lg border border-gray-200 flex flex-col overflow-hidden">
 
-          {/* Panel header */}
-          <div className="px-[22.97px] pt-[22.97px] shrink-0">
+          {/* Panel header — not on a phone, where the mobile design shows the
+              day's event cards straight under the calendar. */}
+          <div className="hidden sm:block px-[22.97px] pt-[22.97px] shrink-0">
             {/* Row 1: filter label + add button */}
             <div className="flex items-center justify-between h-[34.457px] mb-[22.97px]">
               <button className="flex items-center gap-1 text-sm text-[#2A2D32] font-normal">
@@ -423,7 +422,7 @@ export default function CalendarPage() {
               avatar layout (reverted from a flatter list experiment); the
               avatar's tint now comes from the event's own DJ colour instead
               of a fixed primary-green swatch every DJ previously shared. */}
-          <div className="flex-1 overflow-y-auto px-[15px] pt-3 pb-4 flex flex-col gap-3 no-scrollbar">
+          <div className="flex-1 overflow-y-auto px-[15px] pt-3 max-sm:pt-[15px] pb-4 flex flex-col gap-3 no-scrollbar">
             {selectedDateEvents.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-[#9ca3af] text-sm gap-2 py-6">
                 {/* Was the 📅 emoji — its actual glyph (at least on this

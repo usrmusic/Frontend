@@ -3,13 +3,13 @@ import { useState } from "react";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
-import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
+import { MagnifyingGlass } from "@/src/components/Icons";
 import MobileMenuButton from "@/src/components/common/MobileMenuButton";
+import BackLink from "@/src/components/common/BackLink";
 import { DatePicker, Select, Dropdown, Checkbox } from "antd";
 import { RefreshCw, Eye, EyeOff, Columns3 } from "lucide-react";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import Image from "next/image";
-import Link from "next/link";
 import useColumns, {
   COLUMN_LABELS,
   DEFAULT_VISIBLE_COLUMNS,
@@ -140,9 +140,7 @@ const Page = () => {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <MobileMenuButton />
-          <Link href="/dashboard" className="">
-            <BackButton />
-          </Link>
+          <BackLink />
           <div>
             {/* <p className="text-sm text-gray-500">Hello, Carlic!</p> */}
             <h2 className="themeH1">Admin Report</h2>

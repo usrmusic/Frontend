@@ -4,6 +4,7 @@ import type { ColumnsType } from "antd/es/table";
 import { useRouter } from "next/navigation";
 import useRole from "@/src/hooks/useRole";
 import { toast } from "react-toastify";
+import { CollapseChevron, useMobileCollapse } from "@/src/components/common/MobileCollapse";
 
 export interface UpcomingEventRow {
   id: number;
@@ -24,6 +25,8 @@ interface EventOverviewProps {
   isLoading?: boolean;
   onSearch?: (query: string) => void;
   searchValue?: string;
+  /** Phone: whether the card starts unfolded. */
+  mobileDefaultOpen?: boolean;
 }
 
 export default function EventOverview({
@@ -31,8 +34,10 @@ export default function EventOverview({
   isLoading = false,
   onSearch,
   searchValue = "",
+  mobileDefaultOpen = true,
 }: EventOverviewProps) {
   const router = useRouter();
+  const collapse = useMobileCollapse(mobileDefaultOpen);
   const { isClient } = useRole();
 
   const handleEventRowClick = (record: UpcomingEventRow) => {
@@ -108,12 +113,17 @@ export default function EventOverview({
       style={{ boxShadow: "0px 1px 3px 0px #0000001A" }}
     >
       <div className="flex flex-wrap items-center justify-between gap-3 p-4 text-white rounded-t-3xl">
-        <div className="flex items-center gap-3">
+        {/* Title row toggles the card on a phone (not the search box). */}
+        <div
+          onClick={collapse.onHeaderClick}
+          className="flex items-center justify-between gap-3 max-sm:w-full"
+        >
           <h4 className="text-base font-semibold text-gray-900 whitespace-nowrap">
             Event Overview
           </h4>
+          <CollapseChevron open={collapse.open} onToggle={collapse.toggle} />
         </div>
-        <div className="w-full sm:w-64 md:w-72">
+        <div className={`w-full sm:w-64 md:w-72 ${collapse.bodyClass}`}>
           <Input
             placeholder="Search upcoming events"
             allowClear
@@ -124,7 +134,7 @@ export default function EventOverview({
         </div>
       </div>
 
-      <div className="px-4 pb-4">
+      <div className={`px-4 pb-4 ${collapse.bodyClass}`}>
         <div className="overflow-hidden overflow-x-auto rounded-2xl border border-gray-50 [&_.ant-table]:text-sm [&_.ant-table-thead_th]:text-sm [&_.ant-table-tbody_td]:text-sm [&_.ant-table-thead_th]:whitespace-nowrap [&_.ant-table-tbody_td]:whitespace-nowrap">
           {isLoading ? (
             <div className="h-44 flex items-center justify-center">

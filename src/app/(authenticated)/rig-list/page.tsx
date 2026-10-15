@@ -1,9 +1,8 @@
 "use client";
 import Button from "@/src/components/Button";
-import { BackButton } from "@/src/components/Icons";
 import MobileMenuButton from "@/src/components/common/MobileMenuButton";
+import BackLink from "@/src/components/common/BackLink";
 import { Printer, Save, SquareCheckBig } from "lucide-react";
-import Link from "next/link";
 import { Checkbox, Select, Spin } from "antd";
 import { useRigListEventsDropdown } from "@/src/api/dropdown";
 import dayjs from "dayjs";
@@ -94,9 +93,7 @@ const Page = () => {
       <div className="flex items-center justify-between gap-2 sm:gap-3">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <MobileMenuButton />
-          <Link href="/dashboard" className="shrink-0">
-            <BackButton />
-          </Link>
+          <BackLink />
           <h2 className="themeH1 truncate">Rig List</h2>
         </div>
         {/* Narrowest phones (<380px) drop the button icons so "Rig List" isn't cut. */}

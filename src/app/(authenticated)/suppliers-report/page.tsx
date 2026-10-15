@@ -2,13 +2,13 @@
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
-import { BackButton, Export, MagnifyingGlass } from "@/src/components/Icons";
+import { Export, MagnifyingGlass } from "@/src/components/Icons";
 import MobileMenuButton from "@/src/components/common/MobileMenuButton";
+import BackLink from "@/src/components/common/BackLink";
 import { DatePicker, Select } from "antd";
 import dayjs from "dayjs";
 import { MoreVertical, RefreshCw, Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 import useColumns from "./useColumns";
 import { useSuppliersReport } from "@/src/api/reports";
 import SkeletonInput from "antd/es/skeleton/Input";
@@ -144,9 +144,7 @@ const SuppliersPage = () => {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <MobileMenuButton />
-          <Link href="/dashboard" className="">
-            <BackButton />
-          </Link>
+          <BackLink />
           <h2 className="themeH1">Suppliers Report</h2>
         </div>
         <div className="flex gap-2">

@@ -10,8 +10,9 @@ import { useConfirmEvent } from "@/src/api/events";
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import DataTable from "@/src/components/DataTable";
-import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
+import { MagnifyingGlass } from "@/src/components/Icons";
 import MobileMenuButton from "@/src/components/common/MobileMenuButton";
+import BackLink from "@/src/components/common/BackLink";
 import {
   ListFilter,
   Phone,
@@ -739,9 +740,7 @@ const OpenEnquiryPage = () => {
       <div className="flex flex-col gap-3 justify-between lg:flex-row lg:items-center max-sm:contents">
         <div className="flex items-center gap-2 sm:gap-3 max-sm:order-1">
           <MobileMenuButton />
-          <Link href="/dashboard" className="shrink-0">
-            <BackButton />
-          </Link>
+          <BackLink />
           <div className="min-w-0">
             <h2 className="themeH1">Open Enquiry</h2>
             <p className="text-[11px] sm:text-sm text-gray-500">
@@ -749,66 +748,15 @@ const OpenEnquiryPage = () => {
             </p>
           </div>
           {/* Phone: the toolbar keeps Edit / Send Quote / Email Update /
-              Delete; the rest of it moves in here. */}
+              Send Brochure; Delete (and Reopen, on the Closed list) live in
+              this ⋮ menu. */}
           <div className="ml-auto">
             <MobileActionsMenu
-              selectedKeys={[`status:${statusFilter}`, `type:${eventTypeFilter}`]}
               items={[
-                { key: "new", label: "New Enquiry", onClick: () => router.push("/enquiry") },
                 ...(enquiryView === "closed"
                   ? [{ key: "reopen", label: "Reopen", onClick: handleReopen }]
                   : []),
-                { key: "brochure", label: "Send Brochure", onClick: handleSendBrochure },
-                {
-                  key: "panel",
-                  label: showSidePanel ? "Hide panel" : "Show panel",
-                  onClick: () => setShowSidePanel((v) => !v),
-                },
-                // The Filters popover's two filters, as menu groups (the
-                // popover button is hidden on a phone). Tapping the active
-                // choice again clears it.
-                { type: "divider" },
-                ...(enquiryView === "open"
-                  ? [
-                      {
-                        type: "group" as const,
-                        key: "status",
-                        label: "Status",
-                        children: (["new", "open", "quoted"] as const).map((v) => ({
-                          key: `status:${v}`,
-                          label: v[0].toUpperCase() + v.slice(1),
-                          onClick: () => setStatusFilter(statusFilter === v ? "" : v),
-                        })),
-                      },
-                    ]
-                  : []),
-                ...(eventTypeOptions.length
-                  ? [
-                      {
-                        type: "group" as const,
-                        key: "type",
-                        label: "Event Type",
-                        children: eventTypeOptions.map((o) => ({
-                          key: `type:${o.value}`,
-                          label: o.label,
-                          onClick: () =>
-                            setEventTypeFilter(eventTypeFilter === o.value ? "" : o.value),
-                        })),
-                      },
-                    ]
-                  : []),
-                ...(hasActiveFilters
-                  ? [
-                      {
-                        key: "clear",
-                        label: "Clear filters",
-                        onClick: () => {
-                          setStatusFilter("");
-                          setEventTypeFilter("");
-                        },
-                      },
-                    ]
-                  : []),
+                { key: "delete", label: "Delete", danger: true, onClick: handleDelete },
               ]}
             />
           </div>
@@ -853,7 +801,7 @@ const OpenEnquiryPage = () => {
           </Button>
           <Button
             type="default"
-            className="themeDefaultButton max-sm:order-4"
+            className="themeDefaultButton max-sm:hidden!"
             loading={buttonLoading === "delete"}
             onClick={handleDelete}
           >
@@ -879,7 +827,7 @@ const OpenEnquiryPage = () => {
           </Button>
           <Button
             type="default"
-            className="themeDefaultButton max-sm:hidden!"
+            className="themeDefaultButton max-sm:order-4"
             loading={buttonLoading === "brochure"}
             onClick={handleSendBrochure}
           >

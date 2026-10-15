@@ -8,13 +8,13 @@ import {
 import { Modal, message } from "antd";
 import Button from "@/src/components/Button";
 import DataTable from "@/src/components/DataTable";
-import { BackButton, Export, MagnifyingGlass } from "@/src/components/Icons";
+import { Export, MagnifyingGlass } from "@/src/components/Icons";
 import MobileMenuButton from "@/src/components/common/MobileMenuButton";
+import BackLink from "@/src/components/common/BackLink";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import { TableColumnsType } from "antd";
 import dayjs from "dayjs";
 import { Download, FileUp, MoreVertical, Pencil, Trash2 } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
 import Input from "@/src/components/Input";
 import UploadFileModal from "@/src/components/common/UploadFileModal";
@@ -177,9 +177,7 @@ const FileUploadPage = () => {
     <div className="mt-4 space-y-4">
       <div className="flex items-center gap-3">
         <MobileMenuButton />
-        <Link href="/dashboard" className="shrink-0">
-          <BackButton />
-        </Link>
+        <BackLink />
         <h2 className="themeH1 truncate min-w-0">File Upload</h2>
         {/* Phone: Upload File sits in the title row and Export moves into the
             ⋮ menu (the toolbar buttons below are hidden there). */}
