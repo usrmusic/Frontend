@@ -5,6 +5,7 @@ import { Skeleton } from "antd";
 import { useRouter } from "next/navigation";
 import { CreditCard } from "lucide-react";
 import EventPaymentDrawer from "@/src/components/common/EventPaymentDrawer";
+import { CollapseChevron, useMobileCollapse } from "@/src/components/common/MobileCollapse";
 
 export interface PendingPayment {
   id: number;
@@ -19,14 +20,18 @@ interface PendingPaymentsProps {
   payments?: PendingPayment[];
   isLoading?: boolean;
   scope?: "admin" | "team" | "personal";
+  /** Phone: whether the card starts unfolded. */
+  mobileDefaultOpen?: boolean;
 }
 
 export default function PendingPayments({
   payments = [],
   isLoading = false,
   scope = 'admin',
+  mobileDefaultOpen = true,
 }: PendingPaymentsProps) {
   const router = useRouter();
+  const collapse = useMobileCollapse(mobileDefaultOpen);
   // The exact confirmed-events drawer (package summary, rig list, Add Payment
   // form, payment summary) — extracted into EventPaymentDrawer so it can open
   // from here too instead of navigating away just to record a payment.
@@ -63,56 +68,66 @@ export default function PendingPayments({
   return (
     <Card variant="white" className="p-4 flex flex-col h-full">
       <div className="flex flex-col flex-1 justify-start h-full">
-        <h4 className="mb-3 text-base font-semibold text-gray-900 flex items-center min-h-8">Pending Payment</h4>
-        {isLoading ? (
-          <div className="w-full pt-3 flex items-center justify-center">
-            <Skeleton active />
-          </div>
-        ) : !payments?.length ? (
-          <div className="text-sm text-gray-500">
-            No pending payments.
-          </div>
-        ) : (
-          <ul className="space-y-2 no-scrollbar text-sm flex-1 max-h-[260px] overflow-auto">
-            {payments.map((p) => (
-              <li
-                key={p.id}
-                className={`flex items-center justify-between py-2 border-b border-[#636363] ${scope === 'personal' ? '' : 'cursor-pointer hover:bg-gray-50'} transition-colors`}
-                title={scope === 'personal' ? undefined : 'Click to search'}
-                onClick={() => { if (scope !== 'personal') handlePaymentClick(p); }}
-              >
-                <div>
-                  <p className="text-sm text-gray-900">{p.client_name ?? `Client #${p.id}`}</p>
-                  <p className="text-xs text-gray-400">
-                    {p.date
-                      ? new Date(p.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-                      : "No date"}{" "}
-                    · {p.outstanding ? `£${p.outstanding}` : ""}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {scope !== 'personal' && (
-                    <button
-                      type="button"
-                      title="Add payment"
-                      aria-label="Add payment"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDrawerEventId(p.id);
-                      }}
-                      className="p-1.5 text-gray-400 hover:text-primary hover:bg-gray-100 rounded-lg transition-colors"
-                    >
-                      <CreditCard size={15} />
-                    </button>
-                  )}
-                  <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-rose-500">
-                    Pending
-                  </span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+        <div
+          onClick={collapse.onHeaderClick}
+          className={`flex items-center justify-between ${collapse.visible ? "mb-3" : "mb-3 max-sm:mb-0"}`}
+        >
+          <h4 className="text-base font-semibold text-gray-900 flex items-center min-h-8">Pending Payment</h4>
+          <CollapseChevron open={collapse.open} onToggle={collapse.toggle} />
+        </div>
+        {/* `contents`: no box on desktop, so the card's layout is unchanged;
+           a real box on a phone so the fold animation shows. */}
+        <div className={`contents max-sm:block ${collapse.bodyClass}`}>
+          {isLoading ? (
+            <div className="w-full pt-3 flex items-center justify-center">
+              <Skeleton active />
+            </div>
+          ) : !payments?.length ? (
+            <div className="text-sm text-gray-500">
+              No pending payments.
+            </div>
+          ) : (
+            <ul className="space-y-2 no-scrollbar text-sm flex-1 max-h-[260px] overflow-auto">
+              {payments.map((p) => (
+                <li
+                  key={p.id}
+                  className={`flex items-center justify-between py-2 border-b border-[#636363] ${scope === 'personal' ? '' : 'cursor-pointer hover:bg-gray-50'} transition-colors`}
+                  title={scope === 'personal' ? undefined : 'Click to search'}
+                  onClick={() => { if (scope !== 'personal') handlePaymentClick(p); }}
+                >
+                  <div>
+                    <p className="text-sm text-gray-900">{p.client_name ?? `Client #${p.id}`}</p>
+                    <p className="text-xs text-gray-400">
+                      {p.date
+                        ? new Date(p.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                        : "No date"}{" "}
+                      · {p.outstanding ? `£${p.outstanding}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {scope !== 'personal' && (
+                      <button
+                        type="button"
+                        title="Add payment"
+                        aria-label="Add payment"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDrawerEventId(p.id);
+                        }}
+                        className="p-1.5 text-gray-400 hover:text-primary hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <CreditCard size={15} />
+                      </button>
+                    )}
+                    <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-rose-500">
+                      Pending
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
 
       <EventPaymentDrawer

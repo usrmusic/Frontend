@@ -2,8 +2,9 @@
 import { useGetCompletedEventsList } from "@/src/api/events";
 import Button from "@/src/components/Button";
 import DataTable from "@/src/components/DataTable";
-import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
+import { MagnifyingGlass } from "@/src/components/Icons";
 import MobileMenuButton from "@/src/components/common/MobileMenuButton";
+import BackLink from "@/src/components/common/BackLink";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
@@ -16,10 +17,8 @@ import { ThankYouModal } from "./_components/ThankYouModal";
 import { toast } from "react-toastify";
 import dayjs from "dayjs";
 import { MoreVertical } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
 import { CSVLink } from "react-csv";
-import MobileActionsMenu from "@/src/components/common/MobileActionsMenu";
 import useRole from "@/src/hooks/useRole";
 import AccessDenied from "@/src/components/common/AccessDenied";
 
@@ -39,6 +38,7 @@ const CompletedEventsPage = () => {
   const [params, setParams] = useState(initialParams);
   const [search, setSearch] = useState("");
   const [paymentStatus, setPaymentStatus] = useState<string>("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [sendMode, setSendMode] = useState<"quote" | "invoice">("quote");
@@ -162,51 +162,21 @@ const CompletedEventsPage = () => {
 
   return (
     <>
-      <div className="space-y-4 mt-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
-          <div className="flex items-center gap-3">
+      {/* Phone: the header wrapper flattens (`max-sm:contents`) so the
+          order can follow the mobile design — title, search, buttons, table.
+          The payment filter and Export are desktop-only. */}
+      <div className="space-y-4 mt-4 max-sm:space-y-0 max-sm:flex max-sm:flex-col max-sm:gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center max-sm:contents">
+          <div className="flex items-center gap-3 max-sm:order-1">
             <MobileMenuButton />
-            <Link href="/dashboard" className="">
-              <BackButton />
-            </Link>
+            <BackLink />
             <h2 className="themeH1">Completed Events</h2>
-            {/* Phone: the payment-status filter and Export move in here (the
-                filter row's copies are hidden there). */}
-            <div className="ml-auto">
-              <MobileActionsMenu
-                selectedKeys={[`payment:${paymentStatus}`]}
-                items={[
-                  {
-                    type: "group",
-                    key: "payment",
-                    label: "Payment status",
-                    children: PAYMENT_STATUS_OPTIONS.map((o) => ({
-                      key: `payment:${o.value}`,
-                      label: o.label,
-                      onClick: () => {
-                        setPaymentStatus(o.value);
-                        setParams((p) => ({ ...p, page: 1 }));
-                      },
-                    })),
-                  },
-                  { type: "divider" },
-                  {
-                    key: "export",
-                    label: (
-                      <CSVLink data={csvData ?? []} filename="clients.csv" headers={csvHeaders}>
-                        Export Data
-                      </CSVLink>
-                    ),
-                  },
-                ]}
-              />
-            </div>
           </div>
           {/* Same 3+1 orphan bug as Open Enquiry/Users/Clients/Confirmed
               Events: 4 buttons under plain `flex-wrap` packed 3 onto row one
               and stranded "Download Invoice" alone on row two. 2-column grid
               below `sm` gives every button an even half-width cell instead. */}
-          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center max-sm:order-3">
             <Button
               onClick={() => {
                 if (!selectedId) {
@@ -280,16 +250,30 @@ const CompletedEventsPage = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-          <div className="flex max-w-full items-center gap-2 rounded-lg bg-white px-4 h-10">
-            <MagnifyingGlass w={18} h={18} />
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 max-sm:order-2">
+          {/* Phone: rounded pill with the black round search button, as in
+              the mobile design. Searching is still live as you type; the
+              button just focuses the box. */}
+          <div className="flex max-w-full items-center gap-2 rounded-lg bg-white px-4 h-10 max-sm:rounded-full max-sm:h-12 max-sm:pr-1.5">
+            <span className="max-sm:hidden">
+              <MagnifyingGlass w={18} h={18} />
+            </span>
             <input
+              ref={searchInputRef}
               type="text"
               placeholder="Search"
-              className="w-full bg-transparent! text-sm placeholder:text-gray-500"
+              className="w-full bg-transparent! text-sm placeholder:text-gray-500 max-sm:placeholder:text-gray-400"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+            <button
+              type="button"
+              aria-label="Search"
+              onClick={() => searchInputRef.current?.focus()}
+              className="sm:hidden shrink-0 bg-black size-9 flex items-center justify-center text-white rounded-full"
+            >
+              <MagnifyingGlass />
+            </button>
           </div>
           <div className="max-w-full hidden sm:block">
             <Select
@@ -320,6 +304,7 @@ const CompletedEventsPage = () => {
           </div>
         </div>
         <DataTable
+          wrapperClassName="overflow-hidden rounded-xl max-sm:order-4"
           rowSelection={rowSelection}
           columns={columns}
           rowKey={(data) => String((data).id)}

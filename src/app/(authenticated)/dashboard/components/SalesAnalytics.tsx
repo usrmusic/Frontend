@@ -3,6 +3,7 @@ import dynamic from "next/dynamic";
 import { Spin, Skeleton } from "antd";
 import { useEffect, useRef, useState, useMemo } from "react";
 import Card from "@/src/components/Card";
+import { CollapseChevron, useMobileCollapse } from "@/src/components/common/MobileCollapse";
 import type { ComponentType } from "react";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
@@ -19,6 +20,8 @@ interface SalesAnalyticsProps {
   totalEvents?: number;
   isLoading?: boolean;
   year?: number;
+  /** Phone: whether the card starts unfolded. */
+  mobileDefaultOpen?: boolean;
 }
 
 export default function SalesAnalytics({
@@ -28,7 +31,9 @@ export default function SalesAnalytics({
   totalEvents = 0,
   isLoading = false,
   year = new Date().getFullYear(),
+  mobileDefaultOpen = true,
 }: SalesAnalyticsProps) {
+  const collapse = useMobileCollapse(mobileDefaultOpen);
   const [isMounted, setIsMounted] = useState(false);
   // ApexCharts renders a fixed-size SVG via width/height props, so it can't
   // shrink/grow through CSS alone the way the rest of the card does. A fixed
@@ -97,7 +102,10 @@ export default function SalesAnalytics({
 
   return (
     <Card variant="white" className="shadow-sm p-4 flex flex-col h-full">
-      <div className="pb-3 mb-2 border-b border-gray-100">
+      <div
+        onClick={collapse.onHeaderClick}
+        className={`pb-3 mb-2 border-b border-gray-100 ${collapse.visible ? "" : "max-sm:pb-0 max-sm:mb-0 max-sm:border-b-0"}`}
+      >
         {/* Title + subtitle grouped in their own column so "0/2" centers
             against that whole two-line block, not just the title's single
             line — items-center on this row now centers the number against
@@ -118,11 +126,12 @@ export default function SalesAnalytics({
             <span className="text-sm text-gray-400 leading-none">
               /{isLoading ? "..." : totalEvents}
             </span>
+            <CollapseChevron open={collapse.open} onToggle={collapse.toggle} />
           </div>
         </div>
       </div>
 
-      <div className="flex flex-1 items-center gap-1.5 mt-2 min-w-0">
+      <div className={`flex flex-1 items-center gap-1.5 mt-2 min-w-0 ${collapse.bodyClass}`}>
         <div className="flex-1 min-w-0 flex flex-col justify-center h-full">
           {isLoading ? (
             <div className="h-20 flex items-center">

@@ -593,3 +593,19 @@ button:hover {
     padding-inline: 10px;
   }
 }
+
+/* Phone-only collapsible sections (components/common/MobileCollapse.tsx):
+   the body fades and slides in when opened, out when closed. The close
+   duration must match CLOSE_MS there. Skipped for reduced motion. */
+@keyframes mobile-collapse-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes mobile-collapse-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(-6px); }
+}
+@media (max-width: 639px) and (prefers-reduced-motion: no-preference) {
+  .mobile-collapse-in { animation: mobile-collapse-in 200ms ease-out; }
+  .mobile-collapse-out { animation: mobile-collapse-out 180ms ease-in forwards; }
+}

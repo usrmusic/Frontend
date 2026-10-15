@@ -4,13 +4,13 @@ import { Modal, message } from "antd";
 import Button from "@/src/components/Button";
 import AlertModal from "@/src/components/common/AlertModal";
 import DataTable from "@/src/components/DataTable";
-import { BackButton, MagnifyingGlass } from "@/src/components/Icons";
+import { MagnifyingGlass } from "@/src/components/Icons";
 import MobileMenuButton from "@/src/components/common/MobileMenuButton";
+import BackLink from "@/src/components/common/BackLink";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import { formatFileSize } from "@/src/utils/formatFileSize";
 import { TableColumnsType } from "antd";
 import { FileUp, Download, Trash2 } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
 
 const initialParams = {
@@ -109,9 +109,7 @@ const DownloadsPage = () => {
     <div className="mt-4 space-y-4">
       <div className="flex items-center gap-3">
         <MobileMenuButton />
-        <Link href="/dashboard" className="shrink-0">
-          <BackButton />
-        </Link>
+        <BackLink />
         <h2 className="themeH1">Downloads</h2>
         {/* Phone: Upload File sits in the title row (the toolbar copy below
             is hidden there). */}

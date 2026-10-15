@@ -1,5 +1,6 @@
 "use client";
 import Card from "@/src/components/Card";
+import { CollapseChevron, useMobileCollapse } from "@/src/components/common/MobileCollapse";
 import { Skeleton } from "antd";
 import dayjs from "dayjs";
 
@@ -14,22 +15,30 @@ type ActivityNote = {
 interface EventActivityProps {
   notes?: ActivityNote[];
   isLoading?: boolean;
+  /** Phone: whether the card starts unfolded. */
+  mobileDefaultOpen?: boolean;
 }
 
 export default function EventActivity({
   notes,
   isLoading,
+  mobileDefaultOpen = true,
 }: EventActivityProps) {
+  const collapse = useMobileCollapse(mobileDefaultOpen);
   return (
     <Card variant="white" className="col-span-12 lg:col-span-3 flex flex-col shadow-sm p-4">
-      <div className="mb-3 flex items-center justify-between">
+      <div
+        onClick={collapse.onHeaderClick}
+        className={`flex items-center justify-between ${collapse.visible ? "mb-3" : "mb-3 max-sm:mb-0"}`}
+      >
         <div>
           <h4 className="text-base font-semibold text-gray-900">
             Events Activity
           </h4>
         </div>
+        <CollapseChevron open={collapse.open} onToggle={collapse.toggle} />
       </div>
-      <ul className="mb-4 no-scrollbar text-sm max-h-[260px] overflow-auto">
+      <ul className={`mb-4 no-scrollbar text-sm max-h-[260px] overflow-auto ${collapse.bodyClass}`}>
         {isLoading ? (
           <li className="flex items-center py-2">
             <Skeleton active paragraph={false} />

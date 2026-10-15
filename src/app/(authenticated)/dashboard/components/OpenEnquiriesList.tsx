@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Skeleton } from "antd";
 import Card from "@/src/components/Card";
+import { CollapseChevron, useMobileCollapse } from "@/src/components/common/MobileCollapse";
 import { colorPrimaryGradient } from "@/src/config/ThemeConfig";
 
 type OpenEnquiry = {
@@ -49,6 +50,8 @@ interface OpenEnquiriesListProps {
   count?: number;
   isLoading?: boolean;
   scope?: "admin" | "team" | "personal";
+  /** Phone: whether the card starts unfolded. */
+  mobileDefaultOpen?: boolean;
 }
 
 export default function OpenEnquiriesList({
@@ -56,7 +59,9 @@ export default function OpenEnquiriesList({
   count,
   isLoading,
   scope = 'team',
+  mobileDefaultOpen = true,
 }: OpenEnquiriesListProps) {
+  const collapse = useMobileCollapse(mobileDefaultOpen);
   const router = useRouter();
 
   const handleEnquiryClick = (enq: OpenEnquiry) => {
@@ -93,7 +98,10 @@ export default function OpenEnquiriesList({
          proportions. */
       className="col-span-12 lg:col-span-4 2xl:col-span-5 shadow-sm p-4"
     >
-      <div className="mb-3 flex items-center justify-between">
+      <div
+        onClick={collapse.onHeaderClick}
+        className={`flex items-center justify-between ${collapse.visible ? "mb-3" : "mb-3 max-sm:mb-0"}`}
+      >
         <p className="text-base font-semibold text-gray-900">
           Open Enquiry (
             {isLoading ? (
@@ -114,60 +122,65 @@ export default function OpenEnquiriesList({
             )}
           )
         </p>
+        <CollapseChevron open={collapse.open} onToggle={collapse.toggle} />
       </div>
-      {isLoading ? (
-        <div className="h-44 flex items-center justify-center">
-          <Skeleton active />
-        </div>
-          ) : !filteredEnquiries?.length ? (
-        <div className="text-sm text-gray-500">No open enquiries.</div>
-      ) : (
-        <ul className="space-y-2 no-scrollbar text-sm max-h-[260px] overflow-auto">
-          {filteredEnquiries.map((enq: OpenEnquiry, idx: number) => {
-            const clientName =
-              enq.users_events_user_idTousers?.name ??
-              enq.client?.name ??
-              enq.couple_name ??
-              "Unknown";
-            const venueName =
-              enq.venues?.venue ??
-              enq.venue ??
-              enq.subtitle ??
-              "Unknown Venue";
-            const badgeText = enq.date
-              ? formatDate(enq.date)
-              : (enq.tag ?? "New");
+      {/* `contents`: no box on desktop, so the card's layout is unchanged;
+         a real box on a phone so the fold animation shows. */}
+      <div className={`contents max-sm:block ${collapse.bodyClass}`}>
+        {isLoading ? (
+          <div className="h-44 flex items-center justify-center">
+            <Skeleton active />
+          </div>
+            ) : !filteredEnquiries?.length ? (
+          <div className="text-sm text-gray-500">No open enquiries.</div>
+        ) : (
+          <ul className="space-y-2 no-scrollbar text-sm max-h-[260px] overflow-auto">
+            {filteredEnquiries.map((enq: OpenEnquiry, idx: number) => {
+              const clientName =
+                enq.users_events_user_idTousers?.name ??
+                enq.client?.name ??
+                enq.couple_name ??
+                "Unknown";
+              const venueName =
+                enq.venues?.venue ??
+                enq.venue ??
+                enq.subtitle ??
+                "Unknown Venue";
+              const badgeText = enq.date
+                ? formatDate(enq.date)
+                : (enq.tag ?? "New");
 
-            return (
-              <li
-                key={String(enq.id ?? enq.couple_name ?? `enq-${idx}`)}
-                className={`flex items-center border-b border-[#636363] last:border-0 justify-between px-3 py-3 ${scope === 'personal' ? '' : 'cursor-pointer hover:bg-gray-50'} transition-colors`}
-                onClick={() => { if (scope !== 'personal') handleEnquiryClick(enq); }}
-              >
-                <div className="flex gap-3">
-                  <Image
-                    src={"/images/avatar.png"}
-                    alt="avatar"
-                    width={30}
-                    height={30}
-                    className="rounded-lg"
-                  />
-                  <div>
-                    <p className="text-sm text-gray-900">{clientName}</p>
-                    <p className="text-xs text-gray-400">{venueName}</p>
-                  </div>
-                </div>
-                <div
-                  className="rounded-sm px-2 text-center py-1 text-xs font-medium text-white min-w-[84px] whitespace-nowrap"
-                  style={{ background: colorPrimaryGradient }}
+              return (
+                <li
+                  key={String(enq.id ?? enq.couple_name ?? `enq-${idx}`)}
+                  className={`flex items-center border-b border-[#636363] last:border-0 justify-between px-3 py-3 ${scope === 'personal' ? '' : 'cursor-pointer hover:bg-gray-50'} transition-colors`}
+                  onClick={() => { if (scope !== 'personal') handleEnquiryClick(enq); }}
                 >
-                  {badgeText}
-                </div>
-              </li>
-            );
-              })}
-        </ul>
-      )}
+                  <div className="flex gap-3">
+                    <Image
+                      src={"/images/avatar.png"}
+                      alt="avatar"
+                      width={30}
+                      height={30}
+                      className="rounded-lg"
+                    />
+                    <div>
+                      <p className="text-sm text-gray-900">{clientName}</p>
+                      <p className="text-xs text-gray-400">{venueName}</p>
+                    </div>
+                  </div>
+                  <div
+                    className="rounded-sm px-2 text-center py-1 text-xs font-medium text-white min-w-[84px] whitespace-nowrap"
+                    style={{ background: colorPrimaryGradient }}
+                  >
+                    {badgeText}
+                  </div>
+                </li>
+              );
+                })}
+          </ul>
+        )}
+      </div>
     </Card>
   );
 }

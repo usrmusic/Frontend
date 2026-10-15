@@ -10,8 +10,8 @@ import {
   useDeleteConfirmPayment,
 } from "@/src/api/events";
 import Button from "@/src/components/Button";
-import { BackButton } from "@/src/components/Icons";
 import MobileMenuButton from "@/src/components/common/MobileMenuButton";
+import BackLink from "@/src/components/common/BackLink";
 import Input from "@/src/components/Input";
 import EventPaymentDrawer from "@/src/components/common/EventPaymentDrawer";
 import AnimatedMount from "@/src/components/common/AnimatedMount";
@@ -28,8 +28,9 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import Link from "next/link";
-import MobileActionsMenu from "@/src/components/common/MobileActionsMenu";
+import { MobileMoreButton } from "@/src/components/common/MobileActionsMenu";
+import AutoGrowTextarea from "@/src/components/common/AutoGrowTextarea";
+import { useMobileCollapse } from "@/src/components/common/MobileCollapse";
 import { CSSProperties, useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -104,16 +105,25 @@ const MOBILE_ORDER = {
   eventContact: "max-lg:order-[14]",
   deposit: "max-lg:order-[15]",
   createdBy: "max-lg:order-[16]",
-  coupleName: "max-lg:order-[17] sm:max-lg:col-span-2",
-  entrance: "max-lg:order-[18] sm:max-lg:col-span-2",
-  cake: "max-lg:order-[19] sm:max-lg:col-span-2",
-  firstDance: "max-lg:order-[20] sm:max-lg:col-span-2",
-  itinerary: "max-lg:order-[21] sm:max-lg:col-span-2",
-  stag: "max-lg:order-[22]",
-  hen: "max-lg:order-[23]",
-  dos: "max-lg:order-[24] sm:max-lg:col-span-2",
-  donts: "max-lg:order-[25] sm:max-lg:col-span-2",
+  coupleName: "max-lg:order-[18] sm:max-lg:col-span-2",
+  entrance: "max-lg:order-[19] sm:max-lg:col-span-2",
+  cake: "max-lg:order-[20] sm:max-lg:col-span-2",
+  firstDance: "max-lg:order-[21] sm:max-lg:col-span-2",
+  itinerary: "max-lg:order-[22] sm:max-lg:col-span-2",
+  stag: "max-lg:order-[23]",
+  hen: "max-lg:order-[24]",
+  dos: "max-lg:order-[25] sm:max-lg:col-span-2",
+  donts: "max-lg:order-[26] sm:max-lg:col-span-2",
 } as const;
+
+/* Phone: the fields above "Name/s" (booking details) form their own box that
+   is collapsed by default — what's looked at day to day is the music/running
+   order section below it. Order 17 is the divider between the two boxes. */
+const DETAILS_KEYS = new Set<keyof typeof MOBILE_ORDER>([
+  "clientName", "email", "phone", "djName", "venue", "date", "startTime",
+  "endTime", "access", "guests", "videography", "caterer", "decor",
+  "eventContact", "deposit", "createdBy",
+]);
 
 /* Wrappers that exist only to group fields on desktop. Below `lg` they step
    out of the way entirely (`display: contents`) so their children can be
@@ -130,6 +140,8 @@ const ConfirmedEventsPage = () => {
   const [eventId, setEventId] = useState("");
   const [sendMode, setSendMode] = useState<"invoice" | "quote">("quote");
   const [isModifyMode, setIsModifyMode] = useState(false);
+  // Phone-only "Event Details" box (see DETAILS_KEYS); closed on every visit.
+  const details = useMobileCollapse(false);
   const [showPayments, setShowPayments] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
@@ -535,32 +547,33 @@ const ConfirmedEventsPage = () => {
     }
   };
 
+  // MOBILE_ORDER plus, for the Event Details fields, the box's phone-only
+  // hide/fold-animation classes.
+  const mo = Object.fromEntries(
+    Object.entries(MOBILE_ORDER).map(([k, v]) => [
+      k,
+      DETAILS_KEYS.has(k as keyof typeof MOBILE_ORDER) ? `${v} ${details.bodyClass}` : v,
+    ]),
+  ) as Record<keyof typeof MOBILE_ORDER, string>;
+
   return (
     <div>
       <form className="mt-4 space-y-4" onSubmit={formik.handleSubmit}>
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
           <div className="flex items-center gap-3 min-w-0">
             <MobileMenuButton />
-            <Link href="/dashboard" className="shrink-0">
-              <BackButton />
-            </Link>
+            <BackLink />
             <h2 className="themeH1 truncate">
               {(searchParams?.get("from") ?? "") === "completed"
                 ? "Completed Event"
                 : "Confirmed Events"}
             </h2>
-            {/* Phone: Send Quote and the Event Payment drawer move in here;
-                the toolbar below keeps the four main buttons. */}
+            {/* Phone: ⋮ opens the Event Payment slide straight away; the
+                toolbar below keeps the four main buttons (no Send Quote on a
+                phone). */}
             {eventId && (
               <div className="ml-auto">
-                <MobileActionsMenu
-                  items={[
-                    ...(!isClient
-                      ? [{ key: "quote", label: "Send Quote", onClick: handleSendQuote }]
-                      : []),
-                    { key: "payment", label: "Event Payment", onClick: () => setShowDrawer(true) },
-                  ]}
-                />
+                <MobileMoreButton label="Event payment" onClick={() => setShowDrawer(true)} />
               </div>
             )}
           </div>
@@ -594,7 +607,10 @@ const ConfirmedEventsPage = () => {
                 ) : (
                   <Button
                     htmlType="button"
-                    onClick={() => setIsModifyMode(true)}
+                    onClick={() => {
+                      setIsModifyMode(true);
+                      details.expand();
+                    }}
                     className="max-sm:order-1"
                   >
                     Modify
@@ -736,16 +752,47 @@ const ConfirmedEventsPage = () => {
             className={`bg-white rounded-xl p-5 ${isLoading ? "opacity-60" : ""}`}
           >
             {/* Below `lg` this grid holds the flattened field list itself (one
-                column on a phone, two on a tablet) — see MOBILE_ORDER. At `lg`
+                column on a phone, two on a tablet) — see mo. At `lg`
                 its two children become the original desktop columns again. */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:grid-cols-2 lg:gap-6">
+              {/* Phone: "Event Details" box header — tap to open/close. The
+                  summary line keeps the key booking facts visible while it's
+                  closed. */}
+              <button
+                type="button"
+                onClick={details.toggle}
+                aria-expanded={details.open}
+                className="sm:hidden flex items-center justify-between gap-3 text-left"
+              >
+                <span className="min-w-0">
+                  <span className="block font-semibold text-gray-900">Event Details</span>
+                  {!details.visible && (
+                    <span className="block text-xs text-gray-500 truncate">
+                      {[
+                        formik.values.first_name,
+                        formik.values.date ? dayjs(formik.values.date).format("DD/MM/YYYY") : "",
+                        formik.values.venue,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  )}
+                </span>
+                <ChevronDown
+                  size={18}
+                  className={`shrink-0 text-gray-500 transition-transform duration-200 ${details.open ? "rotate-180" : ""}`}
+                />
+              </button>
+              {/* Phone: page-coloured band splitting the card into two boxes
+                  (Event Details above, Name/s onwards below). */}
+              <div className="sm:hidden max-lg:order-[17] -mx-5 h-4 bg-secondary-200" aria-hidden />
               {/* LEFT COLUMN — order/labels match Laravel @notmobile desktop form */}
               <div className={COLUMN}>
                 <Input
                   name="first_name"
                   label="Client name"
                   placeholder="Enter client name"
-                  containerClassName={MOBILE_ORDER.clientName}
+                  containerClassName={mo.clientName}
                   value={formik.values.first_name}
                   onChange={formik.handleChange}
                   disabled={!isModifyMode}
@@ -756,7 +803,7 @@ const ConfirmedEventsPage = () => {
                     label="Email"
                     type="email"
                     placeholder="Enter email"
-                    containerClassName={MOBILE_ORDER.email}
+                    containerClassName={mo.email}
                     value={formik.values.email}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
@@ -766,7 +813,7 @@ const ConfirmedEventsPage = () => {
                     label="Phone number"
                     type="number"
                     placeholder="Enter phone number"
-                    containerClassName={MOBILE_ORDER.phone}
+                    containerClassName={mo.phone}
                     value={formik.values.phone_number}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
@@ -775,7 +822,7 @@ const ConfirmedEventsPage = () => {
                     name="djName"
                     label="DJ name"
                     placeholder="Enter DJ name"
-                    containerClassName={MOBILE_ORDER.djName}
+                    containerClassName={mo.djName}
                     value={formik.values.djName}
                     onChange={formik.handleChange}
                     disabled
@@ -784,7 +831,7 @@ const ConfirmedEventsPage = () => {
                     name="videography"
                     label="Videography"
                     placeholder="Enter videographer name"
-                    containerClassName={MOBILE_ORDER.videography}
+                    containerClassName={mo.videography}
                     value={formik.values.videography}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
@@ -793,7 +840,7 @@ const ConfirmedEventsPage = () => {
                     name="caterer"
                     label="Caterer"
                     placeholder="Enter caterer name"
-                    containerClassName={MOBILE_ORDER.caterer}
+                    containerClassName={mo.caterer}
                     value={formik.values.caterer}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
@@ -802,7 +849,7 @@ const ConfirmedEventsPage = () => {
                     name="decor"
                     label="Decor"
                     placeholder="Enter decor company"
-                    containerClassName={MOBILE_ORDER.decor}
+                    containerClassName={mo.decor}
                     value={formik.values.decor}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
@@ -812,17 +859,17 @@ const ConfirmedEventsPage = () => {
                   name="name"
                   label="Name/s (How should the DJ address you on the microphone?)"
                   placeholder="Enter name/s"
-                  containerClassName={MOBILE_ORDER.coupleName}
+                  containerClassName={mo.coupleName}
                   value={formik.values.name}
                   onChange={formik.handleChange}
                   disabled={!isModifyMode}
                 />
-                <div className={MOBILE_ORDER.entrance}>
+                <div className={mo.entrance}>
                   <label className="mb-1 block text-xs">
                     Entrance Song/Style (eg Guests upstanding, napkin waves, any
                     dhol players etc)
                   </label>
-                  <textarea
+                  <AutoGrowTextarea
                     name="entranceSong"
                     className="min-h-20 w-full resize-y rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
                     placeholder="Enter entrance song/style"
@@ -831,12 +878,12 @@ const ConfirmedEventsPage = () => {
                     disabled={!isModifyMode}
                   />
                 </div>
-                <div className={MOBILE_ORDER.cake}>
+                <div className={mo.cake}>
                   <label className="mb-1 block text-xs">
                     Cake Cut Song/Who to feed? (Leave song name blank if you
                     wish for DJ to select)
                   </label>
-                  <textarea
+                  <AutoGrowTextarea
                     name="cakeCutSong"
                     className="min-h-20 w-full resize-y rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
                     placeholder="Enter cake cut song"
@@ -849,14 +896,14 @@ const ConfirmedEventsPage = () => {
                   name="firstDance"
                   label="First dance"
                   placeholder="Enter first dance song"
-                  containerClassName={MOBILE_ORDER.firstDance}
+                  containerClassName={mo.firstDance}
                   value={formik.values.firstDance}
                   onChange={formik.handleChange}
                   disabled={!isModifyMode}
                 />
-                <div className={MOBILE_ORDER.dos}>
+                <div className={mo.dos}>
                   <label className="mb-1 block text-xs">Do&apos;s</label>
-                  <textarea
+                  <AutoGrowTextarea
                     name="dos"
                     className="min-h-20 w-full resize-y rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
                     placeholder="Enter preferences/do's"
@@ -874,7 +921,7 @@ const ConfirmedEventsPage = () => {
                     label="Date"
                     type="date"
                     placeholder="Select date"
-                    containerClassName={MOBILE_ORDER.date}
+                    containerClassName={mo.date}
                     value={formik.values.date}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
@@ -884,7 +931,7 @@ const ConfirmedEventsPage = () => {
                     label="Start Time"
                     type="text"
                     placeholder="e.g. 7am, 7:30pm or 19:30"
-                    containerClassName={MOBILE_ORDER.startTime}
+                    containerClassName={mo.startTime}
                     value={formik.values.start_time}
                     onChange={formik.handleChange}
                     onBlur={(e) => {
@@ -898,7 +945,7 @@ const ConfirmedEventsPage = () => {
                     label="End Time"
                     type="text"
                     placeholder="e.g. 7pm, 7:30pm or 19:30"
-                    containerClassName={MOBILE_ORDER.endTime}
+                    containerClassName={mo.endTime}
                     value={formik.values.end_time}
                     onChange={formik.handleChange}
                     onBlur={(e) => {
@@ -916,7 +963,7 @@ const ConfirmedEventsPage = () => {
                       not free text, and no inline "add new venue" here
                       (that only exists on the New Enquiry form). */}
                   {isModifyMode ? (
-                    <div className={`w-full ${MOBILE_ORDER.venue}`}>
+                    <div className={`w-full ${mo.venue}`}>
                       <label className="mb-1 text-xs flex items-center gap-1">Venue</label>
                       <Select
                         className="h-10 w-full"
@@ -936,7 +983,7 @@ const ConfirmedEventsPage = () => {
                       name="venue"
                       label="Venue"
                       placeholder="Venue"
-                      containerClassName={MOBILE_ORDER.venue}
+                      containerClassName={mo.venue}
                       value={formik.values.venue}
                       onChange={formik.handleChange}
                       disabled
@@ -946,7 +993,7 @@ const ConfirmedEventsPage = () => {
                     name="accessDate"
                     label="Access Date/Time"
                     placeholder="Enter access info"
-                    containerClassName={MOBILE_ORDER.access}
+                    containerClassName={mo.access}
                     value={formik.values.accessDate}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
@@ -957,7 +1004,7 @@ const ConfirmedEventsPage = () => {
                     name="eventDateContact"
                     label="Event day contact"
                     placeholder="Enter event day contact"
-                    containerClassName={MOBILE_ORDER.eventContact}
+                    containerClassName={mo.eventContact}
                     value={formik.values.eventDateContact}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
@@ -967,7 +1014,7 @@ const ConfirmedEventsPage = () => {
                     label="No of guests"
                     type="number"
                     placeholder="Enter number of guests"
-                    containerClassName={MOBILE_ORDER.guests}
+                    containerClassName={mo.guests}
                     value={formik.values.noOfGuests}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
@@ -979,7 +1026,7 @@ const ConfirmedEventsPage = () => {
                     label="Deposit Amount"
                     type="number"
                     placeholder="Enter deposit amount"
-                    containerClassName={MOBILE_ORDER.deposit}
+                    containerClassName={mo.deposit}
                     value={formik.values.depositAmount}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
@@ -987,18 +1034,18 @@ const ConfirmedEventsPage = () => {
                   <Input
                     name="createdBy"
                     label="Created by"
-                    containerClassName={MOBILE_ORDER.createdBy}
+                    containerClassName={mo.createdBy}
                     value={formik.values.createdBy}
                     // Read-only, as in Laravel: set automatically to whoever
                     // created the enquiry and never sent on save.
                     disabled
                   />
                 </div>
-                <div className={MOBILE_ORDER.itinerary}>
+                <div className={mo.itinerary}>
                   <label className="mb-1 block text-xs">
                     Brief Itinerary/Playlist and Notes
                   </label>
-                  <textarea
+                  <AutoGrowTextarea
                     name="briefItinerary"
                     className="min-h-[280px] w-full resize-y rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
                     placeholder="Enter brief itinerary, playlist, and notes"
@@ -1012,7 +1059,7 @@ const ConfirmedEventsPage = () => {
                     name="stagTuneAndDestination"
                     label="Stag Tune/Destination"
                     placeholder="Enter stag tune/destination"
-                    containerClassName={MOBILE_ORDER.stag}
+                    containerClassName={mo.stag}
                     value={formik.values.stagTuneAndDestination}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
@@ -1021,15 +1068,15 @@ const ConfirmedEventsPage = () => {
                     name="henTuneAndDestination"
                     label="Hen Tune/Destination"
                     placeholder="Enter hen tune/destination"
-                    containerClassName={MOBILE_ORDER.hen}
+                    containerClassName={mo.hen}
                     value={formik.values.henTuneAndDestination}
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
                   />
                 </div>
-                <div className={MOBILE_ORDER.donts}>
+                <div className={mo.donts}>
                   <label className="mb-1 block text-xs">Dont&apos;s</label>
-                  <textarea
+                  <AutoGrowTextarea
                     name="donts"
                     className="min-h-20 w-full resize-y rounded-xl border border-gray-200 p-3 text-sm text-gray-800 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70"
                     placeholder="Enter dont's"

@@ -13,6 +13,7 @@ import PendingPayments from "./components/PendingPayments";
 import DashboardTodos from "./components/DashboardTodos";
 import ClientFilesCard from "./components/ClientFilesCard";
 import { useRole } from "@/src/hooks/useRole";
+import { CollapseChevron, useMobileCollapse } from "@/src/components/common/MobileCollapse";
 
 const DashboardPage = () => {
   const { isClient } = useRole();
@@ -38,6 +39,10 @@ const DashboardPage = () => {
       }
     };
   }, []);
+
+  // Phone: the dashboard calendar card starts folded (client's request — only
+  // Event Overview, Pending Payment and Open Enquiry start open).
+  const calendarCollapse = useMobileCollapse(false);
 
   const { data: dashboard, isLoading: dashboardLoading } = useDashboard({
     year,
@@ -123,6 +128,7 @@ const DashboardPage = () => {
                     totalEvents={dashboard?.totalEvents ?? 0}
                     isLoading={dashboardLoading}
                     year={year}
+                    mobileDefaultOpen={false}
                   />
                 </div>
               )}
@@ -187,7 +193,18 @@ const DashboardPage = () => {
             variant="white"
             className={`dashboard-calendar max-md:order-6 col-span-12 ${eventActivityVisible ? "lg:col-span-5 2xl:col-span-4" : "lg:col-span-8 2xl:col-span-7"} shadow-sm p-0 rounded-2xl bg-[#F6F5F0]`}
           >
-            <CalendarWithSidebar events={dashboard?.calendarEvents} isLoading={dashboardLoading} year={year} />
+            {/* Phone: the calendar has no title of its own, so it gets a
+                foldable "Calendar" header there (closed by default). */}
+            <div
+              onClick={calendarCollapse.onHeaderClick}
+              className="sm:hidden flex items-center justify-between px-4 py-3"
+            >
+              <h4 className="text-base font-semibold text-gray-900">Calendar</h4>
+              <CollapseChevron open={calendarCollapse.open} onToggle={calendarCollapse.toggle} />
+            </div>
+            <div className={`contents max-sm:block ${calendarCollapse.bodyClass}`}>
+              <CalendarWithSidebar events={dashboard?.calendarEvents} isLoading={dashboardLoading} year={year} />
+            </div>
           </Card>
 
           {/* Event Activity — hidden for Client only; Staff/Admin see it
@@ -197,6 +214,7 @@ const DashboardPage = () => {
               <EventActivity
                 notes={dashboard?.recentNotes}
                 isLoading={dashboardLoading}
+                mobileDefaultOpen={false}
               />
             </div>
           )}

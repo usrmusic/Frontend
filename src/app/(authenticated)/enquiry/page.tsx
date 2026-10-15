@@ -2,11 +2,10 @@
 import Button from "@/src/components/Button";
 import Card from "@/src/components/Card";
 import Input from "@/src/components/Input";
-import { BackButton } from "@/src/components/Icons";
 import MobileMenuButton from "@/src/components/common/MobileMenuButton";
+import BackLink from "@/src/components/common/BackLink";
 import { PlusIcon, Save, ChevronDown, ChevronUp, Printer, SquareCheckBig, X, Send, MoreVertical, Plus } from "lucide-react";
-import Link from "next/link";
-import MobileActionsMenu from "@/src/components/common/MobileActionsMenu";
+import { MobileMoreButton } from "@/src/components/common/MobileActionsMenu";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -1347,22 +1346,14 @@ const NewEnquiryPageInner = () => {
                 <div className="flex flex-col gap-3 justify-between md:flex-row md:items-center">
                   <div className="flex items-center gap-3">
                     <MobileMenuButton />
-                    <Link href="/dashboard">
-                      <BackButton />
-                    </Link>
+                    <BackLink />
                     <h2 className="themeH1">{editId ? "Edit Enquiry" : "New Enquiry"}</h2>
-                    {/* Phone: Print and the summary move in here; the toolbar
-                        keeps Save and Send Quote. */}
+                    {/* Phone: ⋮ opens the package summary straight away; the
+                        toolbar keeps Save and Send Quote. No Print on a phone. */}
                     <div className="ml-auto">
-                      <MobileActionsMenu
-                        items={[
-                          { key: "print", label: "Print", onClick: () => setPrintMode("enquiry") },
-                          {
-                            key: "summary",
-                            label: "Summary",
-                            onClick: () => setMobileSummaryOpen((v) => !v),
-                          },
-                        ]}
+                      <MobileMoreButton
+                        label="Show summary"
+                        onClick={() => setMobileSummaryOpen((v) => !v)}
                       />
                     </div>
                   </div>
@@ -1705,9 +1696,12 @@ const NewEnquiryPageInner = () => {
                               </Field>
                             </div>
 
-                            {/* Right sub-column */}
+                            {/* Right sub-column. Phone: the two 2-up rows below flatten
+                                (`max-sm:contents`) and `max-sm:order-*` sets the
+                                mobile design's order — Event Date, Start Time,
+                                End Time, then Deposit Amount. */}
                             <div className="flex h-full flex-col gap-4">
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-sm:order-1">
                                 <Field name="dj">
                                   {(fieldProps: FieldProps) => {
                                     // One option per (DJ, package) combo — a DJ with several
@@ -1806,10 +1800,10 @@ const NewEnquiryPageInner = () => {
                                   )}
                                 </Field>
                               </div>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-sm:contents">
                                 <Field name="eventDate">
                                   {() => (
-                                    <div className="space-y-1">
+                                    <div className="space-y-1 max-sm:order-2">
                                       <label className="mb-1 block text-xs">Event Date <span className="text-red-500">*</span></label>
                                       <DatePicker
                                         className="h-10 w-full"
@@ -1843,9 +1837,9 @@ const NewEnquiryPageInner = () => {
                                     </div>
                                   )}
                                 </Field>
-                                                                <Field name="depositAmount">
+                                <Field name="depositAmount">
                                   {(fieldProps: FieldProps) => (
-                                    <div className="space-y-1">
+                                    <div className="space-y-1 max-sm:order-5">
                                       <Input
                                         {...fieldProps.field}
                                         label="Deposit Amount"
@@ -1859,10 +1853,10 @@ const NewEnquiryPageInner = () => {
                                   )}
                                 </Field>
                               </div>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-sm:contents">
                                 <Field name="startTime">
                                   {(fieldProps: FieldProps) => (
-                                    <div className="space-y-1">
+                                    <div className="space-y-1 max-sm:order-3">
                                       <Input
                                         {...fieldProps.field}
                                         label="Start Time"
@@ -1880,7 +1874,7 @@ const NewEnquiryPageInner = () => {
                                 </Field>
                                 <Field name="endTime">
                                   {(fieldProps: FieldProps) => (
-                                    <div className="space-y-1">
+                                    <div className="space-y-1 max-sm:order-4">
                                       <Input
                                         {...fieldProps.field}
                                         label="End Time"
@@ -1897,9 +1891,9 @@ const NewEnquiryPageInner = () => {
                                   )}
                                 </Field>
                               </div>
-                                                            <Field name="tellMeMore">
+                              <Field name="tellMeMore">
                                 {(fieldProps: FieldProps) => (
-                                  <div className="flex flex-1 flex-col space-y-1">
+                                  <div className="flex flex-1 flex-col space-y-1 max-sm:order-6">
                                     <label className="mb-1 block text-xs">Tell me more</label>
                                     <textarea
                                       {...fieldProps.field}
