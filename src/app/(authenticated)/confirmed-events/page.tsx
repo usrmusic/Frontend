@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { MobileMoreButton } from "@/src/components/common/MobileActionsMenu";
 import AutoGrowTextarea from "@/src/components/common/AutoGrowTextarea";
+import PhoneWrapInput from "@/src/components/common/PhoneWrapInput";
 import { useMobileCollapse } from "@/src/components/common/MobileCollapse";
 import { CSSProperties, useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -788,7 +789,7 @@ const ConfirmedEventsPage = () => {
               <div className="sm:hidden max-lg:order-[17] -mx-5 h-4 bg-secondary-200" aria-hidden />
               {/* LEFT COLUMN — order/labels match Laravel @notmobile desktop form */}
               <div className={COLUMN}>
-                <Input
+                <PhoneWrapInput
                   name="first_name"
                   label="Client name"
                   placeholder="Enter client name"
@@ -798,10 +799,11 @@ const ConfirmedEventsPage = () => {
                   disabled={!isModifyMode}
                 />
                 <div className={GROUP_2}>
-                  <Input
+                  <PhoneWrapInput
                     name="email"
                     label="Email"
                     type="email"
+                    inputMode="email"
                     placeholder="Enter email"
                     containerClassName={mo.email}
                     value={formik.values.email}
@@ -818,7 +820,7 @@ const ConfirmedEventsPage = () => {
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
                   />
-                  <Input
+                  <PhoneWrapInput
                     name="djName"
                     label="DJ name"
                     placeholder="Enter DJ name"
@@ -827,7 +829,7 @@ const ConfirmedEventsPage = () => {
                     onChange={formik.handleChange}
                     disabled
                   />
-                  <Input
+                  <PhoneWrapInput
                     name="videography"
                     label="Videography"
                     placeholder="Enter videographer name"
@@ -836,7 +838,7 @@ const ConfirmedEventsPage = () => {
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
                   />
-                  <Input
+                  <PhoneWrapInput
                     name="caterer"
                     label="Caterer"
                     placeholder="Enter caterer name"
@@ -845,7 +847,7 @@ const ConfirmedEventsPage = () => {
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
                   />
-                  <Input
+                  <PhoneWrapInput
                     name="decor"
                     label="Decor"
                     placeholder="Enter decor company"
@@ -855,7 +857,7 @@ const ConfirmedEventsPage = () => {
                     disabled={!isModifyMode}
                   />
                 </div>
-                <Input
+                <PhoneWrapInput
                   name="name"
                   label="Name/s (How should the DJ address you on the microphone?)"
                   placeholder="Enter name/s"
@@ -892,7 +894,7 @@ const ConfirmedEventsPage = () => {
                     disabled={!isModifyMode}
                   />
                 </div>
-                <Input
+                <PhoneWrapInput
                   name="firstDance"
                   label="First dance"
                   placeholder="Enter first dance song"
@@ -979,7 +981,7 @@ const ConfirmedEventsPage = () => {
                       />
                     </div>
                   ) : (
-                    <Input
+                    <PhoneWrapInput
                       name="venue"
                       label="Venue"
                       placeholder="Venue"
@@ -989,7 +991,7 @@ const ConfirmedEventsPage = () => {
                       disabled
                     />
                   )}
-                  <Input
+                  <PhoneWrapInput
                     name="accessDate"
                     label="Access Date/Time"
                     placeholder="Enter access info"
@@ -1000,7 +1002,7 @@ const ConfirmedEventsPage = () => {
                   />
                 </div>
                 <div className={GROUP_2}>
-                  <Input
+                  <PhoneWrapInput
                     name="eventDateContact"
                     label="Event day contact"
                     placeholder="Enter event day contact"
@@ -1031,7 +1033,7 @@ const ConfirmedEventsPage = () => {
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
                   />
-                  <Input
+                  <PhoneWrapInput
                     name="createdBy"
                     label="Created by"
                     containerClassName={mo.createdBy}
@@ -1055,7 +1057,7 @@ const ConfirmedEventsPage = () => {
                   />
                 </div>
                 <div className={GROUP_2}>
-                  <Input
+                  <PhoneWrapInput
                     name="stagTuneAndDestination"
                     label="Stag Tune/Destination"
                     placeholder="Enter stag tune/destination"
@@ -1064,7 +1066,7 @@ const ConfirmedEventsPage = () => {
                     onChange={formik.handleChange}
                     disabled={!isModifyMode}
                   />
-                  <Input
+                  <PhoneWrapInput
                     name="henTuneAndDestination"
                     label="Hen Tune/Destination"
                     placeholder="Enter hen tune/destination"

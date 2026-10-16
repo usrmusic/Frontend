@@ -1428,7 +1428,7 @@ const NewEnquiryPageInner = () => {
 
                     {/* Enquiry Details card — collapsible */}
                     <Card variant="white" className="p-0 overflow-hidden">
-                      <div className="flex items-center justify-between bg-primary px-6 h-[60px] text-white">
+                      <div className="flex items-center justify-between bg-primary px-6 max-sm:px-4 h-[60px] text-white">
                         <h3 className="font-medium">Enquiry Details</h3>
                         <button
                           type="button"
@@ -1465,7 +1465,8 @@ const NewEnquiryPageInner = () => {
                             `overflow-y-auto` never clips it — floats free over the page
                             header. No inner scroller on mobile, no escape: the card just
                             grows to its natural height and the page scrolls normally. */}
-                        <div className="lg:max-h-[480px] lg:overflow-y-auto no-scrollbar space-y-6 px-6 py-5">
+                        {/* Phone: less side padding so the fields get more of the width. */}
+                        <div className="lg:max-h-[480px] lg:overflow-y-auto no-scrollbar space-y-6 px-6 py-5 max-sm:px-4 max-sm:py-4">
                           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             {/* Left sub-column. `pr-4 border-r` is the divider
                                 between this and the right sub-column — but it
@@ -1914,7 +1915,7 @@ const NewEnquiryPageInner = () => {
 
                     {/* Starting Package */}
                     <Card variant="white" className="p-0 overflow-hidden border border-primary/30">
-                      <div className="flex items-center justify-between bg-primary px-6 h-[60px] text-white">
+                      <div className="flex items-center justify-between bg-primary px-6 max-sm:px-4 h-[60px] text-white">
                         <h3 className="font-medium">Starting Package</h3>
                         <button
                           type="button"
@@ -1936,7 +1937,7 @@ const NewEnquiryPageInner = () => {
                         aria-hidden={!cardsOpen.startingPackage}
                       >
                         <Spin spinning={isPackageLoading}>
-                        <div className="px-6 text-sm text-gray-700">
+                        <div className="px-6 max-sm:px-4 text-sm text-gray-700">
                           {/* Every column here is a `w-N/12` fraction of its row,
                               which is exactly what made this unreadable on a
                               phone: at a 375px screen the whole row (minus the
@@ -2096,7 +2097,7 @@ const NewEnquiryPageInner = () => {
 
                     {/* Extras */}
                     <Card variant="white" className="p-0 overflow-hidden border border-primary/30">
-                      <div className="flex items-center justify-between bg-primary px-6 h-[60px] text-white">
+                      <div className="flex items-center justify-between bg-primary px-6 max-sm:px-4 h-[60px] text-white">
                         <h3 className="font-medium">Extras</h3>
                         <button
                           type="button"
@@ -2118,7 +2119,7 @@ const NewEnquiryPageInner = () => {
                         aria-hidden={!cardsOpen.extras}
                       >
                         <Spin spinning={isPackageLoading}>
-                        <div className="px-6 text-sm text-gray-700">
+                        <div className="px-6 max-sm:px-4 text-sm text-gray-700">
                           {/* Same fix as the Basics card above — see the comment
                               there for why 680px. */}
                           <div className="overflow-x-auto no-scrollbar">
