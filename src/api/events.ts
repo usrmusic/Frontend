@@ -27,10 +27,15 @@ type QueryParams = {
   perPage: number;
   search: string;
   paymentStatus?: string;
+  // Exact event id (header search / dashboard redirects); the backend's
+  // completed list returns just that event and ignores `search` when set.
+  id?: string;
 };
 
 export interface CompletedEvent {
   id: number;
+  // 3 = Completed, 4 = Cancelled — both are listed on the Completed Events page.
+  event_status_id?: number;
   date: string; // ISO date string
   users_events_user_idTousers: User;
   venues: Venue;

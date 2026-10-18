@@ -152,6 +152,70 @@ const validationSchema = Yup.object({
 // try to clear it. Rather than extend that already-fragile reset chain
 // further, force a clean remount whenever the edit target changes by keying
 // the inner component on it — React then re-runs every hook from scratch.
+/* Unit price cell for the Basics / Extras / custom-extra rows — parity with
+   Laravel's `.create-sell-price` (new_enquiry.js): the price shows as plain
+   text, double-click turns it into an input (only when the row is ticked,
+   otherwise the same warning toast), and clicking away saves it and shows
+   text again. A blank or invalid entry keeps the current price. */
+const UNIT_PRICE_WARNING = "Please check the corresponding checkbox to change the unit price.";
+
+function DblClickUnitPrice({
+  value,
+  enabled,
+  onCommit,
+}: {
+  value: number;
+  enabled: boolean;
+  onCommit: (price: number) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  if (editing) {
+    const commit = () => {
+      const n = draft.trim() === "" ? NaN : Number(draft);
+      if (Number.isFinite(n)) onCommit(n);
+      setDraft("");
+      setEditing(false);
+    };
+    return (
+      <input
+        type="number"
+        step="0.01"
+        autoFocus
+        value={draft}
+        placeholder={String(value)}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+          if (e.key === "Escape") {
+            setDraft("");
+            setEditing(false);
+          }
+        }}
+        className="h-8 w-16 rounded-lg border border-gray-200 bg-white px-1 text-center text-sm outline-none focus:border-primary transition-colors"
+      />
+    );
+  }
+
+  return (
+    <span
+      onDoubleClick={() => {
+        if (!enabled) {
+          toast.warning(UNIT_PRICE_WARNING, { toastId: "unit-price-warning" });
+          return;
+        }
+        setEditing(true);
+      }}
+      title={enabled ? "Double-click to change" : undefined}
+      className={`select-none ${enabled ? "cursor-pointer" : "text-gray-400"}`}
+    >
+      {value}
+    </span>
+  );
+}
+
 const NewEnquiryPage = () => {
   const searchParams = useSearchParams();
   const editId = searchParams?.get("select") ?? null;
@@ -2021,23 +2085,12 @@ const NewEnquiryPageInner = () => {
                                       <span>{equipment?.name}</span>
                                     </div>
                                     <div className="w-2/12 flex justify-center">
-                                      <input
-                                        type="number"
-                                        // Negative values are intentional here — staff use
-                                        // them to apply a discount (e.g. -100 for £100 off),
-                                        // same as the old CRM. A min={0} constraint blocked
-                                        // that entirely.
-                                        step="0.01"
+                                      <DblClickUnitPrice
                                         value={unitPrice}
-                                        disabled={!checked}
-                                        onChange={(e) => {
-                                          const val = e.target.value === "" ? 0 : Number(e.target.value);
-                                          setPackageEquipmentPrice((prev) => ({
-                                            ...prev,
-                                            [key]: Number.isFinite(val) ? val : 0,
-                                          }));
-                                        }}
-                                        className="h-8 w-16 rounded-lg border border-gray-200 bg-white px-1 text-center text-sm outline-none focus:border-primary transition-colors disabled:bg-gray-100 disabled:text-gray-400"
+                                        enabled={checked}
+                                        onCommit={(price) =>
+                                          setPackageEquipmentPrice((prev) => ({ ...prev, [key]: price }))
+                                        }
                                       />
                                     </div>
                                     <div className="w-1/12 flex justify-center">
@@ -2179,21 +2232,12 @@ const NewEnquiryPageInner = () => {
                                     <span>{extra.name}</span>
                                   </div>
                                   <div className="w-2/12 flex justify-center">
-                                    <input
-                                      type="number"
-                                      // Negative values are intentional — same discount use
-                                      // case as the package Unit Price field above.
-                                      step="0.01"
+                                    <DblClickUnitPrice
                                       value={unitPrice}
-                                      disabled={!checked}
-                                      onChange={(e) => {
-                                        const val = e.target.value === "" ? 0 : Number(e.target.value);
-                                        setExtrasPrice((prev) => ({
-                                          ...prev,
-                                          [key]: Number.isFinite(val) ? val : 0,
-                                        }));
-                                      }}
-                                      className="h-8 w-16 rounded-lg border border-gray-200 bg-white px-1 text-center text-sm outline-none focus:border-primary transition-colors disabled:bg-gray-100 disabled:text-gray-400"
+                                      enabled={checked}
+                                      onCommit={(price) =>
+                                        setExtrasPrice((prev) => ({ ...prev, [key]: price }))
+                                      }
                                     />
                                   </div>
                                   <div className="w-1/12 flex justify-center">
@@ -2276,23 +2320,16 @@ const NewEnquiryPageInner = () => {
                                     <span>{ex.name}</span>
                                   </div>
                                   <div className="w-2/12 flex justify-center">
-                                    <input
-                                      type="number"
-                                      min={0}
-                                      step="0.01"
-                                      value={ex.sell_price}
-                                      disabled={ex.selected === false}
-                                      onChange={(e) => {
-                                        const val = e.target.value === "" ? 0 : Number(e.target.value);
+                                    <DblClickUnitPrice
+                                      value={Number(ex.sell_price) || 0}
+                                      enabled={ex.selected !== false}
+                                      onCommit={(price) =>
                                         setCustomExtras((prev) =>
                                           prev.map((c) =>
-                                            c.tempId === ex.tempId
-                                              ? { ...c, sell_price: Number.isFinite(val) ? val : 0 }
-                                              : c,
+                                            c.tempId === ex.tempId ? { ...c, sell_price: price } : c,
                                           ),
-                                        );
-                                      }}
-                                      className="h-8 w-16 rounded-lg border border-gray-200 bg-white px-1 text-center text-sm outline-none focus:border-primary transition-colors disabled:bg-gray-100 disabled:text-gray-400"
+                                        )
+                                      }
                                     />
                                   </div>
                                   <div className="w-1/12 flex justify-center">

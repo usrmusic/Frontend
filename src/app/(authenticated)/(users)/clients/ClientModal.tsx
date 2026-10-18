@@ -3,6 +3,7 @@ import ModalFooter from "@/src/components/common/ModalFooter";
 import Input from "@/src/components/Input";
 import { Modal, notification } from "antd";
 import { useFormik } from "formik";
+import dayjs from "dayjs";
 
 interface ClientData {
   id: number | string;
@@ -40,10 +41,15 @@ const ClientModal = ({
     enableReinitialize: true,
     initialValues: getInitialValues(initialValues),
     onSubmit: (values) => {
-      // Can handle differently for add/edit
+      // Event date is optional, and only means something when ADDING a client
+      // (it creates their first open enquiry). Saving an existing client never
+      // touches events, so it's never sent on edit, and a blank one is left
+      // out of the request entirely rather than sent as "".
+      const { event_date, ...clientFields } = values;
       const payload = {
-        ...values,
+        ...clientFields,
         role_id: "4",
+        ...(!isEditMode && event_date ? { event_date } : {}),
       };
       if (isEditMode) {
         // Edit logic here
@@ -103,15 +109,17 @@ const ClientModal = ({
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
           />
-          <Input
-            required
-            label="Event Date"
-            name="event_date"
-            type="date"
-            value={formik.values.event_date}
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
-          />
+          {!isEditMode && (
+            <Input
+              label="Event Date (optional)"
+              name="event_date"
+              type="date"
+              min={dayjs().format("YYYY-MM-DD")}
+              value={formik.values.event_date}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+            />
+          )}
           <Input
             required
             label="Contact Number"
