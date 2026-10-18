@@ -55,6 +55,16 @@ const CompletedEventsPage = () => {
 
   const searchParams = useSearchParams();
   const searchParamsKey = searchParams?.toString() ?? "";
+  // The header search, dashboard widgets and calendar all redirect here with
+  // the clicked event's id as `search` (and a display name as `name`). Open on
+  // exactly that event instead of text-matching the name: the name is often a
+  // couple name, which the old text search never matched, so the table came
+  // back empty. Seeded from the URL up front so the very first request is
+  // already the exact-event one (no flash of the unfiltered list).
+  const [eventId, setEventId] = useState<string | null>(() => {
+    const s = searchParams?.get("search") ?? "";
+    return /^\d+$/.test(s) ? s : null;
+  });
   // Fire once per incoming URL, not on every keystroke — `search` was in
   // the dep list before, so as soon as the user edited the seeded search
   // box, this effect re-ran, saw the URL's value still didn't match what
@@ -69,31 +79,45 @@ const CompletedEventsPage = () => {
     const displayValue = name || s;
     if (displayValue) {
       setSearch(displayValue);
+      setEventId(/^\d+$/.test(s) ? s : null);
       setParams((prev) => ({ ...prev, page: 1 }));
     }
   }, [searchParams, searchParamsKey]);
 
   const { data: completedEventsData, isLoading } = useGetCompletedEventsList({
     ...params,
-    search: debouncedSearch,
+    search: eventId ? "" : debouncedSearch,
+    id: eventId ?? undefined,
     paymentStatus: paymentStatus || undefined,
   });
+
+  // Opened on one exact event: treat its row as selected until the user picks
+  // another, so View / Send Email / Send Invoice / Download Invoice work
+  // straight away (Open Enquiry does the same). Derived, not stored in state.
+  const exactEventKey =
+    eventId && completedEventsData?.data?.some((row) => String(row.id) === eventId)
+      ? eventId
+      : null;
+  const effectiveSelectedKeys: React.Key[] = selectedRowKeys.length
+    ? selectedRowKeys
+    : exactEventKey
+      ? [exactEventKey]
+      : [];
   const { mutate: downloadInvoiceMutation, isPending: isDownloadingInvoice } =
     useDownloadInvoice();
   const { mutate: sendThankYouMutation, isPending: isSendingThankYou } =
     useSendThankYouEmail();
   const rowSelection: TableProps["rowSelection"] = {
     type: "radio",
-    selectedRowKeys,
+    selectedRowKeys: effectiveSelectedKeys,
     onChange: (keys: React.Key[]) => {
       setSelectedRowKeys(keys.slice(0, 1));
     },
   };
 
-  const selectedId =
-    selectedRowKeys && selectedRowKeys.length
-      ? String(selectedRowKeys[0])
-      : null;
+  const selectedId = effectiveSelectedKeys.length
+    ? String(effectiveSelectedKeys[0])
+    : null;
 
   const columns: TableColumnsType = [
     {
@@ -123,16 +147,34 @@ const CompletedEventsPage = () => {
       render: (date) => <>{dayjs(date).format("DD-MM-YYYY")}</>,
     },
     {
+      // Completed (3) and Cancelled (4) events share this page.
+      key: "status",
+      dataIndex: "event_status_id",
+      title: "Status",
+      render: (status) => (
+        <div
+          className={`${status === 4 ? "bg-[#FDE2E2] text-[#B42318]" : "bg-gray-100 text-gray-700"} w-[98px] rounded-full text-center py-1 text-xs`}
+        >
+          {status === 4 ? "Cancelled" : "Completed"}
+        </div>
+      ),
+    },
+    {
       key: "payment",
       dataIndex: "is_event_payment_fully_paid",
       title: "Payment",
-      render: (data) => (
-        <div
-          className={`${data && "bg-[#D4F4DD]"} ${!data && "bg-[#FFF4CC] text-[#9C6F19]"} w-[98px] rounded-full text-center text-[#0F7B3B] py-1 text-xs capitalize`}
-        >
-          {data ? "Completed" : "Pending"}
-        </div>
-      ),
+      render: (data, record) =>
+        // The paid flag is meaningless on a cancelled event (it'd always read
+        // "Pending"), so don't show it as if payment were still outstanding.
+        record.event_status_id === 4 ? (
+          <>—</>
+        ) : (
+          <div
+            className={`${data && "bg-[#D4F4DD]"} ${!data && "bg-[#FFF4CC] text-[#9C6F19]"} w-[98px] rounded-full text-center text-[#0F7B3B] py-1 text-xs capitalize`}
+          >
+            {data ? "Completed" : "Pending"}
+          </div>
+        ),
     },
   ];
 
@@ -142,6 +184,7 @@ const CompletedEventsPage = () => {
     { label: "Mobile", key: "mobile" },
     { label: "Venue", key: "venue" },
     { label: "Event Date", key: "date" },
+    { label: "Status", key: "status" },
     { label: "Payment", key: "payment" },
   ];
 
@@ -151,7 +194,13 @@ const CompletedEventsPage = () => {
     mobile: row.users_events_user_idTousers.contact_number,
     venue: row.venues.venue,
     date: row.date,
-    payment: row.is_event_payment_fully_paid ? "Completed" : "Pending",
+    status: row.event_status_id === 4 ? "Cancelled" : "Completed",
+    payment:
+      row.event_status_id === 4
+        ? "—"
+        : row.is_event_payment_fully_paid
+          ? "Completed"
+          : "Pending",
   }));
 
   if (isClient) {
@@ -264,7 +313,11 @@ const CompletedEventsPage = () => {
               placeholder="Search"
               className="w-full bg-transparent! text-sm placeholder:text-gray-500 max-sm:placeholder:text-gray-400"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                // Typing means "search by text" again, not "stay on that one event".
+                setEventId(null);
+              }}
             />
             <button
               type="button"
@@ -303,6 +356,23 @@ const CompletedEventsPage = () => {
             </CSVLink>
           </div>
         </div>
+        {eventId && (
+          <div className="flex items-center justify-between gap-3 rounded-lg bg-white px-4 py-2 text-sm max-sm:order-4">
+            <span>Showing event #{eventId} only.</span>
+            <button
+              type="button"
+              className="font-medium underline"
+              onClick={() => {
+                setEventId(null);
+                setSearch("");
+                setSelectedRowKeys([]);
+                setParams((p) => ({ ...p, page: 1 }));
+              }}
+            >
+              Show all
+            </button>
+          </div>
+        )}
         <DataTable
           wrapperClassName="overflow-hidden rounded-xl max-sm:order-4"
           rowSelection={rowSelection}
