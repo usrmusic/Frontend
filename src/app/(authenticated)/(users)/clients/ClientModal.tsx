@@ -41,15 +41,14 @@ const ClientModal = ({
     enableReinitialize: true,
     initialValues: getInitialValues(initialValues),
     onSubmit: (values) => {
-      // Event date is optional, and only means something when ADDING a client
-      // (it creates their first open enquiry). Saving an existing client never
-      // touches events, so it's never sent on edit, and a blank one is left
-      // out of the request entirely rather than sent as "".
+      // Event date is optional; when adding a client it creates their first
+      // open enquiry. A blank one is left out of the request rather than sent
+      // as "". (On edit the backend accepts and ignores it, as Laravel did.)
       const { event_date, ...clientFields } = values;
       const payload = {
         ...clientFields,
         role_id: "4",
-        ...(!isEditMode && event_date ? { event_date } : {}),
+        ...(event_date ? { event_date } : {}),
       };
       if (isEditMode) {
         // Edit logic here
@@ -109,17 +108,18 @@ const ClientModal = ({
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
           />
-          {!isEditMode && (
-            <Input
-              label="Event Date (optional)"
-              name="event_date"
-              type="date"
-              min={dayjs().format("YYYY-MM-DD")}
-              value={formik.values.event_date}
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-            />
-          )}
+          {/* Shown when adding AND editing, as in Laravel's client form.
+              Optional; the today-or-later limit only applies when adding,
+              where it creates the client's first open enquiry. */}
+          <Input
+            label={isEditMode ? "Event Date" : "Event Date (optional)"}
+            name="event_date"
+            type="date"
+            min={isEditMode ? undefined : dayjs().format("YYYY-MM-DD")}
+            value={formik.values.event_date}
+            onChange={formik.handleChange}
+            onBlur={formik.handleBlur}
+          />
           <Input
             required
             label="Contact Number"
