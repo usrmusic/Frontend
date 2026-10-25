@@ -139,35 +139,9 @@ function CalendarWithSidebar({
     return map;
   }, [events]);
 
-  useEffect(() => {
-    if (!events || !events.length) return;
-    const dates = events
-      .map((e) => getLocalMidday(e.date))
-      .filter(Boolean) as Date[];
-    if (dates.length) {
-      dates.sort((a, b) => a.getTime() - b.getTime());
-      const firstDate = dates[0];
-      const newMonth = startOfMonth(firstDate);
-      Promise.resolve().then(() => {
-        setMonth((prev) => {
-          try {
-            return prev.getTime() === newMonth.getTime() ? prev : newMonth;
-          } catch {
-            return newMonth;
-          }
-        });
-        setSelected((prev) => {
-          try {
-            return prev && prev.getTime() === firstDate.getTime()
-              ? prev
-              : firstDate;
-          } catch {
-            return firstDate;
-          }
-        });
-      });
-    }
-  }, [events]);
+  // Opens on today's month with today selected. It used to jump to the
+  // earliest event once data loaded — harmless while events were fetched one
+  // year at a time, but with every booking loaded that landed on 2024.
 
   if (isLoading) {
     return (
