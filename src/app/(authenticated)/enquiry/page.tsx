@@ -140,8 +140,11 @@ const validationSchema = Yup.object({
     .nullable(),
   eventType: Yup.string(),
   depositAmount: Yup.number().min(0, "Deposit cannot be negative"),
-  notes: Yup.string().max(500, "Notes must be at most 500 characters"),
-  tellMeMore: Yup.string().max(500, "Additional information must be at most 500 characters"),
+  // No practical limit, as in Laravel: long website enquiries arrive with far
+  // more than 500 characters, and the old cap blocked saving them (and so
+  // blocked Update/Send Quote). 60,000 stays within the TEXT column.
+  notes: Yup.string().max(60000, "Notes are too long"),
+  tellMeMore: Yup.string().max(60000, "Additional information is too long"),
 });
 
 // Next.js App Router does not remount a page component when only the query
@@ -334,6 +337,49 @@ const NewEnquiryPageInner = () => {
 
   // Custom extras added via "Add Equipment" modal
   const [customExtras, setCustomExtras] = useState<CustomExtra[]>([]);
+  // Package choices (ticks, Qty, unit prices, extras, notes) live in their own
+  // state, outside Formik, so Formik's `dirty` never saw them: changing only
+  // the package left Update disabled and Send Quote skipped the save, so the
+  // quote went out with the previously-saved package. Any user edit to the
+  // package sets this; it clears on load and after a successful save.
+  const [packageEdited, setPackageEdited] = useState(false);
+  // Set by onSubmit when the save actually succeeded, so Send Quote can stop
+  // instead of quoting stale data when the save failed or didn't validate.
+  const saveSucceededRef = useRef(false);
+  // User edits to the package go through these so Update/Send Quote know the
+  // package changed; loading/resetting uses the plain setters and does not.
+  const editSelectedPackageEquipments: typeof setSelectedPackageEquipments = (v) => {
+    setPackageEdited(true);
+    setSelectedPackageEquipments(v);
+  };
+  const editPackageEquipmentQty: typeof setPackageEquipmentQty = (v) => {
+    setPackageEdited(true);
+    setPackageEquipmentQty(v);
+  };
+  const editPackageEquipmentPrice: typeof setPackageEquipmentPrice = (v) => {
+    setPackageEdited(true);
+    setPackageEquipmentPrice(v);
+  };
+  const editSelectedExtras: typeof setSelectedExtras = (v) => {
+    setPackageEdited(true);
+    setSelectedExtras(v);
+  };
+  const editExtrasPrice: typeof setExtrasPrice = (v) => {
+    setPackageEdited(true);
+    setExtrasPrice(v);
+  };
+  const editExtrasQty: typeof setExtrasQty = (v) => {
+    setPackageEdited(true);
+    setExtrasQty(v);
+  };
+  const editCustomExtras: typeof setCustomExtras = (v) => {
+    setPackageEdited(true);
+    setCustomExtras(v);
+  };
+  const editExtrasOverrides: typeof setExtrasOverrides = (v) => {
+    setPackageEdited(true);
+    setExtrasOverrides(v);
+  };
 
   // Per-equipment notes overrides (keyed by equipment id string)
   const [extrasOverrides, setExtrasOverrides] = useState<Record<string, { notes: string; rig_notes: string }>>({});
@@ -609,6 +655,7 @@ const NewEnquiryPageInner = () => {
       if (hydratedForIdRef.current !== editId) {
         hydratedForIdRef.current = editId;
         setRestoredEditSelections(false);
+        setPackageEdited(false);
         setSelectedPackageEquipments({});
         setSelectedExtras({});
         setCustomExtras([]);
@@ -879,6 +926,59 @@ const NewEnquiryPageInner = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [packageData, editId, restoredEditSelections]);
 
+  // Saved Extras rows whose equipment isn't in the loaded Extras list (e.g.
+  // an item made with "Add New Equipment" just before the first Save, while
+  // the cached list predates it) were invisible after the page switched to
+  // edit mode — so they dropped out of the total and the next Update deleted
+  // them. Bring them back as custom-extra rows, ticked, with their saved
+  // price/qty/notes. Plain setters: this is loading, not a user edit.
+  useEffect(() => {
+    if (!editId || !restoredEditSelections || !packageData?.data) return;
+    if (!enquiryItem || String(enquiryItem.id) !== String(editId)) return;
+    const listed = new Set<string>([
+      ...((packageData.data.extras ?? []) as ExtraItem[]).map((e) => String(e.id)),
+      ...((packageData.data.equipments?.package_user_equipments ?? []) as PackageUserEquipment[]).map((it) =>
+        String(it.equipment_id ?? it.equipment?.id ?? it.id),
+      ),
+    ]);
+    const missing: CustomExtra[] = [];
+    type SavedPackageRow = {
+      equipment_id?: string | number | null;
+      equipment?: { id?: string | number; name?: string } | null;
+      package_types?: { type?: string } | null;
+      package_type_id?: string | number | null;
+      sell_price?: string | number | null;
+      cost_price?: string | number | null;
+      quantity?: number | null;
+      notes?: string | null;
+      rig_notes?: string | null;
+    };
+    for (const p of (enquiryItem.event_packages ?? []) as SavedPackageRow[]) {
+      const eqId = p?.equipment_id ?? p?.equipment?.id;
+      const typeLabel = String(p?.package_types?.type ?? "").toUpperCase();
+      const isExtra = typeLabel === "EXTRAS" || String(p?.package_type_id ?? "") === "2";
+      if (eqId == null || !isExtra || listed.has(String(eqId))) continue;
+      missing.push({
+        tempId: `saved-${eqId}`,
+        equipment_id: Number(eqId),
+        name: p?.equipment?.name ?? "Item",
+        sell_price: Number(p?.sell_price ?? 0),
+        cost_price: Number(p?.cost_price ?? 0),
+        quantity: Number(p?.quantity ?? 1) || 1,
+        notes: p?.notes ?? "",
+        rig_notes: p?.rig_notes ?? "",
+        selected: true,
+      });
+    }
+    if (!missing.length) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCustomExtras((prev) => {
+      const have = new Set(prev.map((c) => String(c.equipment_id)));
+      const add = missing.filter((m) => !have.has(String(m.equipment_id)));
+      return add.length ? [...prev, ...add] : prev;
+    });
+  }, [editId, restoredEditSelections, packageData, enquiryItem]);
+
   const { equipmentList, rigNotesList, totalPrice } = useMemo(() => {
     // `qty` is carried through so both panels can show "2 X Name" — the rig
     // list and the confirmed-event drawer label items the same way, and a
@@ -1053,7 +1153,7 @@ const NewEnquiryPageInner = () => {
       notes: "",
       rig_notes: "",
     };
-    setCustomExtras((prev) => [...prev, newExtra]);
+    editCustomExtras((prev) => [...prev, newExtra]);
     setAddEquipModalOpen(false);
     resetAddEquipForm();
     toast.success("Equipment added");
@@ -1225,6 +1325,8 @@ const NewEnquiryPageInner = () => {
           try {
             if (editId) {
               await updateEnquiry.mutateAsync({ id: editId, body: payload });
+              saveSucceededRef.current = true;
+              setPackageEdited(false);
               toast.success("Enquiry updated");
               // Stay on this edit page with the form as-is instead of
               // navigating back to the Open Enquiry list — the user wants to
@@ -1236,6 +1338,8 @@ const NewEnquiryPageInner = () => {
                 (response as { data?: { id?: unknown } })?.data?.id ??
                 (response as { event?: { id?: unknown } })?.event?.id;
               if (newId) {
+                saveSucceededRef.current = true;
+                setPackageEdited(false);
                 lastEnquiryIdRef.current = String(newId);
                 // Without this, the page stays in "new enquiry" mode after a
                 // successful save — the button keeps saying "Save" instead of
@@ -1264,19 +1368,15 @@ const NewEnquiryPageInner = () => {
           const handleSendQuote = async () => {
             setSendQuoteLoading(true);
             try {
-              let id = lastEnquiryIdRef.current ?? editId;
-
-              if (!id) {
-                // New unsaved enquiry — save first to get an ID
-                await submitForm();
-                id = lastEnquiryIdRef.current;
-                if (!id) {
-                  toast.error("Please fix form errors and save before sending a quote");
-                  return;
-                }
-              } else if (dirty) {
-                // Has ID but unsaved changes — save first
-                await submitForm();
+              // Always save first, as Laravel's Send Quote does, so the quote
+              // matches exactly what's on screen. Previously it only saved when
+              // Formik was dirty, which missed package-only changes.
+              saveSucceededRef.current = false;
+              await submitForm();
+              const id = lastEnquiryIdRef.current ?? editId;
+              if (!saveSucceededRef.current || !id) {
+                toast.error("Couldn't save the enquiry, so the quote wasn't sent. Please check the form and try again.");
+                return;
               }
 
               const data = await fetchEmailTemplate(id, "SEND QUOTE-OPEN");
@@ -1435,7 +1535,7 @@ const NewEnquiryPageInner = () => {
                       icon={<Save size={14} />}
                       htmlType="submit"
                       loading={isSubmitting}
-                      disabled={!dirty || isSubmitting}
+                      disabled={(!dirty && !packageEdited) || isSubmitting}
                     >
                       {editId ? "Update" : "Save"}
                     </Button>
@@ -2067,7 +2167,7 @@ const NewEnquiryPageInner = () => {
                                         checked={checked}
                                         onChange={() => {
                                           const nowChecked = !selectedPackageEquipments[key];
-                                          setSelectedPackageEquipments((prev) => ({
+                                          editSelectedPackageEquipments((prev) => ({
                                             ...prev,
                                             [key]: nowChecked,
                                           }));
@@ -2089,7 +2189,7 @@ const NewEnquiryPageInner = () => {
                                         value={unitPrice}
                                         enabled={checked}
                                         onCommit={(price) =>
-                                          setPackageEquipmentPrice((prev) => ({ ...prev, [key]: price }))
+                                          editPackageEquipmentPrice((prev) => ({ ...prev, [key]: price }))
                                         }
                                       />
                                     </div>
@@ -2110,7 +2210,7 @@ const NewEnquiryPageInner = () => {
                                             !Number.isFinite(raw) || raw <= 0
                                               ? Math.max(1, basicQty)
                                               : Math.max(1, raw);
-                                          setPackageEquipmentQty((prev) => ({
+                                          editPackageEquipmentQty((prev) => ({
                                             ...prev,
                                             [key]: val,
                                           }));
@@ -2214,7 +2314,7 @@ const NewEnquiryPageInner = () => {
                                       checked={checked}
                                       onChange={() => {
                                         const nowChecked = !selectedExtras[key];
-                                        setSelectedExtras((prev) => ({
+                                        editSelectedExtras((prev) => ({
                                           ...prev,
                                           [key]: nowChecked,
                                         }));
@@ -2236,7 +2336,7 @@ const NewEnquiryPageInner = () => {
                                       value={unitPrice}
                                       enabled={checked}
                                       onCommit={(price) =>
-                                        setExtrasPrice((prev) => ({ ...prev, [key]: price }))
+                                        editExtrasPrice((prev) => ({ ...prev, [key]: price }))
                                       }
                                     />
                                   </div>
@@ -2251,7 +2351,7 @@ const NewEnquiryPageInner = () => {
                                         // Floor at 1 — Laravel's Extras qty input is
                                         // min="1", so stepping down stops there.
                                         const val = Number.isFinite(raw) ? Math.max(1, raw) : 1;
-                                        setExtrasQty((prev) => ({
+                                        editExtrasQty((prev) => ({
                                           ...prev,
                                           [key]: val,
                                         }));
@@ -2279,7 +2379,7 @@ const NewEnquiryPageInner = () => {
                                           override?.notes ?? (extra as ExtraItem & { notes?: string }).notes ?? "",
                                           override?.rig_notes ?? extra.rig_notes ?? "",
                                           (notes, rig_notes) =>
-                                            setExtrasOverrides((prev) => ({
+                                            editExtrasOverrides((prev) => ({
                                               ...prev,
                                               [key]: { notes, rig_notes },
                                             })),
@@ -2309,7 +2409,7 @@ const NewEnquiryPageInner = () => {
                                       type="checkbox"
                                       checked={ex.selected !== false}
                                       onChange={(e) =>
-                                        setCustomExtras((prev) =>
+                                        editCustomExtras((prev) =>
                                           prev.map((c) =>
                                             c.tempId === ex.tempId ? { ...c, selected: e.target.checked } : c,
                                           ),
@@ -2324,7 +2424,7 @@ const NewEnquiryPageInner = () => {
                                       value={Number(ex.sell_price) || 0}
                                       enabled={ex.selected !== false}
                                       onCommit={(price) =>
-                                        setCustomExtras((prev) =>
+                                        editCustomExtras((prev) =>
                                           prev.map((c) =>
                                             c.tempId === ex.tempId ? { ...c, sell_price: price } : c,
                                           ),
@@ -2341,7 +2441,7 @@ const NewEnquiryPageInner = () => {
                                       onChange={(e) => {
                                         const raw = e.target.value === "" ? 1 : Number(e.target.value);
                                         const val = Number.isFinite(raw) ? Math.max(1, raw) : 1;
-                                        setCustomExtras((prev) =>
+                                        editCustomExtras((prev) =>
                                           prev.map((c) => (c.tempId === ex.tempId ? { ...c, quantity: val } : c)),
                                         );
                                       }}
@@ -2363,7 +2463,7 @@ const NewEnquiryPageInner = () => {
                                           ex.notes,
                                           ex.rig_notes,
                                           (notes, rig_notes) =>
-                                            setCustomExtras((prev) =>
+                                            editCustomExtras((prev) =>
                                               prev.map((c) =>
                                                 c.tempId === ex.tempId ? { ...c, notes, rig_notes } : c,
                                               ),
@@ -2380,7 +2480,7 @@ const NewEnquiryPageInner = () => {
                                       type="button"
                                       title="Remove"
                                       onClick={() =>
-                                        setCustomExtras((prev) =>
+                                        editCustomExtras((prev) =>
                                           prev.filter((c) => c.tempId !== ex.tempId),
                                         )
                                       }
