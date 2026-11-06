@@ -133,8 +133,14 @@ const validationSchema = Yup.object({
   // (matches Laravel, which never requires venue on this form either).
   venue: Yup.string().max(100, "Venue must be at most 100 characters"),
   eventDate: Yup.date().required("Event date is required"),
-  endTime: Yup.string(),
-  startTime: Yup.string(),
+  // Must be readable as a time (7pm, 7:30pm, 3.30, 19:30…) — otherwise say
+  // so here instead of the save failing on the server with raw text.
+  endTime: Yup.string().test("time", "End time not recognised, e.g. 7pm, 7:30pm or 19:30", (v) =>
+    !v || /^\d{2}:\d{2}$/.test(parseTimeTo24(v)),
+  ),
+  startTime: Yup.string().test("time", "Start time not recognised, e.g. 7pm, 7:30pm or 19:30", (v) =>
+    !v || /^\d{2}:\d{2}$/.test(parseTimeTo24(v)),
+  ),
   dj: Yup.object()
     .shape({ id: Yup.mixed(), name: Yup.string().max(100, "DJ name must be at most 100 characters") })
     .nullable(),
@@ -979,6 +985,52 @@ const NewEnquiryPageInner = () => {
     });
   }, [editId, restoredEditSelections, packageData, enquiryItem]);
 
+  // A confirmed/completed booking keeps the package price it was booked at.
+  // Editing it (e.g. adding a dry ice machine) adds to THAT price, not to the
+  // DJ package's current one — so a £6,000 booking plus £350 stays £6,350
+  // after the package moves to £7,000. Same for the DJ's cost (profit).
+  // Worked out from the booking's saved figures: saved net total minus the
+  // saved extras and extra-unit charges = the package price it was sold at.
+  // Only while the booking's own DJ + package are still selected; picking a
+  // different DJ/package uses that package's current price, as before.
+  const bookedPackagePrice = useMemo(() => {
+    if (!editId || !enquiryItem || String(enquiryItem.id) !== String(editId)) return null;
+    const ev = enquiryItem as Record<string, unknown> & {
+      event_status_id?: number | string | null;
+      event_packages?: Array<{
+        package_types?: { type?: string } | null;
+        package_type_id?: number | string | null;
+        sell_price?: number | string | null;
+        quantity?: number | null;
+        price_added_to_bill?: number | string | null;
+      }>;
+    };
+    const status = Number(ev.event_status_id);
+    if (status !== 2 && status !== 3) return null;
+    const sameDj = String(packageParams.staff ?? "") === String(ev.dj_id ?? "");
+    const samePackage = String(packageParams.package_name ?? "") === String(ev.dj_package_name ?? "");
+    if (!sameDj || !samePackage) return null;
+    const num = (v: unknown) => {
+      const n = Number(String(v ?? "").replace(/[^0-9.-]/g, ""));
+      return Number.isFinite(n) ? n : NaN;
+    };
+    const net = ev.is_vat_available_for_the_event
+      ? num(ev.event_amount_without_vat ?? ev.total_cost_for_equipment)
+      : num(ev.total_cost_for_equipment);
+    if (!Number.isFinite(net)) return null;
+    let addOns = 0;
+    for (const p of ev.event_packages ?? []) {
+      const isExtra = String(p?.package_types?.type ?? "").toUpperCase() === "EXTRAS" || String(p?.package_type_id ?? "") === "2";
+      if (isExtra) addOns += (num(p.sell_price) || 0) * (Number(p.quantity) || 1);
+      else addOns += num(p.price_added_to_bill) || 0;
+    }
+    const base = Math.round((net - addOns) * 100) / 100;
+    // Saved figures that don't add up (some imported records) → don't guess.
+    if (!Number.isFinite(base) || base < 0) return null;
+    const cost = num(ev.dj_cost_price_for_event);
+    return { sell: base, cost: Number.isFinite(cost) ? cost : null };
+  }, [editId, enquiryItem, packageParams.staff, packageParams.package_name]);
+
   const { equipmentList, rigNotesList, totalPrice } = useMemo(() => {
     // `qty` is carried through so both panels can show "2 X Name" — the rig
     // list and the confirmed-event drawer label items the same way, and a
@@ -987,7 +1039,7 @@ const NewEnquiryPageInner = () => {
     const rnList: Array<{ name: string; rig_notes: string; qty: number; notes?: string | null }> = [];
     let total = 0;
 
-    const basePrice = packageData?.data?.equipments?.sell_price ?? 0;
+    const basePrice = bookedPackagePrice?.sell ?? packageData?.data?.equipments?.sell_price ?? 0;
     total += Number(basePrice) || 0;
 
     // Basics — bundled into the DJ package's base price up to each item's
@@ -1070,6 +1122,7 @@ const NewEnquiryPageInner = () => {
     return { equipmentList: eqList, rigNotesList: dedupedRnList, totalPrice: total };
   }, [
     packageData,
+    bookedPackagePrice,
     selectedPackageEquipments,
     packageEquipmentQty,
     packageEquipmentPrice,
@@ -1197,7 +1250,7 @@ const NewEnquiryPageInner = () => {
           // What USR pays the DJ (matches Laravel's dj-cost-price-for-event, which
           // reads the package's cost_price) — NOT sell_price, which is what the
           // client is billed and is already used as `basePrice` in the total above.
-          const djCost = Number(packageData?.data?.equipments?.cost_price ?? 0);
+          const djCost = Number(bookedPackagePrice?.cost ?? packageData?.data?.equipments?.cost_price ?? 0);
 
           type EquipmentPayloadItem = {
             equipment_id: number;

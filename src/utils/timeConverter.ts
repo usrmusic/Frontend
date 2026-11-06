@@ -1,14 +1,18 @@
 /**
  * Parse various human-friendly time inputs into 24h `HH:mm` format.
- * Supports: 7am, 7:30pm, 19:30, 7, 730, 1430, etc.
+ * Supports: 7am, 7:30pm, 19:30, 7, 730, 1430, and the same with a dot or
+ * other separator instead of a colon (3.30, 3.30pm, 7-30, 19 30, 7h30).
  */
 
 
 export const parseTimeTo24 = (input?: string): string => {
   if (!input) return "";
   let v = String(input).trim().toLowerCase();
-  // Normalize common separators
-  v = v.replace(/\s+/g, "");
+  // Normalize separators: "3.30", "3,30", "3-30", "7h30" and "19 30" all
+  // mean hours:minutes. A dot was the common one — "3.30" fell through
+  // unparsed and the save then failed on the raw text.
+  v = v.replace(/^(\d{1,2})\s*[.,\-h\s]\s*(\d{2})/, "$1:$2");
+  v = v.replace(/\s+/g, "").replace(/\.(?=m$)/, "").replace(/([ap])\.?m\.?$/, "$1m");
 
   // am/pm formats like 7am, 7:30pm
   const ampmMatch = v.match(/^(\d{1,2})(?::(\d{2}))?(am|pm)$/i);

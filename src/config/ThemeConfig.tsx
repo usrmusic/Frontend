@@ -1,5 +1,12 @@
 import { ConfigProvider } from "antd";
+import enGB from "antd/locale/en_GB";
+import dayjs from "dayjs";
+import "dayjs/locale/en-gb";
 import { ReactNode } from "react";
+
+// UK locale everywhere: every AntD date picker starts the week on Monday (the
+// US default is Sunday) and shows UK month/day names.
+dayjs.locale("en-gb");
 
 export const colorPrimaryGradient =
   "linear-gradient(90deg, #7A9683 0%, #B6E2C6 100%)";
@@ -7,6 +14,7 @@ export const colorPrimaryGradient =
 const ThemeConfig = ({ children }: { children: ReactNode }) => {
   return (
     <ConfigProvider
+      locale={enGB}
       // Every Select/AutoComplete popup in the CRM grows to fit its longest
       // option (never narrower than its field) instead of being pinned to the
       // field's width and truncating options with "…". This also turns off
