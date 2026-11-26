@@ -43,6 +43,10 @@ import { Grid, Modal } from "antd";
 import { useSearchParams } from "next/navigation";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import SendBrochureModal from "./SendBrochure";
+import EnquiryHoverPreview, {
+  toAmount,
+  useEnquiryHoverPreview,
+} from "./EnquiryHoverPreview";
 import { toast } from "react-toastify";
 import { fetchEmailTemplate } from "@/src/api/enquiry";
 import { useCompanyDropdown } from "@/src/api/dropdown";
@@ -243,6 +247,27 @@ const OpenEnquiryPage = () => {
   const deleteEnquiry = useDeleteEnquiry();
   const reopenEnquiry = useReopenEnquiry();
   const router = useRouter();
+  const hoverPreview = useEnquiryHoverPreview();
+  const { hide: hideHoverPreview } = hoverPreview;
+
+  // A fixed-position card would drift away from its row on scroll, and a
+  // refetch can remove the row it points at — close it in both cases.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") hideHoverPreview();
+    };
+    window.addEventListener("scroll", hideHoverPreview, true);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("scroll", hideHoverPreview, true);
+      window.removeEventListener("keydown", onKey);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    hideHoverPreview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enquiryData]);
 
   // Real filters — sent to the backend as query params (status/event_type on
   // listOpenEnquiries), not applied client-side. "Status" here still means
@@ -386,6 +411,8 @@ const OpenEnquiryPage = () => {
       title: "Name",
       dataIndex: ["users_events_user_idTousers", "name"],
       key: "name",
+      // Anchor for the hover preview card (EnquiryHoverPreview).
+      className: "enquiry-name-cell",
       width: isPhone ? 105 : 150,
       ellipsis: true,
       // Server-side (see sortState above) — sorts the whole list, not just
@@ -688,15 +715,19 @@ const OpenEnquiryPage = () => {
     }
   };
 
-  const handleSendQuote = async () => {
-    if (!selectedRowKeys.length) {
+  // `record` is passed by the hover preview's Send Quote button, which acts
+  // on the hovered row rather than whatever is currently selected.
+  const handleSendQuote = async (record?: OpenEnquiryList) => {
+    const eventId = record?.id ?? selectedRowKeys[0];
+    if (eventId == null || eventId === "") {
       toast.error("Please select an enquiry first");
       return;
     }
+    const deposit = record ? toAmount(record.deposit_amount) : selectedDeposit;
     setButtonLoading("quote");
     try {
       const data = await fetchEmailTemplate(
-        String(selectedRowKeys[0]),
+        String(eventId),
         "SEND QUOTE-OPEN",
       );
       // Substitute the deposit placeholder here too — the compose
@@ -710,7 +741,7 @@ const OpenEnquiryPage = () => {
             ...rawEmail,
             body: String(rawEmail.body ?? "").replace(
               "{--amount--}",
-              `£${selectedDeposit ?? 0}`,
+              `£${deposit ?? 0}`,
             ),
           }
         : rawEmail;
@@ -837,7 +868,7 @@ const OpenEnquiryPage = () => {
             type="primary"
             className="themeDefaultButton max-sm:order-2"
             loading={buttonLoading === "quote"}
-            onClick={handleSendQuote}
+            onClick={() => handleSendQuote()}
           >
             Send Quote
           </Button>
@@ -1097,7 +1128,20 @@ const OpenEnquiryPage = () => {
                     : ""
                 }
                 onRow={(record) => ({
+                  onMouseEnter: (e) => {
+                    // No preview for the row the side panel is already showing.
+                    if (
+                      showSidePanel &&
+                      selectedRowKeys.includes(String(record?.id))
+                    ) {
+                      hoverPreview.leave();
+                      return;
+                    }
+                    hoverPreview.rowEnter(record, e.currentTarget);
+                  },
+                  onMouseLeave: hoverPreview.leave,
                   onClick: () => {
+                    hideHoverPreview();
                     try {
                       const id = record?.id;
                       if (!id) return;
@@ -1454,6 +1498,27 @@ const OpenEnquiryPage = () => {
           </aside>
         )}
       </div>
+
+      <EnquiryHoverPreview
+        record={hoverPreview.preview?.record ?? null}
+        anchor={hoverPreview.preview?.anchor ?? null}
+        status={
+          hoverPreview.preview ? deriveStatus(hoverPreview.preview.record) : null
+        }
+        onMouseEnter={hoverPreview.cardEnter}
+        onMouseLeave={hoverPreview.leave}
+        onSendQuote={(record) => {
+          hideHoverPreview();
+          // The quote modal sends for the selected row, so select it first.
+          setSelectedRowKeys([String(record.id)]);
+          setSelectedRowData([record]);
+          handleSendQuote(record);
+        }}
+        onOpen={(record) => {
+          hideHoverPreview();
+          router.push(`/enquiry?select=${encodeURIComponent(String(record.id))}`);
+        }}
+      />
 
       {modalOpen && (
         <SendBrochureModal
