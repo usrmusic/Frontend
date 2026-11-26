@@ -7,6 +7,9 @@
    section labels, Notes-tab note styling) so it reads as part of that panel
    rather than a new visual language.
 
+   Display-only: no buttons, and `pointer-events-none` so it can never block
+   a click on the rows it overlaps.
+
    Rendered in a portal with `position: fixed`, anchored beside the row's
    Name cell and flipped left/up when it would run off-screen. Showing,
    hiding and hover timing live in the page (see useEnquiryHoverPreview
@@ -108,18 +111,10 @@ export default function EnquiryHoverPreview({
   record,
   anchor,
   status,
-  onMouseEnter,
-  onMouseLeave,
-  onSendQuote,
-  onOpen,
 }: {
   record: OpenEnquiryList | null;
   anchor: HTMLElement | null;
   status: { label: string; className: string } | null;
-  onMouseEnter: () => void;
-  onMouseLeave: () => void;
-  onSendQuote: (record: OpenEnquiryList) => void;
-  onOpen: (record: OpenEnquiryList) => void;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
@@ -162,12 +157,10 @@ export default function EnquiryHoverPreview({
   return createPortal(
     <div
       ref={cardRef}
-      role="dialog"
+      role="tooltip"
       aria-label={`Preview of ${user?.name || "enquiry"}`}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-      className={`fixed z-[1050] w-[320px] bg-white rounded-2xl overflow-hidden border border-gray-100 transition-[opacity,transform] duration-150 ${
-        pos ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1 pointer-events-none"
+      className={`fixed z-[1050] w-[320px] bg-white rounded-2xl overflow-hidden border border-gray-100 pointer-events-none transition-[opacity,transform] duration-150 [&>div:last-child]:border-b-0 ${
+        pos ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"
       }`}
       style={{
         left: pos?.left ?? -9999,
@@ -267,22 +260,6 @@ export default function EnquiryHoverPreview({
         </div>
       )}
 
-      <div className="px-5 py-3 flex gap-2">
-        <button
-          type="button"
-          onClick={() => onSendQuote(record)}
-          className="flex-1 h-10 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:border-primary/40 hover:text-primary transition-colors"
-        >
-          Send Quote
-        </button>
-        <button
-          type="button"
-          onClick={() => onOpen(record)}
-          className="flex-1 h-10 rounded-xl bg-primary hover:bg-primary/90 text-white text-sm font-medium shadow-sm transition-colors"
-        >
-          Open Enquiry
-        </button>
-      </div>
     </div>,
     document.body,
   );
@@ -290,8 +267,8 @@ export default function EnquiryHoverPreview({
 
 /* Hover timing: wait ~350ms before the first card so skimming the list
    doesn't flash cards; once one is open, moving to another row swaps almost
-   instantly. A short close delay lets the pointer travel from the row into
-   the card. Only enabled on devices with a real hovering pointer — on touch,
+   instantly. A short close delay stops the card flickering off and on
+   between adjacent rows. Only enabled on devices with a real hovering pointer — on touch,
    tapping a row already opens the side panel. */
 export function useEnquiryHoverPreview() {
   const [state, setStateRaw] = useState<{
@@ -340,7 +317,5 @@ export function useEnquiryHoverPreview() {
     closeT.current = setTimeout(() => setState(null), 180);
   };
 
-  const cardEnter = () => clear(closeT);
-
-  return { preview: state, rowEnter, leave, cardEnter, hide };
+  return { preview: state, rowEnter, leave, hide };
 }
