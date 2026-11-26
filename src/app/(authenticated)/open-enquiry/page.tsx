@@ -44,7 +44,6 @@ import { useSearchParams } from "next/navigation";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import SendBrochureModal from "./SendBrochure";
 import EnquiryHoverPreview, {
-  toAmount,
   useEnquiryHoverPreview,
 } from "./EnquiryHoverPreview";
 import { toast } from "react-toastify";
@@ -715,19 +714,15 @@ const OpenEnquiryPage = () => {
     }
   };
 
-  // `record` is passed by the hover preview's Send Quote button, which acts
-  // on the hovered row rather than whatever is currently selected.
-  const handleSendQuote = async (record?: OpenEnquiryList) => {
-    const eventId = record?.id ?? selectedRowKeys[0];
-    if (eventId == null || eventId === "") {
+  const handleSendQuote = async () => {
+    if (!selectedRowKeys.length) {
       toast.error("Please select an enquiry first");
       return;
     }
-    const deposit = record ? toAmount(record.deposit_amount) : selectedDeposit;
     setButtonLoading("quote");
     try {
       const data = await fetchEmailTemplate(
-        String(eventId),
+        String(selectedRowKeys[0]),
         "SEND QUOTE-OPEN",
       );
       // Substitute the deposit placeholder here too — the compose
@@ -741,7 +736,7 @@ const OpenEnquiryPage = () => {
             ...rawEmail,
             body: String(rawEmail.body ?? "").replace(
               "{--amount--}",
-              `£${deposit ?? 0}`,
+              `£${selectedDeposit ?? 0}`,
             ),
           }
         : rawEmail;
@@ -868,7 +863,7 @@ const OpenEnquiryPage = () => {
             type="primary"
             className="themeDefaultButton max-sm:order-2"
             loading={buttonLoading === "quote"}
-            onClick={() => handleSendQuote()}
+            onClick={handleSendQuote}
           >
             Send Quote
           </Button>
@@ -1505,19 +1500,6 @@ const OpenEnquiryPage = () => {
         status={
           hoverPreview.preview ? deriveStatus(hoverPreview.preview.record) : null
         }
-        onMouseEnter={hoverPreview.cardEnter}
-        onMouseLeave={hoverPreview.leave}
-        onSendQuote={(record) => {
-          hideHoverPreview();
-          // The quote modal sends for the selected row, so select it first.
-          setSelectedRowKeys([String(record.id)]);
-          setSelectedRowData([record]);
-          handleSendQuote(record);
-        }}
-        onOpen={(record) => {
-          hideHoverPreview();
-          router.push(`/enquiry?select=${encodeURIComponent(String(record.id))}`);
-        }}
       />
 
       {modalOpen && (
